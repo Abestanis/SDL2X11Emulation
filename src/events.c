@@ -216,9 +216,9 @@ int convertEvent(Display* display, SDL_Event* sdlEvent, XEvent* xEvent) {
             xEvent->xmotion.serial = 0;
             xEvent->xmotion.send_event = sendEvent;
             xEvent->xmotion.display = display;
-            eventWindow = getWindowFromId(sdlEvent->motion.windowID);
-            xEvent->xmotion.root = eventWindow;
-            xEvent->xmotion.window = xEvent->xmotion.root; // The event window is always the SDL Window.
+            xEvent->xmotion.root = getWindowFromId(sdlEvent->motion.windowID);
+            eventWindow =  getContainingWindow(xEvent->xbutton.root, sdlEvent->motion.x, sdlEvent->motion.y);
+            xEvent->xmotion.window = eventWindow; // The event window is always the SDL Window.
             if (xEvent->xmotion.window == NULL) {
                 xEvent->xmotion.window = SCREEN_WINDOW;
             }

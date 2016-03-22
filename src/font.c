@@ -21,6 +21,45 @@ typedef struct _FontCache {
 FontCache* fontCache = NULL;
 
 
+XFontStruct* findFontInCache(char* name) {
+    FontCache* cachePtr;
+    for (cachePtr = fontCache; cachePtr != NULL; cachePtr = cachePtr->next) {
+        if (strcmp(cachePtr->name, name) == 0) {
+            return cachePtr->font;
+        }
+    }
+    return NULL;
+}
+
+void addFontToCache(XFontStruct* font, char* name) {
+    FontCache* newCache = malloc(sizeof(FontCache));
+    if (newCache == NULL) {
+        fprintf(stderr, "Warning: Failed to save font '%s' to cache: Out of memory!\n", name);
+        return;
+    }
+    newCache->name = name;
+    newCache->font = font;
+    newCache->next = fontCache;
+    fontCache = newCache;
+}
+
+void freeFontFromCache(XFontStruct* font) {
+    FontCache* cachePtr;
+    FontCache* lastCachePtr = NULL;
+    for (cachePtr = fontCache; cachePtr != NULL; cachePtr = cachePtr->next) {
+        if (cachePtr->font == font) {
+            if (lastCachePtr == NULL) {
+                fontCache = cachePtr->next;
+            } else {
+                lastCachePtr->next = cachePtr->next;
+            }
+            free(cachePtr);
+            return;
+        }
+        lastCachePtr = cachePtr;
+    }
+}
+
 Font XLoadFont(Display* display, char* name) {
     // https://tronche.com/gui/x/xlib/graphics/font-metrics/XLoadFont.html
     int fontSize = 18;
@@ -58,6 +97,7 @@ void XFreeFontNames(char* list[]) {
 
 void XFreeFont(Display* display, XFontStruct* font_struct) {
     // https://tronche.com/gui/x/xlib/graphics/font-metrics/XFreeFont.html
+    freeFontFromCache(font_struct);
     TTF_CloseFont(font_struct->fid);
     if (font_struct->per_char != NULL) {
         int numChars = font_struct->max_char_or_byte2 - font_struct->min_char_or_byte2;
@@ -74,9 +114,10 @@ char* getFontXLFDName(XFontStruct* font_struct) {
        POINT_SIZE - RESOLUTION_X - RESOLUTION_Y - SPACING - AVERAGE_WIDTH - CHARSET_REGISTRY -
        CHARSET_ENCODING */
     int fontStyle = TTF_GetFontStyle(font_struct->fid);
-    char* foundry = "";
+    static char* emptyValue = "";
+    char* foundry = emptyValue;
     char* familyName = TTF_FontFaceFamilyName(font_struct->fid);
-    if (familyName == NULL) { familyName = ""; }
+    if (familyName == NULL) familyName = emptyValue;
     char* weightName = fontStyle & TTF_STYLE_BOLD ? "bold" : "medium";
     char slant = fontStyle & TTF_STYLE_ITALIC ? 'i' : 'r';
     char* setWidth = "normal";
@@ -88,8 +129,11 @@ char* getFontXLFDName(XFontStruct* font_struct) {
 
     char* name = malloc(sizeof(char) * (14 + strlen(foundry) + strlen(familyName) +
             strlen(weightName) + 1 + strlen(setWidth) + 1 + 6 + 1 + 1 + 1 + 5 + strlen(charset) + 1));
-    sprintf(name, "-%s-%s-%s-%c-%s--0-%d-0-0-%c-%hd-%s-%d", foundry, familyName, weightName, slant,
-            setWidth, pointSize, spacing, averageWidth, charset, charsetEncoding);
+    if (name != NULL) {
+        sprintf(name, "-%s-%s-%s-%c-%s--0-%d-0-0-%c-%hd-%s-%d", foundry, familyName, weightName,
+                slant,
+                setWidth, pointSize, spacing, averageWidth, charset, charsetEncoding);
+    }
     fprintf(stderr, "Font name = '%s'\n", name);
     return name;
 }
@@ -122,28 +166,6 @@ Bool fillXCharStruct(TTF_Font* font, unsigned int character, XCharStruct* charSt
     charStruct->width = advance;
     charStruct->rbearing = maxX;
     return True;
-}
-
-XFontStruct* findFontInCache(char* name) {
-    FontCache* cachePtr;
-    for (cachePtr = fontCache; cachePtr != NULL; cachePtr = cachePtr->next) {
-        if (strcmp(cachePtr->name, name) == 0) {
-            return cachePtr->font;
-        }
-    }
-    return NULL;
-}
-
-void addFontToCache(XFontStruct* font, char* name) {
-    FontCache* newCache = malloc(sizeof(FontCache));
-    if (newCache == NULL) {
-        fprintf(stderr, "Warning: Failed to save font '%s' to cache: Out of memory!\n", name);
-        return;
-    }
-    newCache->name = name;
-    newCache->font = font;
-    newCache->next = fontCache;
-    fontCache = newCache;
 }
 
 XFontStruct* XLoadQueryFont(Display* display, char* name) {

@@ -218,7 +218,7 @@ int convertEvent(Display* display, SDL_Event* sdlEvent, XEvent* xEvent) {
             xEvent->xmotion.display = display;
             xEvent->xmotion.root = getWindowFromId(sdlEvent->motion.windowID);
             eventWindow =  getContainingWindow(xEvent->xbutton.root, sdlEvent->motion.x, sdlEvent->motion.y);
-            xEvent->xmotion.window = eventWindow; // The event window is always the SDL Window.
+            xEvent->xmotion.window = eventWindow; // The event window is always the window the mouse is in.
             if (xEvent->xmotion.window == NULL) {
                 xEvent->xmotion.window = SCREEN_WINDOW;
             }

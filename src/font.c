@@ -234,112 +234,90 @@ __inline__ int hexCharToNum(char chr) {
     return chr >= 'a' ? 10 + chr - 'a' : chr - '0';
 }
 
-const XChar2b* decodeString(char* string, int count, Bool twoByteString) {
+/* Resolve all X11 controll characters */
+const char* decodeString(char* string, int count) {
     int i, counter = 0;
-    XChar2b* text = malloc(sizeof(XChar2b) * (count + 1));
+    char* text = malloc(sizeof(char) * (count + 1));
     if (text == NULL) { return NULL; }
-    for (i = 0; i < (twoByteString ? count * 2 : count); i++) {
-        if (string[i] == '\\' && (!twoByteString || string[i + 1] == 0)) {
-            if (twoByteString) i++;
+    for (i = 0; i < count; i++) {
+        if (string[i] == '\\') {
             switch (string[++i]) {
-                case 'x':
-                    text[counter].byte1 = (hexCharToNum(string[++i]) << 4);
-                    if (twoByteString) i++;
-                    text[counter].byte1 |= hexCharToNum(string[++i]);
-                    if (twoByteString) i++;
-                    text[counter].byte2 = 0;
+                case 'x': /* \xFF */
+                    text[counter] = (hexCharToNum(string[++i]) << 4);
+                    text[counter] |= hexCharToNum(string[++i]);
                     break;
-                case 'u':
-                    text[counter].byte1 = (hexCharToNum(string[++i]) << 4);
-                    if (twoByteString) i++;
-                    text[counter].byte1 |= hexCharToNum(string[++i]);
-                    if (twoByteString) i++;
-                    text[counter].byte2 = (hexCharToNum(string[++i]) << 4);
-                    if (twoByteString) i++;
-                    text[counter].byte2 |= hexCharToNum(string[++i]);
-                    if (twoByteString) i++;
+                case 'u': /* \uFFFF */
+                    text[counter] = (hexCharToNum(string[++i]) << 4);
+                    text[counter] |= hexCharToNum(string[++i]);
+                    text[++counter] = (hexCharToNum(string[++i]) << 4);
+                    text[counter] |= hexCharToNum(string[++i]);
                     break;
                 case 'n':
-                    text[counter].byte1 = '\n';
-                    if (twoByteString) i++;
-                    text[counter].byte2 = 0;
+                    text[counter] = '\n';
                     break;
                 case 'r':
-                    text[counter].byte1 = '\r';
-                    if (twoByteString) i++;
-                    text[counter].byte2 = 0;
+                    text[counter] = '\r';
                     break;
                 case 'a':
-                    text[counter].byte1 = '\a';
-                    if (twoByteString) i++;
-                    text[counter].byte2 = 0;
+                    text[counter] = '\a';
                     break;
                 case 'b':
-                    text[counter].byte1 = '\b';
-                    if (twoByteString) i++;
-                    text[counter].byte2 = 0;
+                    text[counter] = '\b';
                     break;
                 case 't':
-                    text[counter].byte1 = '\t';
-                    if (twoByteString) i++;
-                    text[counter].byte2 = 0;
+                    text[counter] = '\t';
                     break;
                 case 'v':
-                    text[counter].byte1 = '\v';
-                    if (twoByteString) i++;
-                    text[counter].byte2 = 0;
+                    text[counter] = '\v';
                     break;
                 case 'f':
-                    text[counter].byte1 = '\f';
-                    if (twoByteString) i++;
-                    text[counter].byte2 = 0;
+                    text[counter] = '\f';
                     break;
                 default:
-                    fprintf(stderr, "Got unknown controll character in %s: '\\%c'\n", __func__, string[i]);
-                    counter--;
+                    fprintf(stderr, "Warn: Got unknown controll character in %s: '\\%c'\n", __func__, string[i]);
+                    text[counter] = '\\';
+                    text[++counter] = string[i];
             }
         } else {
-            text[counter].byte1 = string[i];
-            if (twoByteString) {
-                text[counter].byte2 = string[++i];
-            } else {
-                text[counter].byte2 = 0;
-            }
+            text[counter] = string[i];
         }
         counter++;
     }
-    text[counter].byte1 = '\0';
-    text[counter].byte2 = '\0';
-    return (const XChar2b*) text;
+    text[counter] = '\0';
+    return (const char*) text;
 }
 
-int getTextWidth(XFontStruct* font_struct, Uint16* string) {
+int getTextWidth(XFontStruct* font_struct, const char* string) {
     int width, height;
-    if (TTF_SizeUNICODE(font_struct->fid, string, &width, &height) != 0) {
+    if (TTF_SizeUTF8(font_struct->fid, string, &width, &height) != 0) {
         fprintf(stderr, "Failed to calculate the text with in XTextWidth16: %s! Returning max width of font.\n", TTF_GetError());
-        return font_struct->max_bounds.rbearing;
+        return font_struct->max_bounds.rbearing * strlen(string);
     }
     return width;
 }
 
 int XTextWidth16(XFontStruct* font_struct, XChar2b* string, int count) {
     // https://tronche.com/gui/x/xlib/graphics/font-metrics/XTextWidth16.html
-    Uint16* text = (Uint16*) decodeString((char*) string, count, True);
-    if (text == NULL) {
-        fprintf(stderr, "Out of memory: Failed to allocate memory in XTextWidth16! Returning max width of font.\n");
-        return font_struct->max_bounds.rbearing;
-    }
-    return getTextWidth(font_struct, text);
+    // TODO: Rethink this
+    fprintf(stderr, "Hit unimplemented function %s!\n", __func__);
+//    Uint16* text = (Uint16*) decodeString((char*) string, count, True);
+//    if (text == NULL) {
+//        fprintf(stderr, "Out of memory: Failed to allocate memory in XTextWidth16! Returning max width of font.\n");
+//        return font_struct->max_bounds.rbearing * count;
+//    }
+//    return getTextWidth(font_struct, text);
 }
 
 int XTextWidth(XFontStruct* font_struct, char* string, int count) {
     // https://tronche.com/gui/x/xlib/graphics/font-metrics/XTextWidth.html
-    Uint16* text = (Uint16*) decodeString(string, count, False);
+    const char* text = decodeString(string, count);
     if (text == NULL) {
         fprintf(stderr, "Out of memory: Failed to allocate memory in XTextWidth! Returning max width of font.\n");
-        return font_struct->max_bounds.rbearing;
+        return font_struct->max_bounds.rbearing * count;
     }
-    return getTextWidth(font_struct, text);
+    int width = getTextWidth(font_struct, text);
+    free((char*) text);
+    return width;
 }
 
 Bool renderText(Display* display, SDL_Renderer* renderer, GC gc, int x, int y, const char* string) {
@@ -373,6 +351,7 @@ Bool renderText(Display* display, SDL_Renderer* renderer, GC gc, int x, int y, c
 
 void XDrawString16(Display* display, Drawable drawable, GC gc, int x, int y, XChar2b* string, int length) {
     // https://tronche.com/gui/x/xlib/graphics/drawing-text/XDrawString16.html
+    // TODO: Rethink this
     fprintf(stderr, "%s: Drawing on %p\n", __func__, drawable);
     if (drawable == NULL) {
         handleError(0, display, 0, 0, BadDrawable, XCB_DRAW_STRING_16, 0);
@@ -386,16 +365,17 @@ void XDrawString16(Display* display, Drawable drawable, GC gc, int x, int y, XCh
     if (length == 0 || ((Uint16*) string)[0] == 0) { return; }
     SDL_Renderer* renderer;
     GET_RENDERER(drawable, renderer);
-    const XChar2b* text = decodeString((char*) string, length, True);
-    if (text == NULL) {
-        fprintf(stderr, "Out of memory: Failed to allocate memory in XDrawString16, raising BadMatch error.\n");
-        handleError(0, display, drawable, 0, BadMatch, XCB_DRAW_STRING_16, 0);
-        return;
-    }
-    if (!renderText(display, renderer, gc, x, y, (Uint16*) text)) {
-        fprintf(stderr, "Rendering the text failed in %s: %s\n", __func__, SDL_GetError());
-        handleError(0, display, drawable, 0, BadMatch, XCB_DRAW_STRING_16, 0);
-    }
+    fprintf(stderr, "Hit unimplemented function %s!\n", __func__);
+//    const XChar2b* text = decodeString((char*) string, length, True);
+//    if (text == NULL) {
+//        fprintf(stderr, "Out of memory: Failed to allocate memory in XDrawString16, raising BadMatch error.\n");
+//        handleError(0, display, drawable, 0, BadMatch, XCB_DRAW_STRING_16, 0);
+//        return;
+//    }
+//    if (!renderText(display, renderer, gc, x, y, (Uint16*) text)) {
+//        fprintf(stderr, "Rendering the text failed in %s: %s\n", __func__, SDL_GetError());
+//        handleError(0, display, drawable, 0, BadMatch, XCB_DRAW_STRING_16, 0);
+//    }
 }
 
 void XDrawString(Display* display, Drawable drawable, GC gc, int x, int y, char* string, int length) {
@@ -413,14 +393,16 @@ void XDrawString(Display* display, Drawable drawable, GC gc, int x, int y, char*
     if (length == 0 || string[0] == 0) { return; }
     SDL_Renderer* renderer;
     GET_RENDERER(drawable, renderer);
-//    const XChar2b* text = decodeString(string, length, False);
-//    if (text == NULL) {
-//        fprintf(stderr, "Out of memory: Failed to allocate memory in XDrawString, raising BadMatch error.\n");
-//        handleError(0, display, 0, 0, BadMatch, XCB_DRAW_STRING, 0);
-//        return;
-//    }
-    if (!renderText(display, renderer, gc, x, y, string)) {
+    const char* text = decodeString(string, length);
+    if (text == NULL) {
+        fprintf(stderr, "Out of memory: Failed to allocate decoded string in XDrawString, raising BadMatch error.\n");
+        handleError(0, display, 0, 0, BadMatch, XCB_DRAW_STRING, 0);
+        return;
+    }
+    if (!renderText(display, renderer, gc, x, y, text)) {
+        free((char*) text);
         fprintf(stderr, "Rendering the text failed in %s: %s\n", __func__, SDL_GetError());
         handleError(0, display, drawable, 0, BadMatch, XCB_DRAW_STRING, 0);
     }
+    free((char*) text);
 }

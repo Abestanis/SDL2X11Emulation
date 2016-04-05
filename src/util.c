@@ -6,9 +6,9 @@ void XFree(void *data) {
     fprintf(stderr, "Hit unimplemented function %s.\n", __func__);
 }
 
-VisualID XVisualIDFromVisual(Visual *visual) {
+VisualID XVisualIDFromVisual(Visual* visual) {
     // https://tronche.com/gui/x/xlib/window/XVisualIDFromVisual.html
-    fprintf(stderr, "Hit unimplemented function %s.\n", __func__);
+    return visual->visualid;
 }
 
 Status XGetGeometry(Display *display, Drawable d, Window *root_return, int *x_return, int* y_return, unsigned int *width_return, unsigned int *height_return, unsigned int *border_width_return, unsigned int *depth_return) {

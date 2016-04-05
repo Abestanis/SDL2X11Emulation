@@ -186,11 +186,6 @@ void XSync(Display *display, Bool discard) {
     drawWindowDataToScreen();
 }
 
-Status XQueryTree(Display *display, Window w, Window *root_return, Window *parent_return, Window **children_return, unsigned int *nchildren_return) {
-    // https://tronche.com/gui/x/xlib/window-information/XQueryTree.html
-    fprintf(stderr, "Hit unimplemented function %s.\n", __func__);
-}
-
 GContext XGContextFromGC(GC gc) {
     // https://tronche.com/gui/x/xlib/GC/XGContextFromGC.html
     fprintf(stderr, "Hit unimplemented function %s.\n", __func__);

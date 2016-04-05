@@ -632,8 +632,8 @@ void XMapWindow(Display* display, Window window) {
     if (GET_WINDOW_STRUCT(window)->mapState == Mapped || GET_WINDOW_STRUCT(window)->mapState == MapRequested) { return; }
     if (IS_ROOT(window)) {
         if (IS_MAPPED_TOP_LEVEL_WINDOW(window)) { return; }
-        WindowStruct* windowStruct = GET_WINDOW_STRUCT(window);
         fprintf(stderr, "Mapping Window %p\n", window);
+        WindowStruct* windowStruct = GET_WINDOW_STRUCT(window);
         Uint32 flags = SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN;
         if (windowStruct->borderWidth == 0) {
             flags |= SDL_WINDOW_BORDERLESS;
@@ -701,7 +701,6 @@ void XMapWindow(Display* display, Window window) {
         parentWithSubstructureRedirect = getParentWithEventBit(window, SubstructureRedirectMask);
     }
     mapRequestedChildren(display, window, parentWithSubstructureRedirect);
-    fprintf(stderr, "Mapping Window\n");
     printWindowHierarchy();
 }
 

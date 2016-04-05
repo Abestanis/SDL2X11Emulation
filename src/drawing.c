@@ -131,7 +131,7 @@ SDL_Renderer* getWindowRenderer(Window window) {
             SDL_Texture* texture = GET_WINDOW_STRUCT(window)->sdlTexture;
             if (texture == NULL) {
                 int w, h;
-                GET_WINDOW_DIMS(window, w, h)
+                GET_WINDOW_DIMS(window, w, h);
                 texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888,
                                             SDL_TEXTUREACCESS_TARGET, w, h);
                 if (texture == NULL) {
@@ -142,8 +142,8 @@ SDL_Renderer* getWindowRenderer(Window window) {
                     #endif
                 } else {
                     GET_WINDOW_STRUCT(window)->sdlTexture = texture;
-                SDL_SetRenderTarget(renderer, texture);
                 }
+                SDL_SetRenderTarget(renderer, texture);
             }
         } else {
             GET_WINDOW_STRUCT(window)->sdlRenderer = renderer;

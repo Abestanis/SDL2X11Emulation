@@ -72,42 +72,41 @@ Cursor XCreateGlyphCursor(Display* display, Font source_font, Font mask_font,
                           unsigned int source_char, unsigned int mask_char,
                           XColor* foreground_color, XColor* background_color) {
     // https://tronche.com/gui/x/xlib/pixmap-and-cursor/XCreateGlyphCursor.html
-    if (!TTF_GlyphIsProvided(source_font, source_char)) {
-        fprintf(stderr, "'source_char' is not defined in given font in XCreateGlyphCursor!\n");
-        handleError(0, display, NULL, 0, BadValue, XCB_CREATE_GLYPH_CURSOR, 0);
-        return NULL;
-    }
-    SDL_Color color;
-    color.r = foreground_color->red;
-    color.g = foreground_color->green;
-    color.b = foreground_color->blue;
-    SDL_Surface* source = TTF_RenderGlyph_Solid(source_font, source_char, color);
-    if (source == NULL) {
-        fprintf(stderr, "TTF_RenderGlyph_Solid returned NULL for source: %s\n", TTF_GetError());
-        handleOutOfMemory(0, display, 0, XCB_CREATE_GLYPH_CURSOR, 0);
-        return NULL;
-    }
-    SDL_Surface* mask = None;
-    if (mask_font != None) {
-        if (!TTF_GlyphIsProvided(mask_font, mask_char)) {
-            fprintf(stderr, "'mask_char' is not defined in given font in XCreateGlyphCursor!\n");
-            handleError(0, display, NULL, 0, BadValue, XCB_CREATE_GLYPH_CURSOR, 0);
-            return NULL;
-        }
-        mask = TTF_RenderGlyph_Solid(mask_font, mask_char, color);
-        if (mask == NULL) {
-            fprintf(stderr, "TTF_RenderGlyph_Solid returned NULL for mask: %s\n", TTF_GetError());
-            handleOutOfMemory(0, display, 0, XCB_CREATE_GLYPH_CURSOR, 0);
-            return NULL;
-        }
-    }
-    // TODO: Implement!!!
-    Cursor cursor = NULL;/*createPixmapCursor(display, source, mask, foreground_color,
-                                       background_color, 0, 0);*/
-    SDL_FreeSurface(source);
-    if (mask != None) {
-        SDL_FreeSurface(mask);
-    }
+//    if (!TTF_GlyphIsProvided(source_font, source_char)) {
+//        fprintf(stderr, "'source_char' is not defined in given font in XCreateGlyphCursor!\n");
+//        handleError(0, display, NULL, 0, BadValue, XCB_CREATE_GLYPH_CURSOR, 0);
+//        return NULL;
+//    }
+//    SDL_Color color;
+//    color.r = foreground_color->red;
+//    color.g = foreground_color->green;
+//    color.b = foreground_color->blue;
+//    SDL_Surface* source = TTF_RenderGlyph_Blended(source_font, source_char, color);
+//    if (source == NULL) {
+//        fprintf(stderr, "TTF_RenderGlyph_Solid returned NULL for source: %s\n", TTF_GetError());
+//        handleOutOfMemory(0, display, 0, XCB_CREATE_GLYPH_CURSOR, 0);
+//        return NULL;
+//    }
+//    SDL_Surface* mask = None;
+//    if (mask_font != None) {
+//        if (!TTF_GlyphIsProvided(mask_font, mask_char)) {
+//            fprintf(stderr, "'mask_char' is not defined in given font in XCreateGlyphCursor!\n");
+//            handleError(0, display, NULL, 0, BadValue, XCB_CREATE_GLYPH_CURSOR, 0);
+//            return NULL;
+//        }
+//        mask = TTF_RenderGlyph_Solid(mask_font, mask_char, color);
+//        if (mask == NULL) {
+//            fprintf(stderr, "TTF_RenderGlyph_Solid returned NULL for mask: %s\n", TTF_GetError());
+//            handleOutOfMemory(0, display, 0, XCB_CREATE_GLYPH_CURSOR, 0);
+//            return NULL;
+//        }
+//    }
+    Cursor cursor = createPixmapCursor(display, /*source, mask*/NULL, NULL, foreground_color,
+                                       background_color, 0, 0);
+//    SDL_FreeSurface(source);
+//    if (mask != None) {
+//        SDL_FreeSurface(mask);
+//    }
     return cursor;
 }
 
@@ -125,6 +124,6 @@ void XDefineCursor(Display* display, Window window, Cursor cursor) {
     } else {
         // TODO: Maybe implement via separate update thread?
         // https://wiki.libsdl.org/SDL_CreateCursor and https://wiki.libsdl.org/SDL_SetCursor
-        printf("Warning: Displaying of custum cursor currently not implemented.\n");
+        printf("Warning: Displaying of custom cursor currently not implemented.\n");
     }
 }

@@ -19,7 +19,7 @@ Font XLoadFont(Display* display, char* name) {
     // TODO: Implement pattern matching
     // TODO: This function is called with "fixed" and "cursor" as a name
     char* fontName;
-    if (strcmp(name, "fixed") == 0) {
+    if (strcmp(name, "fixed") == 0 || strcmp(name, "cursor") == 0) {
         // This seems to be a common monospace font on most devices.
         fontName = "/system/fonts/DroidSansMono.ttf";
     } else {

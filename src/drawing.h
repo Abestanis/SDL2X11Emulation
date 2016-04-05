@@ -39,6 +39,7 @@ void drawDebugWindowSurfacePlanes();
 void putPixel(SDL_Surface *surface, unsigned int x, unsigned int y, Uint32 pixel);
 Uint32 getPixel(SDL_Surface *surface, unsigned int x, unsigned int y);
 SDL_Renderer* getWindowRenderer(Window window);
+SDL_Surface* getRenderSurface(SDL_Renderer* renderer);
 void drawWindowDataToScreen(void);
 
 #endif /* _DRAWING_H_ */

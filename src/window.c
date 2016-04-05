@@ -114,11 +114,6 @@ WindowSdlIdMapper* getWindowSdlIdMapperStructFromId(Uint32 sdlWindowId) {
     return NULL;
 }
 
-Window getWindowFromId(Uint32 sdlWindowId) {
-    WindowSdlIdMapper* mapper = getWindowSdlIdMapperStructFromId(sdlWindowId);
-    return mapper == NULL ? None : mapper->window;
-}
-
 void registerWindowMapping(Window window, Uint32 sdlWindowId) {
     WindowSdlIdMapper* mapper = getWindowSdlIdMapperStructFromId(sdlWindowId);
     if (mapper == NULL) {
@@ -134,7 +129,14 @@ void registerWindowMapping(Window window, Uint32 sdlWindowId) {
     mapper->window = window;
 }
 
+Window getWindowFromId(Uint32 sdlWindowId) {
+    WindowSdlIdMapper* mapper = getWindowSdlIdMapperStructFromId(sdlWindowId);
+    return mapper == NULL ? None : mapper->window;
+}
+
 #ifdef DEBUG_WINDOWS
+
+#include <unistd.h>
 
 void printWindowHierarchyOfChild(Window window, char* prepend, int prependLen) {
     Window* children = GET_CHILDREN(window);
@@ -152,7 +154,7 @@ void printWindowHierarchyOfChild(Window window, char* prepend, int prependLen) {
         if (children[i] != NULL) {
             int x, y, w, h;
             GET_WINDOW_POS(children[i], x, y);
-            GET_WINDOW_DIMS(children[i], w, h)
+            GET_WINDOW_DIMS(children[i], w, h);
             printf("%s+- Window (adress: %p, id: 0x%08lx, x: %d, y: %d, %dx%d, state: %s)",
                    prepend, children[i], GET_WINDOW_STRUCT(children[i])->debugId, x, y, w, h,
                    WINDOW_STATES[GET_WINDOW_STRUCT(children[i])->mapState]);
@@ -162,8 +164,14 @@ void printWindowHierarchyOfChild(Window window, char* prepend, int prependLen) {
             if (GET_WINDOW_STRUCT(children[i])->sdlWindow != NULL) {
                 printf(", sdlWindow = %d", SDL_GetWindowID(GET_WINDOW_STRUCT(children[i])->sdlWindow));
             }
+            if (GET_WINDOW_STRUCT(children[i])->sdlTexture != NULL) {
+                int w, h;
+                SDL_QueryTexture(GET_WINDOW_STRUCT(children[i])->sdlTexture, NULL, NULL, &w, &h);
+                printf(", sdlTexture = %p (%d x %d)", GET_WINDOW_STRUCT(children[i])->sdlTexture, w, h);
+            }
             printf("\n");
             *charPointer = childCounter == 1 ? ' ' : '|';
+            fflush(stdout);
             printWindowHierarchyOfChild(children[i], childPrepend, prependLen + 1);
             childCounter--;
         }
@@ -350,6 +358,22 @@ WindowProperty* findProperty(WindowProperty* properties, unsigned int numPropert
     return NULL;
 }
 
+void resizeWindowTexture(Window window) {
+    WindowStruct* windowStruct = GET_WINDOW_STRUCT(window);
+    if (windowStruct->sdlTexture != NULL) {
+        SDL_Texture* oldTexture = windowStruct->sdlTexture;
+        SDL_Rect destRect;
+        destRect.x = 0;
+        destRect.y = 0;
+        SDL_QueryTexture(oldTexture, NULL, NULL, &destRect.w, &destRect.h);
+        windowStruct->sdlTexture = NULL;
+        SDL_Renderer* windowRenderer;
+        GET_RENDERER(window, windowRenderer);
+        SDL_RenderCopy(windowRenderer, oldTexture, NULL, &destRect);
+        SDL_DestroyTexture(oldTexture);
+    }
+}
+
 void XDestroyWindow(Display* display, Window window) {
     // https://tronche.com/gui/x/xlib/window/XDestroyWindow.html
     TYPE_CHECK(window, WINDOW, XCB_DESTROY_WINDOW, display, );
@@ -473,6 +497,7 @@ void XConfigureWindow(Display* display, Window window, unsigned int value_mask,
         }
         windowStruct->w = width;
         windowStruct->h = height;
+        resizeWindowTexture(window);
     }
     // TODO: Implement re-stacking: https://tronche.com/gui/x/xlib/window/configure.html#XWindowChanges
 }
@@ -608,7 +633,7 @@ void XMapWindow(Display* display, Window window) {
     if (IS_ROOT(window)) {
         if (IS_MAPPED_TOP_LEVEL_WINDOW(window)) { return; }
         WindowStruct* windowStruct = GET_WINDOW_STRUCT(window);
-        windowStruct->mapState = Mapped;
+        fprintf(stderr, "Mapping Window %p\n", window);
         Uint32 flags = SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN;
         if (windowStruct->borderWidth == 0) {
             flags |= SDL_WINDOW_BORDERLESS;
@@ -623,27 +648,32 @@ void XMapWindow(Display* display, Window window) {
             return;
         }
         registerWindowMapping(window, SDL_GetWindowID(sdlWindow));
-        windowStruct->sdlWindow = sdlWindow;
         SDL_Texture* windowTexture = windowStruct->sdlTexture;
         if (windowTexture != NULL) {
             SDL_Renderer *newRenderer = SDL_CreateRenderer(sdlWindow, -1, SDL_RENDERER_ACCELERATED);
             if (newRenderer != NULL) {
-                if (SDL_RenderCopy(newRenderer, windowTexture, NULL, NULL) != 0) {
+                SDL_Renderer* oldWindowRenderer;
+                GET_RENDERER(window, oldWindowRenderer);
+                SDL_Surface* windowSurface = getRenderSurface(oldWindowRenderer);
+                SDL_Texture* oldWindowTexture = SDL_CreateTextureFromSurface(newRenderer, windowSurface);
+                SDL_FreeSurface(windowSurface);
+                if (SDL_RenderCopy(newRenderer, oldWindowTexture, NULL, NULL) != 0) {
                     fprintf(stderr, "Failed to copy window surface with renderer in XMapWindow: %s\n",
                             SDL_GetError());
                     handleError(0, display, NULL, 0, BadMatch, XCB_MAP_WINDOW, 0);
                     SDL_DestroyWindow(sdlWindow);
+                    SDL_DestroyTexture(oldWindowTexture);
                     SDL_DestroyRenderer(newRenderer);
-                    windowStruct->sdlWindow = NULL;
                     return;
                 }
-//                SDL_SetRenderDrawColor(newRenderer, 255, 0, 0, 255);
-//                SDL_RenderClear(newRenderer);
                 SDL_DestroyTexture(windowTexture);
+                SDL_DestroyTexture(oldWindowTexture);
                 windowStruct->sdlRenderer = newRenderer;
                 windowStruct->sdlTexture  = NULL;
             }
         }
+        windowStruct->sdlWindow = sdlWindow;
+        windowStruct->mapState = Mapped;
         if (windowStruct->windowName != NULL) {
             free(windowStruct->windowName);
             windowStruct->windowName = NULL;
@@ -742,6 +772,7 @@ void XResizeWindow(Display* display, Window window, unsigned int width, unsigned
         }
         windowStruct->w = width;
         windowStruct->h = height;
+        resizeWindowTexture(window);
     }
 }
 

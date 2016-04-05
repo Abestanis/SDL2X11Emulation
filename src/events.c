@@ -13,6 +13,7 @@ int eventFds[2];
 SDL_Event waitingEvent;
 Bool eventWaiting = False;
 Bool tmpVar = False;
+Window keyboardFocus = NULL;
 
 // TODO: check for errors
 #define ENQUEUE_EVENT_IN_PIPE(display) { char buffer = 'e'; write(WRITE_EVENT_FD, &buffer, sizeof(buffer)); (display)->qlen++; }
@@ -122,12 +123,9 @@ int convertEvent(Display* display, SDL_Event* sdlEvent, XEvent* xEvent) {
             xEvent->xkey.serial = 0;
             xEvent->xkey.send_event = sendEvent;
             xEvent->xkey.display = display;
-            eventWindow = getWindowFromId(sdlEvent->key.windowID);
-            xEvent->xkey.root = eventWindow;
-            xEvent->xkey.window = xEvent->xkey.root; // The event window is always the SDL Window.
-            if (xEvent->xkey.window == NULL) {
-                xEvent->xkey.window = SCREEN_WINDOW;
-            }
+            xEvent->xkey.root = getWindowFromId(sdlEvent->key.windowID);
+            eventWindow = keyboardFocus == NULL ? xEvent->xkey.root : keyboardFocus;
+            xEvent->xkey.window = eventWindow;
             xEvent->xkey.subwindow = None;
             xEvent->xkey.time = sdlEvent->key.timestamp;
             SDL_GetMouseState(&xEvent->xkey.x, &xEvent->xkey.y);
@@ -146,6 +144,9 @@ int convertEvent(Display* display, SDL_Event* sdlEvent, XEvent* xEvent) {
                 memcpy(&waitingEvent, sdlEvent, sizeof(SDL_Event));
                 type = EnterNotify;
                 xEvent->xcrossing.root = getWindowFromId(sdlEvent->button.windowID);
+                if (xEvent->xbutton.root == NULL) {
+                    xEvent->xbutton.root = SCREEN_WINDOW;
+                }
                 eventWindow = getContainingWindow(xEvent->xcrossing.root, sdlEvent->button.x, sdlEvent->button.y);
                 xEvent->xcrossing.type = type;
                 xEvent->xcrossing.serial = 0;
@@ -217,6 +218,9 @@ int convertEvent(Display* display, SDL_Event* sdlEvent, XEvent* xEvent) {
             xEvent->xmotion.send_event = sendEvent;
             xEvent->xmotion.display = display;
             xEvent->xmotion.root = getWindowFromId(sdlEvent->motion.windowID);
+            if (xEvent->xbutton.root == NULL) {
+                xEvent->xbutton.root = SCREEN_WINDOW;
+            }
             eventWindow =  getContainingWindow(xEvent->xbutton.root, sdlEvent->motion.x, sdlEvent->motion.y);
             xEvent->xmotion.window = eventWindow; // The event window is always the window the mouse is in.
             if (xEvent->xmotion.window == NULL) {
@@ -649,9 +653,17 @@ Status XSendEvent(Display* display, Window window, Bool propagate, long event_ma
     return enqueueEvent(display, event_send) ? 1 : 0;
 }
 
-void XSelectInput(Display *display, Window w, long event_mask) {
+void XSelectInput(Display* display, Window window, long event_mask) {
     // https://tronche.com/gui/x/xlib/event-handling/XSelectInput.html
     fprintf(stderr, "Hit unimplemented function %s.\n", __func__);
+    fprintf(stderr, "%s: %d, %d\n", __func__, event_mask & KeyPressMask, event_mask & KeyReleaseMask);
+    if (event_mask & KeyPressMask || event_mask & KeyReleaseMask) {
+        // TODO: Implement real system here
+        if (!SDL_IsTextInputActive()) {
+            SDL_StartTextInput();
+        }
+        keyboardFocus = window;
+    }
 }
 
 Bool XFilterEvent(XEvent *event, Window w) {

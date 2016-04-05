@@ -1118,7 +1118,7 @@ void XSetWindowBackground(Display* display, Window window, unsigned long backgro
 void XSetWindowBackgroundPixmap(Display* display, Window window, Pixmap background_pixmap) {
     // https://tronche.com/gui/x/xlib/window/XSetWindowBackgroundPixmap.html
     if (window != SCREEN_WINDOW) {
-        WindowStruct* windowStruct;
+        WindowStruct* windowStruct = GET_WINDOW_STRUCT(window);
         if (IS_INPUT_ONLY(window)) {
             fprintf(stderr, "Invalid parameter: Can not change the background Pixmap of an "
                     "InputOnly window in XChangeWindowAttributes!\n");
@@ -1131,13 +1131,9 @@ void XSetWindowBackgroundPixmap(Display* display, Window window, Pixmap backgrou
                                              GET_WINDOW_STRUCT(GET_PARENT(window))->backgroundPixmap;
         } else {
             TYPE_CHECK(background_pixmap, PIXMAP, XCB_CHANGE_WINDOW_ATTRIBUTES, display, );
-            // TODO: Find solution for this
-//            GET_SURFACE(background_pixmap)->refcount++;
             windowStruct->backgroundPixmap = background_pixmap;
         }
         if (previous != NULL && previous != None) {
-            // TODO: and this
-//            GET_SURFACE(background_pixmap)->refcount--;
             XFreePixmap(display, previous);
         }
     }
@@ -1180,6 +1176,12 @@ void XChangeWindowAttributes(Display* display, Window window, unsigned long valu
         if (HAS_VALUE(valueMask, CWEventMask)) {
             fprintf(stderr, "Change window attributes event: %ld\n", attributes->event_mask & SubstructureRedirectMask);
             GET_WINDOW_STRUCT(window)->eventMask = attributes->event_mask;
+            if (attributes->event_mask & KeyPressMask || attributes->event_mask & KeyReleaseMask) {
+                // TODO: Implement real system here
+                if (!SDL_IsTextInputActive()) {
+                    SDL_StartTextInput();
+                }
+            }
         }
         // TODO: Interpret more values
     }

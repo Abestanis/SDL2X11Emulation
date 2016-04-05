@@ -81,7 +81,7 @@ extern Window SCREEN_WINDOW;
     height = GET_WINDOW_STRUCT(window)->h;\
 }
 
-#define HAS_VALUE(valueMask, value) (value & valueMask == value)
+#define HAS_VALUE(valueMask, value) (value & valueMask)
 #define DEFAULT_TITLE "Untitled"
 
 #ifdef DEBUG_WINDOWS

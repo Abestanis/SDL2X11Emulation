@@ -12,54 +12,6 @@
 // TODO: Convert text decoding to Utf-8
 // http://www.cprogramming.com/tutorial/unicode.html
 
-typedef struct _FontCache {
-    char* name;
-    XFontStruct* font;
-    struct _FontCache* next;
-} FontCache;
-
-FontCache* fontCache = NULL;
-
-
-XFontStruct* findFontInCache(char* name) {
-    FontCache* cachePtr;
-    for (cachePtr = fontCache; cachePtr != NULL; cachePtr = cachePtr->next) {
-        if (strcmp(cachePtr->name, name) == 0) {
-            return cachePtr->font;
-        }
-    }
-    return NULL;
-}
-
-void addFontToCache(XFontStruct* font, char* name) {
-    FontCache* newCache = malloc(sizeof(FontCache));
-    if (newCache == NULL) {
-        fprintf(stderr, "Warning: Failed to save font '%s' to cache: Out of memory!\n", name);
-        return;
-    }
-    newCache->name = name;
-    newCache->font = font;
-    newCache->next = fontCache;
-    fontCache = newCache;
-}
-
-void freeFontFromCache(XFontStruct* font) {
-    FontCache* cachePtr;
-    FontCache* lastCachePtr = NULL;
-    for (cachePtr = fontCache; cachePtr != NULL; cachePtr = cachePtr->next) {
-        if (cachePtr->font == font) {
-            if (lastCachePtr == NULL) {
-                fontCache = cachePtr->next;
-            } else {
-                lastCachePtr->next = cachePtr->next;
-            }
-            free(cachePtr);
-            return;
-        }
-        lastCachePtr = cachePtr;
-    }
-}
-
 Font XLoadFont(Display* display, char* name) {
     // https://tronche.com/gui/x/xlib/graphics/font-metrics/XLoadFont.html
     int fontSize = 18;
@@ -97,7 +49,6 @@ void XFreeFontNames(char* list[]) {
 
 void XFreeFont(Display* display, XFontStruct* font_struct) {
     // https://tronche.com/gui/x/xlib/graphics/font-metrics/XFreeFont.html
-    freeFontFromCache(font_struct);
     TTF_CloseFont(font_struct->fid);
     if (font_struct->per_char != NULL) {
         int numChars = font_struct->max_char_or_byte2 - font_struct->min_char_or_byte2;
@@ -131,8 +82,7 @@ char* getFontXLFDName(XFontStruct* font_struct) {
             strlen(weightName) + 1 + strlen(setWidth) + 1 + 6 + 1 + 1 + 1 + 5 + strlen(charset) + 1));
     if (name != NULL) {
         sprintf(name, "-%s-%s-%s-%c-%s--0-%d-0-0-%c-%hd-%s-%d", foundry, familyName, weightName,
-                slant,
-                setWidth, pointSize, spacing, averageWidth, charset, charsetEncoding);
+                slant, setWidth, pointSize, spacing, averageWidth, charset, charsetEncoding);
     }
     fprintf(stderr, "Font name = '%s'\n", name);
     return name;
@@ -170,15 +120,11 @@ Bool fillXCharStruct(TTF_Font* font, unsigned int character, XCharStruct* charSt
 
 XFontStruct* XLoadQueryFont(Display* display, char* name) {
     // https://tronche.com/gui/x/xlib/graphics/font-metrics/XLoadQueryFont.html
-    XFontStruct* fontStruct = findFontInCache(name);
-    if (fontStruct != NULL) {
-        return fontStruct;
-    }
     TTF_Font* font = XLoadFont(display, name);
     if (font == NULL) {
         return NULL;
     }
-    fontStruct = malloc(sizeof(XFontStruct));
+    XFontStruct* fontStruct = malloc(sizeof(XFontStruct));
     if (fontStruct == NULL) {
         handleOutOfMemory(0, display, 0, XCB_QUERY_FONT, 0);
         TTF_CloseFont(font);
@@ -248,7 +194,6 @@ XFontStruct* XLoadQueryFont(Display* display, char* name) {
             }
         }
     }
-    addFontToCache(fontStruct, name);
     return fontStruct;
 }
 
@@ -312,7 +257,7 @@ const char* decodeString(char* string, int count) {
 int getTextWidth(XFontStruct* font_struct, const char* string) {
     int width, height;
     if (TTF_SizeUTF8(font_struct->fid, string, &width, &height) != 0) {
-        fprintf(stderr, "Failed to calculate the text with in XTextWidth16: %s! Returning max width of font.\n", TTF_GetError());
+        fprintf(stderr, "Failed to calculate the text with in XTextWidth[16]: %s! Returning max width of font.\n", TTF_GetError());
         return font_struct->max_bounds.rbearing * strlen(string);
     }
     return width;
@@ -344,6 +289,7 @@ int XTextWidth(XFontStruct* font_struct, char* string, int count) {
 
 Bool renderText(Display* display, SDL_Renderer* renderer, GC gc, int x, int y, const char* string) {
     fprintf(stderr, "Rendering text: '%s'\n", string);
+    if (string == NULL || string[0] == '\0') { return True; }
     SDL_Color color;// = uLongToColor(surface->format, gc->foreground);
     color.r = (gc->foreground & 0xFF000000) >> 24;
     color.g = (gc->foreground & 0x00FF0000) >> 16;

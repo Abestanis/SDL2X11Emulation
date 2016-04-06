@@ -154,7 +154,7 @@ SDL_Renderer* getWindowRenderer(Window window) {
     GET_WINDOW_DIMS(window, w, h);
     viewPort.y = h - viewPort.y - viewPort.h;
     #endif
-    fprintf(stderr, "Setting viewport to {x = %d, y = %d, w = %d, h = %d}\n", viewPort.x, viewPort.y, viewPort.w, viewPort.h);
+    //fprintf(stderr, "Setting viewport to {x = %d, y = %d, w = %d, h = %d}\n", viewPort.x, viewPort.y, viewPort.w, viewPort.h);
     if (SDL_RenderSetViewport(renderer, &viewPort)) {
         fprintf(stderr, "SDL_RenderSetViewport failed in %s: %s\n", __func__, SDL_GetError());
     }
@@ -310,16 +310,14 @@ void XDrawLines(Display *display, Drawable d, GC gc, XPoint *points, int npoints
         handleError(0, display, NULL, 0, BadValue, XCB_POLY_LINE, 0);
         return;
     }
-    for (i = 0; i < npoints; i++) {
-        fprintf(stderr, " (x = %d, y = %d)\n", sdlPoints[i].x, sdlPoints[i].y);
-    }
+//    for (i = 0; i < npoints; i++) {
+//        fprintf(stderr, " (x = %d, y = %d)\n", sdlPoints[i].x, sdlPoints[i].y);
+//    }
     long color = gc->foreground;
     SDL_SetRenderDrawColor(renderer, (color >> 24) & 0xFF, (color >> 16) & 0xFF, (color >> 8) & 0xFF, 0xFF);
-    SDL_RenderSetScale(renderer, gc->line_width, gc->line_width);
     if (SDL_RenderDrawLines(renderer, &sdlPoints[0], npoints)) {
         fprintf(stderr, "SDL_RenderDrawLines failed in %s: %s\n", __func__, SDL_GetError());
     }
-    SDL_RenderSetScale(renderer, 1, 1);
     SDL_RenderPresent(renderer);
 }
 

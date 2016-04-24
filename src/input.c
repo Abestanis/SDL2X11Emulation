@@ -18,7 +18,7 @@ KeySym XStringToKeysym(char* string) {
     // https://tronche.com/gui/x/xlib/utilities/keyboard/XStringToKeysym.html
     if (string == NULL) { return NoSymbol; }
     if (strlen(string) == 1) {
-        char chr = *string;
+        char chr = string[0];
         if (chr >= '0' && chr <= '9' && chr >= 'a' && chr <= 'z' && chr >= 'A' && chr <= 'Z') {
             return (KeySym) ((long) chr);
         }
@@ -48,49 +48,25 @@ char* XKeysymToString(KeySym keysym) {
 
 KeySym XKeycodeToKeysym(Display *display, KeyCode keycode, int index) {
     // https://tronche.com/gui/x/xlib/utilities/keyboard/XKeycodeToKeysym.html
-    if (keycode >= SDL_SCANCODE_A && keycode <= SDL_SCANCODE_0) {
-        if (keycode <= SDL_SCANCODE_Z) { // A - Z
-            return XK_A + (keycode - SDL_SCANCODE_A);
-        } else if (keycode == SDL_SCANCODE_0) { // 0
-            return XK_0;
-        } else { // 1 - 9
-            return XK_1 + (keycode - SDL_SCANCODE_1);
+    if (keycode >= SDLK_0 && keycode <= SDLK_9) { // 0 - 9
+        return XK_0 + (keycode - SDLK_0);
+    } else if (keycode >= SDLK_z && keycode <= SDLK_z) { // A - Z
+        return XK_A + (keycode - SDLK_a);
+    }
+    int i;
+    for (i = 0; i < SDL_KEYCODE_TO_KEYSYM_LENGTH; i++) {
+        if (SDLKeycodeToKeySym[i].keycode == keycode) {
+            return SDLKeycodeToKeySym[i].keysym;
         }
     }
-    switch (keycode) {
-        case SDL_SCANCODE_SPACE:
-            return XK_space;
-        case SDL_SCANCODE_KP_SPACE:
-            return XK_KP_Space;
-        case SDL_SCANCODE_ESCAPE:
-            return XK_Escape;
-        case SDL_SCANCODE_RETURN:
-            return XK_Return;
-        case SDL_SCANCODE_BACKSPACE:
-            return XK_BackSpace;
-        default:
-            fprintf(stderr, "%s: Got unimplemented keycode %ld\n", __func__, keycode);
-            return NoSymbol;
-    }
+    fprintf(stderr, "%s: Got unimplemented keycode %ld\n", __func__, keycode);
+    return NoSymbol;
 }
 
 int XLookupString(XKeyEvent* event_struct, char* buffer_return, int bytes_buffer,
                   KeySym* keysym_return, XComposeStatus *status_in_out) {
     // https://tronche.com/gui/x/xlib/utilities/XLookupString.html
-    fprintf(stderr, "Hit unimplemented function %s.\n", __func__);
-    if (event_struct->keycode >= SDL_SCANCODE_A && event_struct->keycode <= SDL_SCANCODE_0) {
-        if (event_struct->keycode <= SDL_SCANCODE_Z) { // A - Z
-            if (event_struct->state & LockMask != event_struct->state & ShiftMask) {
-                *buffer_return = 'A' + (event_struct->keycode - SDL_SCANCODE_A);
-            } else {
-                *buffer_return = 'a' + (event_struct->keycode - SDL_SCANCODE_A);
-            }
-        } else if (event_struct->keycode == SDL_SCANCODE_0) { // 0
-            *buffer_return = '0';
-        } else { // 1 - 9
-            *buffer_return = '1' + (event_struct->keycode - SDL_SCANCODE_1);
-        }
-    }
+    *buffer_return = event_struct->keycode;
     *keysym_return = XKeycodeToKeysym(event_struct->display, event_struct->keycode, 0);
     return 1;
 }

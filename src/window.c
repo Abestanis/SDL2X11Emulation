@@ -3,6 +3,7 @@
 #include "errors.h"
 #include "drawing.h"
 #include "atoms.h"
+#include "netAtoms.h"
 #include "events.h"
 
 #ifdef DEBUG_WINDOWS
@@ -38,6 +39,7 @@ void initWindowStruct(WindowStruct* windowStruct, int x, int y, unsigned int wid
     windowStruct->propertySize = 0;
     windowStruct->properties = NULL;
     windowStruct->windowName = NULL;
+    windowStruct->icon = NULL;
     windowStruct->borderWidth = 0;
     windowStruct->depth = 0;
     windowStruct->mapState = UnMapped;
@@ -244,6 +246,9 @@ void destroyWindow(Display* display, Window window, Bool freeParentData) {
     if (windowStruct->windowName != NULL) {
         free(windowStruct->windowName);
     }
+    if (windowStruct->icon != NULL) {
+            SDL_FreeSurface(windowStruct->icon);
+        }
     if (windowStruct->sdlWindow != NULL) {
         SDL_DestroyWindow(windowStruct->sdlWindow);
     }
@@ -678,6 +683,9 @@ void XMapWindow(Display* display, Window window) {
             free(windowStruct->windowName);
             windowStruct->windowName = NULL;
         }
+        if (windowStruct->icon != NULL) {
+            SDL_SetWindowIcon(windowStruct->sdlWindow, windowStruct->icon);
+        }
         parentWithSubstructureRedirect = enqueueMapEvent(display, window, None, True);
     } else {
         if (GET_WINDOW_STRUCT(GET_PARENT(window))->mapState == Mapped) {
@@ -1010,6 +1018,31 @@ void XChangeProperty(Display* display, Window window, Atom property, Atom type, 
             free(&previousData[previousDataSize]);
         }
     }
+    if (property == _NET_WM_ICON) {
+        // Find the icon with the highest resolution
+        unsigned long* pixelData = (unsigned long*) data;
+        unsigned long* icons[20];
+        int i = 0, bestIcon = 0;
+        unsigned long w;
+        unsigned long h;
+        do {
+            icons[i++] = pixelData;
+            w = pixelData[0];
+            h = pixelData[1];
+            if (w > icons[bestIcon][0] || h > icons[bestIcon][1]) {
+                bestIcon = i;
+            }
+            pixelData += 2 + w * h;
+        } while (i < 20 && pixelData < ((unsigned long*) data) + numberOfElements);
+        w = icons[bestIcon][0];
+        h = icons[bestIcon][1];
+        SDL_Surface* icon = SDL_CreateRGBSurfaceFrom(&icons[bestIcon][2], (int) w, (int) h, 32, w * (32 / 8),
+                                                     0x00FF0000, 0x0000FF00, 0x000000FF, 0xFF000000);
+        windowStruct->icon = icon;
+        if (IS_MAPPED_TOP_LEVEL_WINDOW(window)) {
+            SDL_SetWindowIcon(windowStruct->sdlWindow, icon);
+        }
+    }
 }
 
 void XDeleteProperty(Display* display, Window window, Atom property) {
@@ -1019,6 +1052,12 @@ void XDeleteProperty(Display* display, Window window, Atom property) {
     if (!isValidAtom(property)) {
         handleError(0, display, NULL, 0, BadAtom, XCB_DELETE_PROPERTY, 0);
         return;
+    }
+    if (property == _NET_WM_ICON) {
+        windowStruct->icon = NULL;
+        if (IS_MAPPED_TOP_LEVEL_WINDOW(window)) {
+            SDL_SetWindowIcon(windowStruct->sdlWindow, NULL);
+        }
     }
     WindowProperty* windowProperty = findProperty(windowStruct->properties,
                                                   windowStruct->propertyCount, property);

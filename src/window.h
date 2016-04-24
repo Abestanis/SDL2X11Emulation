@@ -36,6 +36,7 @@ typedef struct {
     unsigned int propertySize;
     WindowProperty* properties;
     char* windowName;
+    SDL_Surface* icon;
     unsigned int borderWidth;
     int depth;
     MapState mapState;

@@ -1,13 +1,11 @@
 #include "atoms.h"
-#include "X11/Xatom.h"
+#include "atomList.h"
 #include "errors.h"
 
 AtomStruct* atomStorageStart = NULL;
 AtomStruct* atomStorageLast = NULL;
-static Atom lastUsedAtom = XA_LAST_PREDEFINED;
-
-// TODO: remove this;
-char* tmp = "Predefined Atom";
+static Atom lastUsedAtom = _NET_LAST_PREDEFINED;
+AtomStruct preDefAtomStructResult;
 
 AtomStruct* getAtomStruct(Atom atom) {
     AtomStruct* atomStruct = atomStorageStart;
@@ -19,6 +17,14 @@ AtomStruct* getAtomStruct(Atom atom) {
 }
 
 AtomStruct* getAtomStructByName(const char* name) {
+    int i;
+    for (i = 0; i < PREDEFINED_ATOM_LIST_SIZE; i++) {
+        if (strcmp(PredefinedAtomList[i].name, name) == 0) {
+            preDefAtomStructResult.atom = PredefinedAtomList[i].atom;
+            preDefAtomStructResult.name = PredefinedAtomList[i].name;
+            return &preDefAtomStructResult;
+        }
+    }
     AtomStruct* atomStruct = atomStorageStart;
     while (atomStruct != NULL) {
         if (strcmp(atomStruct->name, name) == 0) { return atomStruct; }
@@ -28,15 +34,19 @@ AtomStruct* getAtomStructByName(const char* name) {
 }
 
 Bool isValidAtom(Atom atom) {
-    if (atom <= XA_LAST_PREDEFINED) { return True; }
+    if (atom <= _NET_LAST_PREDEFINED) { return True; }
     return getAtomStruct(atom) != NULL;
 }
 
 char* XGetAtomName(Display* display, Atom atom) {
     // https://tronche.com/gui/x/xlib/window-information/XGetAtomName.html
-    if (atom <= XA_LAST_PREDEFINED) {
-        // TODO: Do this
-        return tmp;
+    if (atom <= _NET_LAST_PREDEFINED) {
+        int i;
+        for (i = 0; i < PREDEFINED_ATOM_LIST_SIZE; i++) {
+            if (PredefinedAtomList[i].atom == atom) {
+                return (char*) PredefinedAtomList[i].name;
+            }
+        }
     }
     AtomStruct* atomStruct = getAtomStruct(atom);
     if (atomStruct == NULL) {

@@ -105,7 +105,7 @@ void XGetInputFocus(Display *display, Window *focus_return, int *revert_to_retur
     // https://tronche.com/gui/x/xlib/input/XGetInputFocus.html
     fprintf(stderr, "Hit unimplemented function %s.\n", __func__);
     // TODO: This is temp
-    *focus_return = PointerRoot;
+    *focus_return = (Window) PointerRoot;
     *revert_to_return = RevertToPointerRoot;
 }
 

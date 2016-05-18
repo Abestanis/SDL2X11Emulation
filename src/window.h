@@ -4,7 +4,7 @@
 #include "SDL.h"
 #include "resourceTypes.h"
 
-#define DEBUG_WINDOWS
+#define DEBUG_WINDOWS 1
 
 typedef struct {
     Atom property;

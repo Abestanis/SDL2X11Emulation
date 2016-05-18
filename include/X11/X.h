@@ -82,6 +82,8 @@ typedef unsigned long KeyCode;	/* In order to use IME, the Macintosh needs
 				 * defined as a short, which wouldn't be big
 				 * enough. */
 
+typedef char *XPointer;
+
 /*****************************************************************
  * RESERVED RESOURCE AND CONSTANT DEFINITIONS
  *****************************************************************/

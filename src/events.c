@@ -6,6 +6,7 @@
 #include "SDL.h"
 #include "window.h"
 #include "drawing.h"
+#include "inputMethod.h"
 
 int eventFds[2];
 #define READ_EVENT_FD eventFds[0]
@@ -15,7 +16,6 @@ Bool eventWaiting = False;
 Bool tmpVar = False;
 Window keyboardFocus = NULL;
 
-// TODO: check for errors
 #define ENQUEUE_EVENT_IN_PIPE(display) { char buffer = 'e'; write(WRITE_EVENT_FD, &buffer, sizeof(buffer)); (display)->qlen++; }
 #define READ_EVENT_IN_PIPE(display) if ((display)->qlen > 0) { char buffer; read(READ_EVENT_FD, &buffer, sizeof(buffer)); (display)->qlen--; }
 
@@ -102,63 +102,6 @@ unsigned int convertModifierState(Uint16 mod) {
         state |= Mod1Mask;
     }
     return state;
-}
-
-SDL_Keycode getSDLKeycodeForChar(char c) {
-    const static struct {
-        char character;
-        SDL_Keycode keycode;
-    } charMapping[] = {
-        { ' ', SDLK_SPACE },
-        { '\n', SDLK_RETURN },
-        { '-', SDLK_MINUS },
-        { '+', SDLK_PLUS },
-        { '#', SDLK_HASH },
-        { '*', SDLK_ASTERISK },
-        //{ '~', ? },
-        { '\'', SDLK_QUOTE },
-        { '"', SDLK_QUOTEDBL },
-        { '!', SDLK_EXCLAIM },
-        { '@', SDLK_AT },
-        { '%', SDLK_PERCENT },
-        { '&', SDLK_AMPERSAND },
-        { '$', SDLK_DOLLAR },
-        { '/', SDLK_SLASH },
-        { '(', SDLK_LEFTPAREN },
-        { ')', SDLK_RIGHTPAREN },
-        { '[', SDLK_LEFTBRACKET },
-        { ']', SDLK_RIGHTBRACKET },
-        { '{', SDLK_KP_LEFTPAREN },
-        { '}', SDLK_KP_RIGHTBRACE },
-        { '?', SDLK_QUESTION },
-        { '\\', SDLK_BACKSLASH },
-        { '<', SDLK_LESS },
-        { '>', SDLK_GREATER },
-        { '|', SDLK_KP_XOR },
-        { '_', SDLK_UNDERSCORE },
-        { '^', SDLK_CARET },
-        { ',', SDLK_COMMA },
-        { ';', SDLK_SEMICOLON },
-        { '.', SDLK_PERIOD },
-        { ':', SDLK_COLON },
-        { '=', SDLK_EQUALS },
-        { '`', SDLK_BACKQUOTE },
-    };
-    if (c >= 'a' && c <= 'z') {
-        return SDLK_a + (c - 'a');
-    } else if (c >= 'A' && c <= 'Z') {
-        return SDLK_a + (c - 'A');
-    } else if (c >= '0' && c <= '9') {
-        return SDLK_0 + (c - '0');
-    }
-    int i;
-    for (i = 0; i < sizeof(charMapping) / sizeof(charMapping[0]); i++) {
-        if (charMapping[i].character == c) {
-            fprintf(stderr, "Found mapping for char %c\n", c); 
-            return charMapping[i].keycode;
-        }
-    }
-    return SDLK_UNKNOWN;
 }
 
 int convertEvent(Display* display, SDL_Event* sdlEvent, XEvent* xEvent) {
@@ -484,36 +427,35 @@ int convertEvent(Display* display, SDL_Event* sdlEvent, XEvent* xEvent) {
             return -1;
         case SDL_TEXTINPUT:              /**< Keyboard text input */
             fprintf(stderr, "SDL_TEXTINPUT\n");
-            if (sdlEvent->text.text[1] == '\0') {
-                type = KeyPress;
-                xEvent->xkey.type = type;
-                xEvent->xkey.serial = 0;
-                xEvent->xkey.send_event = sendEvent;
-                xEvent->xkey.display = display;
-                xEvent->xkey.root = getWindowFromId(sdlEvent->text.windowID);
-                eventWindow = keyboardFocus == NULL ? xEvent->xkey.root : keyboardFocus;
-                xEvent->xkey.window = eventWindow;
-                xEvent->xkey.subwindow = None;
-                xEvent->xkey.time = sdlEvent->text.timestamp;
-                SDL_GetMouseState(&xEvent->xkey.x, &xEvent->xkey.y);
-                xEvent->xkey.x_root = xEvent->xkey.x; // Because root and window are the same.
-                xEvent->xkey.y_root = xEvent->xkey.y;
-                xEvent->xkey.state = convertModifierState(SDL_GetModState());
-                xEvent->xkey.keycode = getSDLKeycodeForChar(sdlEvent->text.text[0]);
-                xEvent->xkey.same_screen = True;
-                
-                ENQUEUE_EVENT_IN_PIPE(display);
-                eventWaiting = True;
-                waitingEvent.type = SDL_KEYUP;
-                waitingEvent.key.windowID = sdlEvent->text.windowID;
-                waitingEvent.key.timestamp = sdlEvent->text.timestamp;
-                waitingEvent.key.keysym.mod = xEvent->xkey.state;
-                waitingEvent.key.keysym.sym = xEvent->xkey.keycode;
-                break;              
-            } else {
-                fprintf(stderr, "Unimplemented multitext input: %s\n", sdlEvent->text.text);
-                return -1;
-            }
+            inputMethodSetCurrentText(sdlEvent->text.text);
+            // Send synthetic key down and up events with keycode = 0
+            type = KeyPress;
+            xEvent->xkey.type = type;
+            xEvent->xkey.serial = 0;
+            xEvent->xkey.send_event = sendEvent;
+            xEvent->xkey.display = display;
+            xEvent->xkey.root = getWindowFromId(sdlEvent->text.windowID);
+            eventWindow = keyboardFocus == NULL ? xEvent->xkey.root : keyboardFocus;
+            xEvent->xkey.window = eventWindow;
+            xEvent->xkey.subwindow = None;
+            xEvent->xkey.time = sdlEvent->text.timestamp;
+            SDL_GetMouseState(&xEvent->xkey.x, &xEvent->xkey.y);
+            xEvent->xkey.x_root = xEvent->xkey.x; // Because root and window are the same.
+            xEvent->xkey.y_root = xEvent->xkey.y;
+            xEvent->xkey.state = convertModifierState(SDL_GetModState());
+            xEvent->xkey.keycode = 0;
+            xEvent->xkey.same_screen = True;
+            ENQUEUE_EVENT_IN_PIPE(display);
+            eventWaiting = True;
+            waitingEvent.type = SDL_KEYUP;
+            waitingEvent.key.windowID = sdlEvent->text.windowID;
+            waitingEvent.key.timestamp = sdlEvent->text.timestamp;
+            waitingEvent.key.keysym.mod = SDL_GetModState();
+            // Because Xutf8LookupString is not called for KeyUp events, we need to fill in the keycode here.
+            // TODO: This will not work for UTF-8 characters bigger than one byte 
+            fprintf(stderr, "Enqueuing keyup for char %d = '%c'\n", sdlEvent->text.text[strlen(sdlEvent->text.text) - 1], sdlEvent->text.text[strlen(sdlEvent->text.text) - 1]);
+            waitingEvent.key.keysym.sym = sdlEvent->text.text[strlen(sdlEvent->text.text) - 1];
+            break;
         case SDL_MOUSEWHEEL:             /**< Mouse wheel motion */
             fprintf(stderr, "SDL_MOUSEWHEEL\n");
             return -1;
@@ -672,7 +614,9 @@ void XNextEvent(Display* display, XEvent* event_return) {
             if (convertEvent(display, &event, event_return) == 0) {
                 done = True;
             } else {
+                #ifdef DEBUG_WINDOWS
                 printWindowHierarchy();
+                #endif
                 fprintf(stderr, "Got unknown SDL event %d!\n", event.type);
                 event_return->type = Expose;
                 event_return->xany.serial = 0;

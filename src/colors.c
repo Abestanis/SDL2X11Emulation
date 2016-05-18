@@ -143,7 +143,6 @@ Status XLookupColor(Display* display, Colormap colormap, char* color_name,
 Status XAllocNamedColor(Display* display, Colormap colormap, char* color_name,
                         XColor* screen_def_return, XColor* exact_def_return) {
     // https://tronche.com/gui/x/xlib/color/XAllocNamedColor.html
-    fprintf(stderr, "%s: %s, %d, color = %s\n", __FILE__, __func__, __LINE__, color_name);
     return XLookupColor(display, colormap, color_name, screen_def_return, exact_def_return);
 }
 

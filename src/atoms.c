@@ -38,8 +38,7 @@ Bool isValidAtom(Atom atom) {
     return getAtomStruct(atom) != NULL;
 }
 
-char* XGetAtomName(Display* display, Atom atom) {
-    // https://tronche.com/gui/x/xlib/window-information/XGetAtomName.html
+char* getAtomName(Atom atom) {
     if (atom <= _NET_LAST_PREDEFINED) {
         int i;
         for (i = 0; i < PREDEFINED_ATOM_LIST_SIZE; i++) {
@@ -50,10 +49,19 @@ char* XGetAtomName(Display* display, Atom atom) {
     }
     AtomStruct* atomStruct = getAtomStruct(atom);
     if (atomStruct == NULL) {
-        handleError(0, display, NULL, 0, BadAtom, XCB_GET_ATOM_NAME, 0);
         return NULL;
     }
     return (char *) atomStruct->name;
+}
+
+char* XGetAtomName(Display* display, Atom atom) {
+    // https://tronche.com/gui/x/xlib/window-information/XGetAtomName.html
+    char* atomName = getAtomName(atom);
+    if (atomName == NULL) {
+        handleError(0, display, NULL, 0, BadAtom, XCB_GET_ATOM_NAME, 0);
+        return NULL;
+    }
+    return atomName;
 }
 
 Atom internalInternAtom(char* atomName) {

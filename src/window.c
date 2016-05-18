@@ -709,7 +709,9 @@ void XMapWindow(Display* display, Window window) {
         parentWithSubstructureRedirect = getParentWithEventBit(window, SubstructureRedirectMask);
     }
     mapRequestedChildren(display, window, parentWithSubstructureRedirect);
+    #ifdef DEBUG_WINDOWS
     printWindowHierarchy();
+    #endif
 }
 
 void XUnmapWindow(Display* display, Window window) {
@@ -1038,6 +1040,9 @@ void XChangeProperty(Display* display, Window window, Atom property, Atom type, 
         h = icons[bestIcon][1];
         SDL_Surface* icon = SDL_CreateRGBSurfaceFrom(&icons[bestIcon][2], (int) w, (int) h, 32, w * (32 / 8),
                                                      0x00FF0000, 0x0000FF00, 0x000000FF, 0xFF000000);
+        if (windowStruct->icon != NULL) {
+            SDL_FreeSurface(windowStruct->icon);
+        }
         windowStruct->icon = icon;
         if (IS_MAPPED_TOP_LEVEL_WINDOW(window)) {
             SDL_SetWindowIcon(windowStruct->sdlWindow, icon);
@@ -1054,9 +1059,12 @@ void XDeleteProperty(Display* display, Window window, Atom property) {
         return;
     }
     if (property == _NET_WM_ICON) {
-        windowStruct->icon = NULL;
-        if (IS_MAPPED_TOP_LEVEL_WINDOW(window)) {
-            SDL_SetWindowIcon(windowStruct->sdlWindow, NULL);
+        if (windowStruct->icon != NULL) {
+            SDL_FreeSurface(windowStruct->icon);
+            windowStruct->icon = NULL;
+            if (IS_MAPPED_TOP_LEVEL_WINDOW(window)) {
+                SDL_SetWindowIcon(windowStruct->sdlWindow, NULL);
+            }
         }
     }
     WindowProperty* windowProperty = findProperty(windowStruct->properties,

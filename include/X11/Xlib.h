@@ -858,4 +858,257 @@ typedef union _XEvent {
     long pad[24];
 } XEvent;
 
+/* unused:
+typedef void (*XOMProc)();
+ */
+typedef struct _XOM *XOM;
+typedef struct _XOC *XOC, *XFontSet;
+typedef struct {
+    char           *chars;
+    int             nchars;
+    int             delta;
+    XFontSet        font_set;
+} XmbTextItem;
+typedef struct {
+    wchar_t        *chars;
+    int             nchars;
+    int             delta;
+    XFontSet        font_set;
+} XwcTextItem;
+#define XNRequiredCharSet "requiredCharSet"
+#define XNQueryOrientation "queryOrientation"
+#define XNBaseFontName "baseFontName"
+#define XNOMAutomatic "omAutomatic"
+#define XNMissingCharSet "missingCharSet"
+#define XNDefaultString "defaultString"
+#define XNOrientation "orientation"
+#define XNDirectionalDependentDrawing "directionalDependentDrawing"
+#define XNContextualDrawing "contextualDrawing"
+#define XNFontInfo "fontInfo"
+typedef struct {
+    int charset_count;
+    char **charset_list;
+} XOMCharSetList;
+typedef enum {
+    XOMOrientation_LTR_TTB,
+    XOMOrientation_RTL_TTB,
+    XOMOrientation_TTB_LTR,
+    XOMOrientation_TTB_RTL,
+    XOMOrientation_Context
+} XOrientation;
+typedef struct {
+    int num_orientation;
+    XOrientation *orientation;	/* Input Text description */
+} XOMOrientation;
+typedef struct {
+    int num_font;
+    XFontStruct **font_struct_list;
+    char **font_name_list;
+} XOMFontInfo;
+typedef struct _XIM *XIM;
+typedef struct _XIC *XIC;
+typedef void (*XIMProc)(
+    XIM,
+    XPointer,
+    XPointer
+);
+typedef Bool (*XICProc)(
+    XIC,
+    XPointer,
+    XPointer
+);
+typedef void (*XIDProc)(
+    Display*,
+    XPointer,
+    XPointer
+);
+typedef unsigned long XIMStyle;
+typedef struct {
+    unsigned short count_styles;
+    XIMStyle *supported_styles;
+} XIMStyles;
+#define XIMPreeditArea		0x0001L
+#define XIMPreeditCallbacks	0x0002L
+#define XIMPreeditPosition	0x0004L
+#define XIMPreeditNothing	0x0008L
+#define XIMPreeditNone		0x0010L
+#define XIMStatusArea		0x0100L
+#define XIMStatusCallbacks	0x0200L
+#define XIMStatusNothing	0x0400L
+#define XIMStatusNone		0x0800L
+#define XNVaNestedList "XNVaNestedList"
+#define XNQueryInputStyle "queryInputStyle"
+#define XNClientWindow "clientWindow"
+#define XNInputStyle "inputStyle"
+#define XNFocusWindow "focusWindow"
+#define XNResourceName "resourceName"
+#define XNResourceClass "resourceClass"
+#define XNGeometryCallback "geometryCallback"
+#define XNDestroyCallback "destroyCallback"
+#define XNFilterEvents "filterEvents"
+#define XNPreeditStartCallback "preeditStartCallback"
+#define XNPreeditDoneCallback "preeditDoneCallback"
+#define XNPreeditDrawCallback "preeditDrawCallback"
+#define XNPreeditCaretCallback "preeditCaretCallback"
+#define XNPreeditStateNotifyCallback "preeditStateNotifyCallback"
+#define XNPreeditAttributes "preeditAttributes"
+#define XNStatusStartCallback "statusStartCallback"
+#define XNStatusDoneCallback "statusDoneCallback"
+#define XNStatusDrawCallback "statusDrawCallback"
+#define XNStatusAttributes "statusAttributes"
+#define XNArea "area"
+#define XNAreaNeeded "areaNeeded"
+#define XNSpotLocation "spotLocation"
+#define XNColormap "colorMap"
+#define XNStdColormap "stdColorMap"
+#define XNForeground "foreground"
+#define XNBackground "background"
+#define XNBackgroundPixmap "backgroundPixmap"
+#define XNFontSet "fontSet"
+#define XNLineSpace "lineSpace"
+#define XNCursor "cursor"
+#define XNQueryIMValuesList "queryIMValuesList"
+#define XNQueryICValuesList "queryICValuesList"
+#define XNVisiblePosition "visiblePosition"
+#define XNR6PreeditCallback "r6PreeditCallback"
+#define XNStringConversionCallback "stringConversionCallback"
+#define XNStringConversion "stringConversion"
+#define XNResetState "resetState"
+#define XNHotKey "hotKey"
+#define XNHotKeyState "hotKeyState"
+#define XNPreeditState "preeditState"
+#define XNSeparatorofNestedList "separatorofNestedList"
+#define XBufferOverflow		-1
+#define XLookupNone		1
+#define XLookupChars		2
+#define XLookupKeySym		3
+#define XLookupBoth		4
+typedef void *XVaNestedList;
+typedef struct {
+    XPointer client_data;
+    XIMProc callback;
+} XIMCallback;
+typedef struct {
+    XPointer client_data;
+    XICProc callback;
+} XICCallback;
+typedef unsigned long XIMFeedback;
+#define XIMReverse		1L
+#define XIMUnderline		(1L<<1) 
+#define XIMHighlight		(1L<<2)
+#define XIMPrimary	 	(1L<<5)
+#define XIMSecondary		(1L<<6)
+#define XIMTertiary	 	(1L<<7)
+#define XIMVisibleToForward 	(1L<<8)
+#define XIMVisibleToBackword 	(1L<<9)
+#define XIMVisibleToCenter 	(1L<<10)
+typedef struct _XIMText {
+    unsigned short length;
+    XIMFeedback *feedback;
+    Bool encoding_is_wchar; 
+    union {
+	char *multi_byte;
+	wchar_t *wide_char;
+    } string; 
+} XIMText;
+typedef	unsigned long	 XIMPreeditState;
+#define	XIMPreeditUnKnown	0L
+#define	XIMPreeditEnable	1L
+#define	XIMPreeditDisable	(1L<<1)
+typedef	struct	_XIMPreeditStateNotifyCallbackStruct {
+    XIMPreeditState state;
+} XIMPreeditStateNotifyCallbackStruct;
+typedef	unsigned long	 XIMResetState;
+#define	XIMInitialState		1L
+#define	XIMPreserveState	(1L<<1)
+typedef unsigned long XIMStringConversionFeedback;
+#define	XIMStringConversionLeftEdge	(0x00000001)
+#define	XIMStringConversionRightEdge	(0x00000002)
+#define	XIMStringConversionTopEdge	(0x00000004)
+#define	XIMStringConversionBottomEdge	(0x00000008)
+#define	XIMStringConversionConcealed	(0x00000010)
+#define	XIMStringConversionWrapped	(0x00000020)
+typedef struct _XIMStringConversionText {
+    unsigned short length;
+    XIMStringConversionFeedback *feedback;
+    Bool encoding_is_wchar; 
+    union {
+	char *mbs;
+	wchar_t *wcs;
+    } string; 
+} XIMStringConversionText;
+typedef	unsigned short	XIMStringConversionPosition;
+typedef	unsigned short	XIMStringConversionType;
+#define	XIMStringConversionBuffer	(0x0001)
+#define	XIMStringConversionLine		(0x0002)
+#define	XIMStringConversionWord		(0x0003)
+#define	XIMStringConversionChar		(0x0004)
+typedef	unsigned short	XIMStringConversionOperation;
+#define	XIMStringConversionSubstitution	(0x0001)
+#define	XIMStringConversionRetrieval	(0x0002)
+typedef enum {
+    XIMForwardChar, XIMBackwardChar,
+    XIMForwardWord, XIMBackwardWord,
+    XIMCaretUp, XIMCaretDown,
+    XIMNextLine, XIMPreviousLine,
+    XIMLineStart, XIMLineEnd, 
+    XIMAbsolutePosition,
+    XIMDontChange
+} XIMCaretDirection;
+typedef struct _XIMStringConversionCallbackStruct {
+    XIMStringConversionPosition position;
+    XIMCaretDirection direction;
+    XIMStringConversionOperation operation;
+    unsigned short factor;
+    XIMStringConversionText *text;
+} XIMStringConversionCallbackStruct;
+typedef struct _XIMPreeditDrawCallbackStruct {
+    int caret;		/* Cursor offset within pre-edit string */
+    int chg_first;	/* Starting change position */
+    int chg_length;	/* Length of the change in character count */
+    XIMText *text;
+} XIMPreeditDrawCallbackStruct;
+typedef enum {
+    XIMIsInvisible,	/* Disable caret feedback */ 
+    XIMIsPrimary,	/* UI defined caret feedback */
+    XIMIsSecondary	/* UI defined caret feedback */
+} XIMCaretStyle;
+typedef struct _XIMPreeditCaretCallbackStruct {
+    int position;		 /* Caret offset within pre-edit string */
+    XIMCaretDirection direction; /* Caret moves direction */
+    XIMCaretStyle style;	 /* Feedback of the caret */
+} XIMPreeditCaretCallbackStruct;
+typedef enum {
+    XIMTextType,
+    XIMBitmapType
+} XIMStatusDataType;
+	
+typedef struct _XIMStatusDrawCallbackStruct {
+    XIMStatusDataType type;
+    union {
+	XIMText *text;
+	Pixmap  bitmap;
+    } data;
+} XIMStatusDrawCallbackStruct;
+typedef struct _XIMHotKeyTrigger {
+    KeySym	 keysym;
+    int		 modifier;
+    int		 modifier_mask;
+} XIMHotKeyTrigger;
+typedef struct _XIMHotKeyTriggers {
+    int			 num_hot_key;
+    XIMHotKeyTrigger	*key;
+} XIMHotKeyTriggers;
+typedef	unsigned long	 XIMHotKeyState;
+#define	XIMHotKeyStateON	(0x0001L)
+#define	XIMHotKeyStateOFF	(0x0002L)
+typedef struct {
+    unsigned short count_values;
+    char **supported_values;
+} XIMValuesList;
+
+/* API mentioning "UTF8" or "utf8" is an XFree86 extension, introduced in
+   November 2000. Its presence is indicated through the following macro. */
+#define X_HAVE_UTF8_STRING 1
+
 #endif /* XLIB_H */

@@ -2,11 +2,12 @@
 #include <stddef.h>
 #include <stdio.h>
 
-int (*error_handler)(Display*, XErrorEvent*) = default_error_handler;
+typedef int (*errorHandlerFunction)(Display*, XErrorEvent*);
+errorHandlerFunction error_handler = default_error_handler;
 
-int (*XSetErrorHandler(int (*handler)(Display*, XErrorEvent*)))(Display*, XErrorEvent*) {
+errorHandlerFunction XSetErrorHandler(errorHandlerFunction handler) {
     // https://tronche.com/gui/x/xlib/event-handling/protocol-errors/XSetErrorHandler.html
-    int (*prev_error_handler)(Display *, XErrorEvent *) = error_handler;
+    errorHandlerFunction prev_error_handler = error_handler;
     if (handler == NULL) {
         handler = default_error_handler;
     }
@@ -44,16 +45,12 @@ int default_error_handler(Display* display, XErrorEvent* event) {
             fprintf(stderr, "Parameter invalid: Got an invalid Atom for request %d!\n", event->request_code);
             break;
         default:
-            fprintf(stderr, "An unknown error occourred: %u\n", event->error_code);
+            fprintf(stderr, "An unknown error occurred: %u\n", event->error_code);
             break;
     }
     fflush(stdout);
     fflush(stderr);
-    // TODO: Remove NPE
-    int* t = NULL;
-    *t = 1;
-    exit(-1);
-    return 0;
+    abort();
 }
 
 inline void handleOutOfMemory(int type, Display* display, unsigned long serial,

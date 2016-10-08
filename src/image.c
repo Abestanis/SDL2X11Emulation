@@ -89,7 +89,7 @@ unsigned long XGetPixel(XImage* image, int x, int y) {
     fprintf(stderr, "%s from %p: x = %d, y = %d\n", __func__, image, x, y);
     if (image->data == NULL) {
         fprintf(stderr, "Invalid argument: Got image with NULL data in XGetPixel\n");
-        return;
+        return 0; // TODO: throw error
     }
     char* pointer;
     switch (image->format) {

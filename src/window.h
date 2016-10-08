@@ -47,18 +47,10 @@ typedef struct {
     #endif /* DEBUG_WINDOWS */
 } WindowStruct;
 
-typedef struct _WindowSdlIdMapper {
-    Window window;
-    Uint32 sdlWindowId;
-    struct _WindowSdlIdMapper* next;
-} WindowSdlIdMapper;
+#include "windowInternal.h"
 
 void XChangeWindowAttributes(Display* display, Window window, unsigned long valueMask,
                              XSetWindowAttributes *attributes);
-Bool initScreenWindow(Display* display);
-Window getWindowFromId(Uint32 sdlWindowId);
-void destroyScreenWindow(Display* display);
-Window getContainingWindow(Window window, int x, int y);
 
 extern Window SCREEN_WINDOW;
 

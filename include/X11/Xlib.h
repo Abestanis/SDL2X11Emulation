@@ -26,7 +26,6 @@ typedef int Status;
 #define WhitePixel(dpy, scr) 	(((dpy)->screens[(scr)]).white_pixel)
 #define AllPlanes 		((unsigned long)~0L)
 #define QLength(dpy) 		((dpy)->qlen)
-// TODO: Maybe here?
 #define DisplayWidth(dpy, scr) 	(((dpy)->screens[(scr)]).width)
 #define DisplayHeight(dpy, scr) (((dpy)->screens[(scr)]).height)
 //#define DisplayWidthMM(dpy, scr)(((dpy)->screens[(scr)]).mwidth)

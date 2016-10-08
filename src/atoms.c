@@ -1,3 +1,4 @@
+#include <assert.h>
 #include "atoms.h"
 #include "atomList.h"
 #include "errors.h"
@@ -68,12 +69,12 @@ Atom internalInternAtom(char* atomName) {
     fprintf(stderr, "Intern Atom %s.\n", atomName);
     AtomStruct* atomStruct = getAtomStructByName(atomName);
     if (atomStruct != NULL) {
-        fprintf(stderr, "Atom allreaddy existed %lu.\n", atomStruct->atom);
+        fprintf(stderr, "Atom already existed %lu.\n", atomStruct->atom);
         free(atomName);
         return atomStruct->atom;
     } else {
         fprintf(stderr, "Creating new Atom %lu.\n", lastUsedAtom + 1);
-        AtomStruct *atomStruct = malloc(sizeof(AtomStruct));
+        atomStruct = malloc(sizeof(AtomStruct));
         if (atomStruct == NULL) {
             return None;
         }
@@ -94,17 +95,36 @@ Atom XInternAtom(Display* display, _Xconst char* atom_name, Bool only_if_exists)
     // https://tronche.com/gui/x/xlib/window-information/XInternAtom.html
     fprintf(stderr, "Intern Atom %s.\n", atom_name);
     display->request++;
-    if (0 /* atom_name in predefined names */) {
-        fprintf(stderr, "Atom allreaddy existed %lu.\n", lastUsedAtom);
-        // TODO: Do this
+    int preExistingIndex = -1;
+    if (strncmp(atom_name, "XA_", 3) == 0) {
+        int i = 0;
+        do {
+            if (strcmp(&PredefinedAtomList[i].name[4], &atom_name[4]) == 0) {
+                preExistingIndex = i;
+                break;
+            }
+        } while (PredefinedAtomList[i++].atom != XA_WM_TRANSIENT_FOR);
+    } else if (strncmp(atom_name, "NET_", 4) == 0) {
+        int i = 78;
+        assert(PredefinedAtomList[i].atom == _NET_WM_NAME);
+        do {
+            if (strcmp(&PredefinedAtomList[i].name[5], &atom_name[5]) == 0) {
+                preExistingIndex = i;
+                break;
+            }
+        } while (PredefinedAtomList[i++].atom != _NET_FRAME_EXTENTS);
+    }
+    if (preExistingIndex >= 0) {
+        fprintf(stderr, "Atom already existed %lu.\n", lastUsedAtom);
+        return PredefinedAtomList[preExistingIndex].atom;
     }
     AtomStruct* atomStruct = getAtomStructByName(atom_name);
     if (atomStruct != NULL) {
-        fprintf(stderr, "Atom allreaddy existed %lu.\n", atomStruct->atom);
+        fprintf(stderr, "Atom already %lu.\n", atomStruct->atom);
         return atomStruct->atom;
     } else if (!only_if_exists) {
         fprintf(stderr, "Creating new Atom %lu.\n", lastUsedAtom + 1);
-        AtomStruct *atomStruct = malloc(sizeof(AtomStruct));
+        atomStruct = malloc(sizeof(AtomStruct));
         if (atomStruct == NULL) {
             handleError(0, display, NULL, 0, BadAlloc, XCB_INTERN_ATOM, 0);
             return None;

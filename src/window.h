@@ -1,10 +1,11 @@
 #ifndef _WINDOW_H_
 #define _WINDOW_H_
 
+#define DEBUG_WINDOWS 1
+
 #include "SDL.h"
 #include "resourceTypes.h"
-
-#define DEBUG_WINDOWS 1
+#include "windowDebug.h"
 
 typedef struct {
     Atom property;
@@ -84,9 +85,5 @@ extern Window SCREEN_WINDOW;
 
 #define HAS_VALUE(valueMask, value) (value & valueMask)
 #define DEFAULT_TITLE "Untitled"
-
-#ifdef DEBUG_WINDOWS
-void printWindowHierarchy(void);
-#endif /* DEBUG_WINDOWS */
 
 #endif /* _WINDOW_H_ */

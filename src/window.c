@@ -6,10 +6,6 @@
 #include "netAtoms.h"
 #include "events.h"
 
-#ifdef DEBUG_WINDOWS
-# include <stdlib.h>
-#endif /* DEBUG_WINDOWS */
-
 // TODO: Cover cases where top-level window is re-parented and window is converted to top-level window
 // TODO: Make child list ordered and with no NULL objects
 
@@ -135,59 +131,6 @@ Window getWindowFromId(Uint32 sdlWindowId) {
     WindowSdlIdMapper* mapper = getWindowSdlIdMapperStructFromId(sdlWindowId);
     return mapper == NULL ? None : mapper->window;
 }
-
-#ifdef DEBUG_WINDOWS
-
-#include <unistd.h>
-
-void printWindowHierarchyOfChild(Window window, char* prepend, int prependLen) {
-    Window* children = GET_CHILDREN(window);
-    const static char* WINDOW_STATES[] = {[Mapped] = "Mapped", [MapRequested] = "MapRequested", [UnMapped] = "UnMapped"};
-    char* childPrepend = malloc(sizeof(char) * (prependLen + 2));
-    int childCounter = 0;
-    int i;
-    for (i = 0; i < GET_WINDOW_STRUCT(window)->childSpace; i++) {
-        if (children[i] != NULL) childCounter++;
-    }
-    strcpy(childPrepend, prepend);
-    char* charPointer = childPrepend + prependLen;
-    *(charPointer + 1) = '\0';
-    for (i = 0; i < GET_WINDOW_STRUCT(window)->childSpace; i++) {
-        if (children[i] != NULL) {
-            int x, y, w, h;
-            GET_WINDOW_POS(children[i], x, y);
-            GET_WINDOW_DIMS(children[i], w, h);
-            printf("%s+- Window (adress: %p, id: 0x%08lx, x: %d, y: %d, %dx%d, state: %s)",
-                   prepend, children[i], GET_WINDOW_STRUCT(children[i])->debugId, x, y, w, h,
-                   WINDOW_STATES[GET_WINDOW_STRUCT(children[i])->mapState]);
-            if (GET_WINDOW_STRUCT(children[i])->sdlRenderer != NULL) {
-                printf(", renderer = %p", GET_WINDOW_STRUCT(children[i])->sdlRenderer);
-            }
-            if (GET_WINDOW_STRUCT(children[i])->sdlWindow != NULL) {
-                printf(", sdlWindow = %d", SDL_GetWindowID(GET_WINDOW_STRUCT(children[i])->sdlWindow));
-            }
-            if (GET_WINDOW_STRUCT(children[i])->sdlTexture != NULL) {
-                int w, h;
-                SDL_QueryTexture(GET_WINDOW_STRUCT(children[i])->sdlTexture, NULL, NULL, &w, &h);
-                printf(", sdlTexture = %p (%d x %d)", GET_WINDOW_STRUCT(children[i])->sdlTexture, w, h);
-            }
-            printf("\n");
-            *charPointer = childCounter == 1 ? ' ' : '|';
-            fflush(stdout);
-            printWindowHierarchyOfChild(children[i], childPrepend, prependLen + 1);
-            childCounter--;
-        }
-    }
-    free(childPrepend);
-}
-
-void printWindowHierarchy() {
-    printf("- SCREEN_WINDOW (adress: %p, id = 0x%08lx)\n", SCREEN_WINDOW, GET_WINDOW_STRUCT(SCREEN_WINDOW)->debugId);
-    printWindowHierarchyOfChild(SCREEN_WINDOW, "", 0);
-    fflush(stdout);
-}
-
-#endif /* DEBUG_WINDOWS */
 
 Window getContainingWindow(Window window, int x, int y) {
     int i, child_x, child_y, child_w, child_h;

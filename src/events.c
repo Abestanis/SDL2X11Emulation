@@ -641,7 +641,7 @@ void XNextEvent(Display* display, XEvent* event_return) {
                 done = True;
             } else {
                 #ifdef DEBUG_WINDOWS
-                printWindowHierarchy();
+                printWindowsHierarchy();
                 #endif
                 fprintf(stderr, "Got unknown SDL event %d!\n", event.type);
                 event_return->type = Expose;

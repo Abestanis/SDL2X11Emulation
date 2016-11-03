@@ -25,7 +25,7 @@ void flipScreen() {
             GPU_Flip(target);
         }
     }
-    printWindowHierarchy();
+//    printWindowsHierarchy();
 #ifdef DEBUG_WINDOWS
 //    drawWindowsDebugSurfacePlane();
 //    drawWindowsDebugBorder();
@@ -58,6 +58,9 @@ GPU_Target* getWindowRenderTarget(Window window) {
     }
     if (targetWindow == SCREEN_WINDOW) {
         fprintf(stderr, "Failed to find a render target in %s for window %p!\n", __func__, window);
+#ifdef DEBUG_WINDOWS
+        printWindowsHierarchy();
+#endif
         return NULL;
     }
     WindowStruct* windowStruct = GET_WINDOW_STRUCT(targetWindow);

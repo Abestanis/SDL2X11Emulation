@@ -9,7 +9,7 @@
 
 #ifdef DEBUG_WINDOWS
 
-void printWindowHierarchy(void);
+void printWindowsHierarchy(void);
 void drawWindowsDebugBorder();
 void drawWindowsDebugSurfacePlane();
 

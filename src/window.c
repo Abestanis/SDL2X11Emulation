@@ -265,7 +265,7 @@ void XMapWindow(Display* display, Window window) {
     }
     mapRequestedChildren(display, window, parentWithSubstructureRedirect);
     #ifdef DEBUG_WINDOWS
-    printWindowHierarchy();
+    printWindowsHierarchy();
     #endif
 }
 

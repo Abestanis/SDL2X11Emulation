@@ -52,7 +52,7 @@ void printWindowHierarchyOfChild(Window window, char* prepend, int prependLen) {
     free(childPrepend);
 }
 
-void printWindowHierarchy() {
+void printWindowsHierarchy() {
     printf("- SCREEN_WINDOW (adress: %p, id = 0x%08lx)\n", SCREEN_WINDOW, GET_WINDOW_STRUCT(SCREEN_WINDOW)->debugId);
     printWindowHierarchyOfChild(SCREEN_WINDOW, "", 0);
     fflush(stdout);

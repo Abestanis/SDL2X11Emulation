@@ -177,10 +177,6 @@ XImage* XGetImage(Display* display, Drawable drawable, int x, int y, unsigned in
         free(data);
         return NULL;
     }
-    SDL_Renderer* renderer;
-    GET_RENDERER(drawable, renderer);
-    SDL_RenderPresent(renderer);
-    SDL_Texture* srcTexture = SDL_GetRenderTarget(renderer);
     //TODO: Implement: Read from Textur into data and Convert from data to image type
 //    SDL_RenderReadPixels(renderer, NULL, SDL_PIXELFORMAT_RGBA8888, GET_SURFACE(drawable)->pixels, GET_SURFACE(drawable)->pitch);
 

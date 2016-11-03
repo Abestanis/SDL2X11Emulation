@@ -132,7 +132,7 @@ void XConfigureWindow(Display* display, Window window, unsigned int value_mask,
         }
         windowStruct->w = width;
         windowStruct->h = height;
-        resizeWindowTexture(window);
+        resizeWindowSurface(window); // TODO: Handle fail
     }
     // TODO: Implement re-stacking: https://tronche.com/gui/x/xlib/window/configure.html#XWindowChanges
 }
@@ -203,30 +203,30 @@ void XMapWindow(Display* display, Window window) {
             return;
         }
         registerWindowMapping(window, SDL_GetWindowID(sdlWindow));
-        SDL_Texture* windowTexture = windowStruct->sdlTexture;
-        if (windowTexture != NULL) {
-            SDL_Renderer *newRenderer = SDL_CreateRenderer(sdlWindow, -1, SDL_RENDERER_ACCELERATED);
-            if (newRenderer != NULL) {
-                SDL_Renderer* oldWindowRenderer;
-                GET_RENDERER(window, oldWindowRenderer);
-                SDL_Surface* windowSurface = getRenderSurface(oldWindowRenderer);
-                SDL_Texture* oldWindowTexture = SDL_CreateTextureFromSurface(newRenderer, windowSurface);
-                SDL_FreeSurface(windowSurface);
-                if (SDL_RenderCopy(newRenderer, oldWindowTexture, NULL, NULL) != 0) {
-                    fprintf(stderr, "Failed to copy window surface with renderer in XMapWindow: %s\n",
-                            SDL_GetError());
-                    handleError(0, display, NULL, 0, BadMatch, XCB_MAP_WINDOW, 0);
-                    SDL_DestroyWindow(sdlWindow);
-                    SDL_DestroyTexture(oldWindowTexture);
-                    SDL_DestroyRenderer(newRenderer);
-                    return;
-                }
-                SDL_DestroyTexture(windowTexture);
-                SDL_DestroyTexture(oldWindowTexture);
-                windowStruct->sdlRenderer = newRenderer;
-                windowStruct->sdlTexture  = NULL;
-            }
+        GPU_Target* renderTarget = GPU_CreateTargetFromWindow(SDL_GetWindowID(sdlWindow));
+        if (renderTarget == NULL) {
+            fprintf(stderr, "GPU_CreateTargetFromWindow failed in XMapWindow: %s\n", GPU_PopErrorCode().details);
+            handleError(0, display, NULL, 0, BadMatch, 0);
+            return;
         }
+        if (windowStruct->unmappedContent != NULL) {
+            if (windowStruct->renderTarget != NULL) {
+/**/                GPU_Flip(windowStruct->renderTarget);
+            }
+            fprintf(stderr, "BLITTING in %s\n", __func__);
+            int x, y;
+            GET_WINDOW_POS(window, x, y);
+            GPU_Blit(windowStruct->unmappedContent, NULL, renderTarget,
+                     x + windowStruct->w / 2, y + windowStruct->h / 2);
+        }
+        if (windowStruct->renderTarget != NULL) {
+            GPU_FreeTarget(windowStruct->renderTarget);
+        }
+        if (windowStruct->unmappedContent != NULL) {
+            GPU_FreeImage(windowStruct->unmappedContent);
+            windowStruct->unmappedContent = NULL;
+        }
+        windowStruct->renderTarget = renderTarget;
         windowStruct->sdlWindow = sdlWindow;
         windowStruct->mapState = Mapped;
         if (windowStruct->windowName != NULL) {
@@ -240,17 +240,14 @@ void XMapWindow(Display* display, Window window) {
     } else {
         if (GET_WINDOW_STRUCT(GET_PARENT(window))->mapState == Mapped) {
             if (!mergeWindowDrawables(GET_PARENT(window), window)) {
-                fprintf(stderr, "Failed to merge the window renderer in %s: %s\n", __func__, SDL_GetError());
+                fprintf(stderr, "Failed to merge the window drawables in %s\n", __func__);
                 return;
             }
             parentWithSubstructureRedirect = enqueueMapEvent(display, window, None, True);
             WindowStruct* windowStruct = GET_WINDOW_STRUCT(window);
             windowStruct->mapState = Mapped;
         } else {
-            if (!mergeWindowDrawables(GET_PARENT(window), window)) {
-                fprintf(stderr, "Failed to merge the window renderer in %s: %s\n", __func__, SDL_GetError());
-                return;
-            }
+            // mapRequestedChildren will do all the work
             GET_WINDOW_STRUCT(window)->mapState = MapRequested;
             return;
         }
@@ -268,13 +265,12 @@ void XUnmapWindow(Display* display, Window window) {
     // https://tronche.com/gui/x/xlib/window/XUnmapWindow.html
     TYPE_CHECK(window, WINDOW, XCB_UNMAP_WINDOW, display, );
     WindowStruct* windowStruct = GET_WINDOW_STRUCT(window);
+    if (windowStruct->renderTarget != NULL) {
+        GPU_FreeTarget(windowStruct->renderTarget);
+    }
     if (IS_MAPPED_TOP_LEVEL_WINDOW(window)) {
         SDL_DestroyWindow(windowStruct->sdlWindow);
         windowStruct->sdlWindow = NULL;
-        if (windowStruct->sdlRenderer != NULL) {
-            SDL_DestroyRenderer(windowStruct->sdlRenderer);
-            windowStruct->sdlRenderer = NULL;
-        }
     }
     // TODO: Expose events
     windowStruct->mapState = UnMapped;
@@ -331,7 +327,7 @@ void XResizeWindow(Display* display, Window window, unsigned int width, unsigned
         }
         windowStruct->w = width;
         windowStruct->h = height;
-        resizeWindowTexture(window);
+        resizeWindowSurface(window);
     }
 }
 

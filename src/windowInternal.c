@@ -3,6 +3,7 @@
 //
 #include "windowInternal.h"
 #include "drawing.h"
+#include "window.h"
 
 Window SCREEN_WINDOW = NULL;
 
@@ -19,9 +20,9 @@ void initWindowStruct(WindowStruct* windowStruct, int x, int y, unsigned int wid
     windowStruct->inputOnly = inputOnly;
     windowStruct->colormap = colormap;
     windowStruct->visual = visual;
-    windowStruct->sdlTexture = NULL;
+    windowStruct->unmappedContent = NULL;
     windowStruct->sdlWindow = NULL;
-    windowStruct->sdlRenderer = NULL;
+    windowStruct->renderTarget = NULL;
     windowStruct->backgroundColor = backgroundColor;
     windowStruct->backgroundPixmap = backgroundPixmap;
     windowStruct->colormapWindowsCount = -1;
@@ -60,28 +61,6 @@ Bool initScreenWindow(Display* display) {
         initWindowStruct(window, 0, 0, display->screens[0].width, display->screens[0].height,
                          NULL, NULL, False, 0, NULL);
         SCREEN_WINDOW->dataPointer = window;
-//        window->sdlWindow = SDL_CreateWindow("Internal", SDL_WINDOWPOS_UNDEFINED,
-//                                             SDL_WINDOWPOS_UNDEFINED, 1, 1,
-//                                             SDL_WINDOW_HIDDEN | SDL_WINDOW_OPENGL);
-//        if (window->sdlWindow == NULL) {
-//            fprintf(stderr, "Creating the main internal window failed: %s\n", SDL_GetError());
-//            free(SCREEN_WINDOW);
-//            SCREEN_WINDOW = NULL;
-//            return False;
-//        }
-//        window->sdlRenderer = SDL_CreateRenderer(window->sdlWindow, -1, SDL_RENDERER_TARGETTEXTURE);
-        SDL_Surface* sdlSurface = SDL_CreateRGBSurface(0, 1, 1, SDL_SURFACE_DEPTH, DEFAULT_RED_MASK,
-                                                       DEFAULT_GREEN_MASK, DEFAULT_BLUE_MASK,
-                                                       DEFAULT_ALPHA_MASK);
-        window->sdlRenderer = SDL_CreateSoftwareRenderer(sdlSurface);
-        if (window->sdlRenderer == NULL) {
-            fprintf(stderr, "Creating the main renderer failed: %s\n", SDL_GetError());
-            SDL_DestroyWindow(window->sdlWindow);
-            window->sdlWindow = NULL;
-            free(SCREEN_WINDOW);
-            SCREEN_WINDOW = NULL;
-            return False;
-        }
         window->mapState = Mapped;
     }
     return True;
@@ -89,6 +68,8 @@ Bool initScreenWindow(Display* display) {
 
 void destroyScreenWindow(Display* display) {
     if (SCREEN_WINDOW != NULL) {
+        GPU_FreeTarget(GET_WINDOW_STRUCT(SCREEN_WINDOW)->renderTarget);
+        SDL_DestroyWindow(GET_WINDOW_STRUCT(SCREEN_WINDOW)->sdlWindow);
         free(SCREEN_WINDOW->dataPointer);
         free(SCREEN_WINDOW);
         SCREEN_WINDOW = NULL;
@@ -188,11 +169,11 @@ void destroyWindow(Display* display, Window window, Bool freeParentData) {
     if (windowStruct->sdlWindow != NULL) {
         SDL_DestroyWindow(windowStruct->sdlWindow);
     }
-    if (windowStruct->sdlRenderer != NULL) {
-        SDL_DestroyRenderer(windowStruct->sdlRenderer);
+    if (windowStruct->renderTarget != NULL) {
+        GPU_FreeTarget(windowStruct->renderTarget);
     }
-    if (windowStruct->sdlTexture != NULL) {
-        SDL_DestroyTexture(windowStruct->sdlTexture);
+    if (windowStruct->unmappedContent != NULL) {
+        GPU_FreeImage(windowStruct->unmappedContent);
     }
     free(windowStruct);
     free(window);
@@ -300,20 +281,31 @@ WindowProperty* findProperty(WindowProperty* properties, unsigned int numPropert
     return NULL;
 }
 
-void resizeWindowTexture(Window window) {
+Bool resizeWindowSurface(Window window) {
     WindowStruct* windowStruct = GET_WINDOW_STRUCT(window);
-    if (windowStruct->sdlTexture != NULL) {
-        SDL_Texture* oldTexture = windowStruct->sdlTexture;
-        SDL_Rect destRect;
-        destRect.x = 0;
-        destRect.y = 0;
-        SDL_QueryTexture(oldTexture, NULL, NULL, &destRect.w, &destRect.h);
-        windowStruct->sdlTexture = NULL;
-        SDL_Renderer* windowRenderer;
-        GET_RENDERER(window, windowRenderer);
-        SDL_RenderCopy(windowRenderer, oldTexture, NULL, &destRect);
-        SDL_DestroyTexture(oldTexture);
+    GPU_Image* oldContent = windowStruct->unmappedContent;
+    if (oldContent != NULL) {
+        GPU_Image* newContent = GPU_CreateImage((Uint16) windowStruct->w, (Uint16) windowStruct->h, oldContent->format);
+        if (newContent == NULL) {
+            fprintf(stderr, "Failed to resize the window surface: Failed to create new window surface!\n");
+            return FALSE;
+        }
+        GPU_Target* newTarget = GPU_LoadTarget(newContent);
+        if (newTarget == NULL) {
+            GPU_FreeImage(newContent);
+            fprintf(stderr, "Failed to resize the window surface: Failed to create render target from new window surface!\n");
+            return FALSE;
+        }
+/**/        if (windowStruct->renderTarget != NULL) GPU_Flip(windowStruct->renderTarget);
+        fprintf(stderr, "Resizing surface of window %p\n", window);
+        fprintf(stderr, "BLITTING in %s\n", __func__);
+        GPU_Blit(oldContent, NULL, newTarget, oldContent->w / 2, oldContent->h / 2);
+        if (windowStruct->renderTarget != NULL) GPU_FreeTarget(windowStruct->renderTarget);
+        GPU_FreeImage(oldContent);
+        windowStruct->unmappedContent = newContent;
+        windowStruct->renderTarget = newTarget;
     }
+    return TRUE;
 }
 
 Window getParentWithEventBit(Window window, long eventBit) {
@@ -327,23 +319,22 @@ Window getParentWithEventBit(Window window, long eventBit) {
 
 Bool mergeWindowDrawables(Window parent, Window child) {
     WindowStruct* childWindowStruct = GET_WINDOW_STRUCT(child);
-    if (childWindowStruct->sdlTexture == NULL) { return True; }
-    SDL_Renderer* parentRenderer = getWindowRenderer(parent);
-    if (childWindowStruct->sdlRenderer != NULL) {
-        SDL_RenderPresent(childWindowStruct->sdlRenderer);
+    if (childWindowStruct->unmappedContent == NULL) { return True; }
+    fprintf(stderr, "getWindowRenderTarget of window %p in %s.\n", parent, __func__);
+    GPU_Target* parentTarget = getWindowRenderTarget(parent);
+    if (parentTarget == NULL) return FALSE;
+    if (childWindowStruct->renderTarget != NULL) {
+/**/        GPU_Flip(childWindowStruct->renderTarget);
     }
-    SDL_Rect destRect;
-    GET_WINDOW_POS(child, destRect.x, destRect.y);
-    GET_WINDOW_DIMS(child, destRect.w, destRect.h);
-    if (SDL_RenderCopy(parentRenderer, childWindowStruct->sdlTexture, NULL, &destRect) != 0) {
-        return False;
+    fprintf(stderr, "BLITTING in %s\b", __func__);
+    GPU_Blit(childWindowStruct->unmappedContent, NULL, parentTarget,
+             childWindowStruct->x + childWindowStruct->w / 2, childWindowStruct->y + childWindowStruct->h / 2);
+    if (childWindowStruct->renderTarget != NULL) {
+        GPU_FreeTarget(childWindowStruct->renderTarget);
+        childWindowStruct->renderTarget = NULL;
     }
-    SDL_DestroyTexture(childWindowStruct->sdlTexture);
-    childWindowStruct->sdlTexture = NULL;
-    if (childWindowStruct->sdlRenderer != NULL) {
-        SDL_DestroyRenderer(childWindowStruct->sdlRenderer);
-        childWindowStruct->sdlRenderer = NULL;
-    }
+    GPU_FreeImage(childWindowStruct->unmappedContent);
+    childWindowStruct->unmappedContent = NULL;
     return True;
 }
 
@@ -385,13 +376,16 @@ Window enqueueMapEvent(Display* display, Window window, Window parentWithSubstru
 
 void mapRequestedChildren(Display* display, Window window, Window subStructureRedirectParent) {
     Window* children = GET_CHILDREN(window);
-    int i;
+    size_t i;
     for (i = 0; i < GET_WINDOW_STRUCT(window)->childSpace; i++) {
-        if (*children != NULL && GET_WINDOW_STRUCT(*children)->mapState == MapRequested) {
-            enqueueMapEvent(display, window, subStructureRedirectParent, False);
-            GET_WINDOW_STRUCT(*children)->mapState = Mapped;
-            mapRequestedChildren(display, *children, subStructureRedirectParent);
+        if (children[i] != NULL && GET_WINDOW_STRUCT(children[i])->mapState == MapRequested) {
+            if (!mergeWindowDrawables(window, children[i])) {
+                fprintf(stderr, "Failed to merge the window drawables in %s\n", __func__);
+                return;
+            }
+            enqueueMapEvent(display, children[i], subStructureRedirectParent, False);
+            GET_WINDOW_STRUCT(children[i])->mapState = Mapped;
+            mapRequestedChildren(display, children[i], subStructureRedirectParent);
         }
-        children++;
     }
 }

@@ -7,7 +7,7 @@
 
 // TODO: Make Cursor to SDL_Cursor*
 
-Cursor createPixmapCursor(Display* display, SDL_Texture* source, SDL_Texture* mask,
+Cursor createPixmapCursor(Display* display, GPU_Image* source, GPU_Image* mask,
                           XColor* foreground_color, XColor* background_color,
                           unsigned int x, unsigned int y) {
 //    if (x > source->w || y > source->h) {
@@ -58,11 +58,11 @@ Cursor XCreatePixmapCursor(Display* display, Pixmap source, Pixmap mask, XColor*
                            XColor* background_color, unsigned int x, unsigned int y) {
     // https://tronche.com/gui/x/xlib/pixmap-and-cursor/XCreatePixmapCursor.html
     TYPE_CHECK(source, PIXMAP, XCB_CREATE_CURSOR, display, NULL);
-    SDL_Texture* sourcePixmap = GET_PIXMAP_TEXTURE(source);
-    SDL_Texture* maskPixmap = NULL;
+    GPU_Image* sourcePixmap = GET_PIXMAP_IMAGE(source);
+    GPU_Image* maskPixmap = NULL;
     if (mask != None) {
         TYPE_CHECK(mask, PIXMAP, XCB_CREATE_CURSOR, display, NULL);
-        maskPixmap = GET_PIXMAP_TEXTURE(mask);
+        maskPixmap = GET_PIXMAP_IMAGE(mask);
     }
     return createPixmapCursor(display, sourcePixmap, maskPixmap, foreground_color,
                               background_color, x, y);

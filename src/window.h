@@ -5,6 +5,7 @@
 
 #include "SDL.h"
 #include "resourceTypes.h"
+#include <SDL_gpu.h>
 #include "windowDebug.h"
 
 typedef struct {
@@ -21,9 +22,9 @@ typedef struct {
     Window parent;
     Window* children; /* List of children, must end with NULL, can contain NULL between values */
     unsigned int childSpace;
-    SDL_Texture* sdlTexture;
+    GPU_Image* unmappedContent;
     SDL_Window* sdlWindow;
-    SDL_Renderer* sdlRenderer;
+    GPU_Target* renderTarget;
     int x, y;
     unsigned int w, h;
     Bool inputOnly;

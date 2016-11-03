@@ -25,21 +25,23 @@ Pixmap XCreatePixmap(Display* display, Drawable drawable, unsigned int width, un
         return NULL;
     }
     fprintf(stderr, "%s: addr= %p, w = %d, h = %d\n", __func__, pixmap, width, height);
-    SDL_Texture* texture = SDL_CreateTexture(GET_WINDOW_STRUCT(SCREEN_WINDOW)->sdlRenderer,
-                                             SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET,
-                                             (int) width, (int) height);
-    if (texture == NULL) {
-        fprintf(stderr, "SDL_CreateTexture failed in XCreatePixmap: %s\n", SDL_GetError());
-        handleOutOfMemory(0, display, 0, XCB_CREATE_PIXMAP, 0);
+    GPU_Image* image = GPU_CreateImage((Uint16) width, (Uint16) height, GPU_FORMAT_RGBA);
+    if (image == NULL) {
+        fprintf(stderr, "GPU_CreateImage failed in XCreatePixmap: %s\n", GPU_PopErrorCode().details);
         free(pixmap);
+        handleOutOfMemory(0, display, 0, XCB_CREATE_PIXMAP, 0);
         return NULL;
     }
+    if (GPU_LoadTarget(image) == NULL) {
+        fprintf(stderr, "GPU_LoadTarget failed in XCreatePixmap: %s\n", GPU_PopErrorCode().details);
+        free(pixmap);
+        GPU_FreeImage(image);
+        handleOutOfMemory(0, display, 0, XCB_CREATE_PIXMAP, 0);
+        return NULL;
+    }
+    fprintf(stderr, "gpu target is %p\n", image->target);
     pixmap->type = PIXMAP;
-    pixmap->dataPointer = texture;
-    SDL_Renderer* renderer;
-    GET_RENDERER(pixmap, renderer);
-    SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255);
-    SDL_RenderClear(renderer);
+    pixmap->dataPointer = image;
     return pixmap;
 }
 
@@ -47,6 +49,13 @@ void XFreePixmap(Display* display, Pixmap pixmap) {
     // https://tronche.com/gui/x/xlib/pixmap-and-cursor/XFreePixmap.html
     TYPE_CHECK(pixmap, PIXMAP, XCB_FREE_PIXMAP, display, );
     SDL_Texture* texture = GET_PIXMAP_TEXTURE(pixmap);
+    GPU_Image* image = GET_PIXMAP_IMAGE(pixmap);
     free(pixmap);
-    SDL_DestroyTexture(texture);
+    if (image->target != NULL) {
+        fprintf(stderr, "%s, %d\n", __func__, __LINE__);
+        GPU_FreeTarget(image->target);
+        image->target = NULL;
+    }
+    fprintf(stderr, "%s, %d\n", __func__, __LINE__);
+    GPU_FreeImage(image);
 }

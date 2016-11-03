@@ -23,7 +23,7 @@ void destroyWindow(Display* display, Window window, Bool freeParentData);
 Window getContainingWindow(Window window, int x, int y);
 Bool addChildToWindow(Window parent, Window child);
 void removeChildFromParent(Window child);
-void resizeWindowTexture(Window window);
+Bool resizeWindowSurface(Window window);
 void registerWindowMapping(Window window, Uint32 sdlWindowId);
 Bool isParent(Window window1, Window window2);
 WindowProperty* increasePropertySize(WindowProperty* properties, unsigned int currSize,

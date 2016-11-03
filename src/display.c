@@ -9,6 +9,7 @@
 #include "colors.h"
 #include "drawing.h"
 #include <jni.h>
+#include <SDL_gpu.h>
 
 jint JNI_OnLoad(JavaVM* vm, void* reserved) {
     setenv("DISPLAY", ":0", 0);
@@ -28,9 +29,10 @@ Visual* trueColorVisual = NULL;
 void XCloseDisplay(Display* display) {
     https://tronche.com/gui/x/xlib/display/XCloseDisplay.html
     if (numDisplaysOpen == 1) {
-        TTF_Quit();
-        SDL_Quit();
         destroyScreenWindow(display);
+        TTF_Quit();
+        GPU_Quit();
+        SDL_Quit();
     }
     if (numDisplaysOpen > 0) {
         numDisplaysOpen--;
@@ -87,6 +89,7 @@ Display* XOpenDisplay(char* display_name) {
             return NULL;
         }
     }
+    GPU_SetDebugLevel(GPU_DEBUG_LEVEL_MAX);
     numDisplaysOpen++;
 
     display->qlen = 0;
@@ -166,6 +169,19 @@ Display* XOpenDisplay(char* display_name) {
         for (screenIndex = 0; screenIndex < display->nscreens; screenIndex++) {
             display->screens[screenIndex].root = SCREEN_WINDOW;
         }
+    }
+    GET_WINDOW_STRUCT(SCREEN_WINDOW)->sdlWindow = SDL_CreateWindow(NULL, 0, 0, 10, 10, SDL_WINDOW_HIDDEN | SDL_WINDOW_OPENGL);
+    if (GET_WINDOW_STRUCT(SCREEN_WINDOW)->sdlWindow == NULL) {
+        fprintf(stderr, "XOpenDisplay: Initializing the SDL screen window failed: %s!\n", SDL_GetError());
+        XCloseDisplay(display);
+        return NULL;
+    }
+    GPU_SetInitWindow(SDL_GetWindowID(GET_WINDOW_STRUCT(SCREEN_WINDOW)->sdlWindow));
+    GET_WINDOW_STRUCT(SCREEN_WINDOW)->renderTarget = GPU_Init(0, 0, 0);
+    if (GET_WINDOW_STRUCT(SCREEN_WINDOW)->renderTarget == NULL) {
+        fprintf(stderr, "XOpenDisplay: Initializing SDL_gpu failed!\n");
+        XCloseDisplay(display);
+        return NULL;
     }
     return display;
 }

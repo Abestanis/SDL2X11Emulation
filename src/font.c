@@ -287,33 +287,27 @@ int XTextWidth(XFontStruct* font_struct, char* string, int count) {
     return width;
 }
 
-Bool renderText(Display* display, SDL_Renderer* renderer, GC gc, int x, int y, const char* string) {
+Bool renderText(Display* display, GPU_Target* renderTarget, GC gc, int x, int y, const char* string) {
     fprintf(stderr, "Rendering text: '%s'\n", string);
     if (string == NULL || string[0] == '\0') { return True; }
-    SDL_Color color;// = uLongToColor(surface->format, gc->foreground);
-    color.r = (gc->foreground & 0xFF000000) >> 24;
-    color.g = (gc->foreground & 0x00FF0000) >> 16;
-    color.b = (gc->foreground & 0x0000FF00) >> 8;
-    color.a = 0xFF;
+    SDL_Color color = {
+            GET_RED_FROM_COLOR(gc->foreground),
+            GET_GREEN_FROM_COLOR(gc->foreground),
+            GET_BLUE_FROM_COLOR(gc->foreground),
+            GET_ALPHA_FROM_COLOR(gc->foreground),
+    };
     SDL_Surface* fontSurface = TTF_RenderUTF8_Blended(gc->font, string, color);
     if (fontSurface == NULL) {
         return False;
     }
-    SDL_Rect destR;
-    destR.w = fontSurface->w;
-    destR.h = fontSurface->h;
-    SDL_Texture* fontTexture = SDL_CreateTextureFromSurface(renderer, fontSurface);
+    GPU_Image* fontImage = GPU_CopyImageFromSurface(fontSurface);
     SDL_FreeSurface(fontSurface);
-    if (fontTexture == NULL) {
+    if (fontImage == NULL) {
         return False;
     }
-    destR.x = x;
-    destR.y = y - TTF_FontAscent(gc->font)/* - 6*/;
-    // h and w are ignored
-    if (SDL_RenderCopy(renderer, fontTexture, NULL, &destR) != 0) {
-        return False;
-    }
-    SDL_DestroyTexture(fontTexture);
+    y -= TTF_FontAscent(gc->font);
+    GPU_Blit(fontImage, NULL, renderTarget, x + fontImage->w / 2, y + fontImage->h / 2);
+    GPU_FreeImage(fontImage);
     return True;
 }
 
@@ -331,8 +325,6 @@ void XDrawString16(Display* display, Drawable drawable, GC gc, int x, int y, XCh
         return;
     }
     if (length == 0 || ((Uint16*) string)[0] == 0) { return; }
-    SDL_Renderer* renderer;
-    GET_RENDERER(drawable, renderer);
     fprintf(stderr, "Hit unimplemented function %s!\n", __func__);
 //    const XChar2b* text = decodeString((char*) string, length, True);
 //    if (text == NULL) {
@@ -359,15 +351,20 @@ void XDrawString(Display* display, Drawable drawable, GC gc, int x, int y, char*
         return;
     }
     if (length == 0 || string[0] == 0) { return; }
-    SDL_Renderer* renderer;
-    GET_RENDERER(drawable, renderer);
+    GPU_Target* renderTarget;
+    GET_RENDER_TARGET(drawable, renderTarget);
+    if (renderTarget == NULL) {
+        fprintf(stderr, "Failed to get the render target in %s\n", __func__);
+        handleError(0, display, 0, 0, BadDrawable, XCB_DRAW_STRING, 0);
+        return;
+    }
     const char* text = decodeString(string, length);
     if (text == NULL) {
         fprintf(stderr, "Out of memory: Failed to allocate decoded string in XDrawString, raising BadMatch error.\n");
         handleError(0, display, 0, 0, BadMatch, XCB_DRAW_STRING, 0);
         return;
     }
-    if (!renderText(display, renderer, gc, x, y, text)) {
+    if (!renderText(display, renderTarget, gc, x, y, text)) {
         free((char*) text);
         fprintf(stderr, "Rendering the text failed in %s: %s\n", __func__, SDL_GetError());
         handleError(0, display, drawable, 0, BadMatch, XCB_DRAW_STRING, 0);

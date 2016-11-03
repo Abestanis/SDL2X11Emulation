@@ -193,7 +193,7 @@ void XMapWindow(Display* display, Window window) {
     TYPE_CHECK(window, WINDOW, display);
     Window parentWithSubstructureRedirect = None;
     if (GET_WINDOW_STRUCT(window)->mapState == Mapped || GET_WINDOW_STRUCT(window)->mapState == MapRequested) { return; }
-    if (IS_ROOT(window)) {
+    if (IS_TOP_LEVEL(window)) {
         if (IS_MAPPED_TOP_LEVEL_WINDOW(window)) { return; }
         fprintf(stderr, "Mapping Window %p\n", window);
         WindowStruct* windowStruct = GET_WINDOW_STRUCT(window);

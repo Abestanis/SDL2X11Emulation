@@ -59,8 +59,8 @@ extern Window SCREEN_WINDOW;
 #define GET_COLORMAP(window) GET_WINDOW_STRUCT(window)->colormap
 #define GET_PARENT(window) GET_WINDOW_STRUCT(window)->parent
 #define GET_CHILDREN(window) GET_WINDOW_STRUCT(window)->children
-#define IS_ROOT(window) (window != SCREEN_WINDOW && GET_PARENT(window) == SCREEN_WINDOW)
-#define IS_MAPPED_TOP_LEVEL_WINDOW(window) (IS_ROOT(window) && GET_WINDOW_STRUCT(window)->sdlWindow != NULL)
+#define IS_TOP_LEVEL(window) (window != SCREEN_WINDOW && GET_PARENT(window) == SCREEN_WINDOW)
+#define IS_MAPPED_TOP_LEVEL_WINDOW(window) (IS_TOP_LEVEL(window) && GET_WINDOW_STRUCT(window)->sdlWindow != NULL)
 #define IS_INPUT_ONLY(window) GET_WINDOW_STRUCT(window)->inputOnly
 #define GET_WINDOW_POS(window, out_x, out_y) if (IS_MAPPED_TOP_LEVEL_WINDOW(window)) {\
     SDL_GetWindowPosition(GET_WINDOW_STRUCT(window)->sdlWindow, &out_x, &out_y);\

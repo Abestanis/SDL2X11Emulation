@@ -771,13 +771,13 @@ void XSetWindowBackgroundPixmap(Display* display, Window window, Pixmap backgrou
             handleError(0, display, window, 0, BadMatch, 0);
             return;
         }
-        Pixmap previous = windowStruct->backgroundPixmap;
+        Pixmap previous = windowStruct->background;
         if (background_pixmap == (Pixmap) ParentRelative) {
-            windowStruct->backgroundPixmap = GET_PARENT(window) == NULL ? NULL :
-                                             GET_WINDOW_STRUCT(GET_PARENT(window))->backgroundPixmap;
+            windowStruct->background = GET_PARENT(window) == NULL ? NULL :
+                                             GET_WINDOW_STRUCT(GET_PARENT(window))->background;
         } else {
-            windowStruct->backgroundPixmap = background_pixmap;
             TYPE_CHECK(background_pixmap, PIXMAP, display);
+            windowStruct->background = background_pixmap;
         }
         if (previous != NULL && previous != None) {
             XFreePixmap(display, previous);
@@ -808,7 +808,7 @@ void XSetWindowColormap(Display* display, Window window, Colormap colormap) {
 void XChangeWindowAttributes(Display* display, Window window, unsigned long valueMask,
                              XSetWindowAttributes *attributes) {
     // https://tronche.com/gui/x/xlib/window/XChangeWindowAttributes.html
-    if (IS_ROOT(window) && HAS_VALUE(valueMask, CWCursor)) {
+    if (IS_TOP_LEVEL(window) && HAS_VALUE(valueMask, CWCursor)) {
     SET_X_SERVER_REQUEST(display, XCB_CHANGE_WINDOW_ATTRIBUTES);
     TYPE_CHECK(window, WINDOW, display);
         XDefineCursor(display, window, attributes->cursor);

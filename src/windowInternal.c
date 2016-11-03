@@ -24,7 +24,7 @@ void initWindowStruct(WindowStruct* windowStruct, int x, int y, unsigned int wid
     windowStruct->sdlWindow = NULL;
     windowStruct->renderTarget = NULL;
     windowStruct->backgroundColor = backgroundColor;
-    windowStruct->backgroundPixmap = backgroundPixmap;
+    windowStruct->background = backgroundPixmap;
     windowStruct->colormapWindowsCount = -1;
     windowStruct->colormapWindows = NULL;
     windowStruct->propertyCount = 0;
@@ -157,8 +157,8 @@ void destroyWindow(Display* display, Window window, Bool freeParentData) {
         WindowProperty* propertyPointer = windowStruct->properties;
         free(propertyPointer);
     }
-    if (windowStruct->backgroundPixmap != NULL && windowStruct->backgroundPixmap != None) {
-        XFreePixmap(display, windowStruct->backgroundPixmap);
+    if (windowStruct->background != NULL && windowStruct->background != None) {
+        XFreePixmap(display, windowStruct->background);
     }
     if (windowStruct->windowName != NULL) {
         free(windowStruct->windowName);

@@ -31,7 +31,7 @@ typedef struct {
     Visual* visual;
     Colormap colormap;
     unsigned long backgroundColor;
-    Pixmap backgroundPixmap;
+    Pixmap background; // TODO: Is this even used anywhere?
     int colormapWindowsCount;
     Window* colormapWindows;
     unsigned int propertyCount;

@@ -8,6 +8,7 @@
 #include "resourceTypes.h"
 #include "atoms.h"
 #include "drawing.h"
+#include "display.h"
 
 // TODO: Convert text decoding to Utf-8
 // http://www.cprogramming.com/tutorial/unicode.html
@@ -15,6 +16,7 @@
 Font XLoadFont(Display* display, char* name) {
     // https://tronche.com/gui/x/xlib/graphics/font-metrics/XLoadFont.html
     int fontSize = 18;
+    SET_X_SERVER_REQUEST(display, XCB_OPEN_FONT);
     // TODO: Remove static font size
     // TODO: Implement pattern matching
     // TODO: This function is called with "fixed" and "cursor" as a name
@@ -28,13 +30,14 @@ Font XLoadFont(Display* display, char* name) {
     TTF_Font* font = TTF_OpenFont(fontName, fontSize);
     if (font == NULL){
         fprintf(stderr, "Failed to load font %s!\n", name);
-        handleError(0, display, NULL, 0, BadName, XCB_OPEN_FONT, 0);
+        handleError(0, display, NULL, 0, BadName, 0);
     }
     return font;
 }
 
 char** XListFonts(Display* display, char* pattern, int maxnames, int* actual_count_return) {
     // https://tronche.com/gui/x/xlib/graphics/font-metrics/XListFonts.html
+    SET_X_SERVER_REQUEST(display, XCB_LIST_FONTS);
     // TODO: Maybe scan trough a default location
     fprintf(stderr, "Hit unimplemented function %s\n", __func__);
     *actual_count_return = 0;
@@ -49,6 +52,7 @@ void XFreeFontNames(char* list[]) {
 
 void XFreeFont(Display* display, XFontStruct* font_struct) {
     // https://tronche.com/gui/x/xlib/graphics/font-metrics/XFreeFont.html
+//    SET_X_SERVER_REQUEST(display, XCB_);
     TTF_CloseFont(font_struct->fid);
     if (font_struct->per_char != NULL) {
         int numChars = font_struct->max_char_or_byte2 - font_struct->min_char_or_byte2;
@@ -124,9 +128,10 @@ XFontStruct* XLoadQueryFont(Display* display, char* name) {
     if (font == NULL) {
         return NULL;
     }
+    SET_X_SERVER_REQUEST(display, XCB_QUERY_FONT);
     XFontStruct* fontStruct = malloc(sizeof(XFontStruct));
     if (fontStruct == NULL) {
-        handleOutOfMemory(0, display, 0, XCB_QUERY_FONT, 0);
+        handleOutOfMemory(0, display, 0, 0);
         TTF_CloseFont(font);
         return NULL;
     }
@@ -161,7 +166,7 @@ XFontStruct* XLoadQueryFont(Display* display, char* name) {
     if (!monospace) {
         fontStruct->per_char = malloc(sizeof(XCharStruct) * numChars);
         if (fontStruct->per_char == NULL) {
-            handleOutOfMemory(0, display, 0, XCB_QUERY_FONT, 0);
+            handleOutOfMemory(0, display, 0, 0);
             XFreeFont(display, fontStruct);
             return NULL;
         }
@@ -313,15 +318,16 @@ Bool renderText(Display* display, GPU_Target* renderTarget, GC gc, int x, int y,
 
 void XDrawString16(Display* display, Drawable drawable, GC gc, int x, int y, XChar2b* string, int length) {
     // https://tronche.com/gui/x/xlib/graphics/drawing-text/XDrawString16.html
+    SET_X_SERVER_REQUEST(display, XCB_DRAW_STRING_16);
     // TODO: Rethink this
     fprintf(stderr, "%s: Drawing on %p\n", __func__, drawable);
     if (drawable == NULL) {
-        handleError(0, display, 0, 0, BadDrawable, XCB_DRAW_STRING_16, 0);
+        handleError(0, display, 0, 0, BadDrawable, 0);
         return;
     }
-    TYPE_CHECK(drawable, DRAWABLE, XCB_DRAW_STRING_16, display, );
+    TYPE_CHECK(drawable, DRAWABLE, display);
     if (gc == NULL) {
-        handleError(0, display, 0, 0, BadGC, XCB_DRAW_STRING_16, 0);
+        handleError(0, display, 0, 0, BadGC, 0);
         return;
     }
     if (length == 0 || ((Uint16*) string)[0] == 0) { return; }
@@ -329,25 +335,26 @@ void XDrawString16(Display* display, Drawable drawable, GC gc, int x, int y, XCh
 //    const XChar2b* text = decodeString((char*) string, length, True);
 //    if (text == NULL) {
 //        fprintf(stderr, "Out of memory: Failed to allocate memory in XDrawString16, raising BadMatch error.\n");
-//        handleError(0, display, drawable, 0, BadMatch, XCB_DRAW_STRING_16, 0);
+//        handleError(0, display, drawable, 0, BadMatch, 0);
 //        return;
 //    }
 //    if (!renderText(display, renderer, gc, x, y, (Uint16*) text)) {
 //        fprintf(stderr, "Rendering the text failed in %s: %s\n", __func__, SDL_GetError());
-//        handleError(0, display, drawable, 0, BadMatch, XCB_DRAW_STRING_16, 0);
+//        handleError(0, display, drawable, 0, BadMatch, 0);
 //    }
 }
 
 void XDrawString(Display* display, Drawable drawable, GC gc, int x, int y, char* string, int length) {
     // https://tronche.com/gui/x/xlib/graphics/drawing-text/XDrawString.html
+    SET_X_SERVER_REQUEST(display, XCB_DRAW_STRING);
     fprintf(stderr, "%s: Drawing on %p\n", __func__, drawable);
     if (drawable == NULL) {
-        handleError(0, display, 0, 0, BadDrawable, XCB_DRAW_STRING, 0);
+        handleError(0, display, 0, 0, BadDrawable, 0);
         return;
     }
-    TYPE_CHECK(drawable, DRAWABLE, XCB_DRAW_STRING, display, );
+    TYPE_CHECK(drawable, DRAWABLE, display);
     if (gc == NULL) {
-        handleError(0, display, 0, 0, BadGC, XCB_DRAW_STRING, 0);
+        handleError(0, display, 0, 0, BadGC, 0);
         return;
     }
     if (length == 0 || string[0] == 0) { return; }
@@ -355,19 +362,19 @@ void XDrawString(Display* display, Drawable drawable, GC gc, int x, int y, char*
     GET_RENDER_TARGET(drawable, renderTarget);
     if (renderTarget == NULL) {
         fprintf(stderr, "Failed to get the render target in %s\n", __func__);
-        handleError(0, display, 0, 0, BadDrawable, XCB_DRAW_STRING, 0);
+        handleError(0, display, 0, 0, BadDrawable, 0);
         return;
     }
     const char* text = decodeString(string, length);
     if (text == NULL) {
         fprintf(stderr, "Out of memory: Failed to allocate decoded string in XDrawString, raising BadMatch error.\n");
-        handleError(0, display, 0, 0, BadMatch, XCB_DRAW_STRING, 0);
+        handleError(0, display, 0, 0, BadMatch, 0);
         return;
     }
     if (!renderText(display, renderTarget, gc, x, y, text)) {
         free((char*) text);
         fprintf(stderr, "Rendering the text failed in %s: %s\n", __func__, SDL_GetError());
-        handleError(0, display, drawable, 0, BadMatch, XCB_DRAW_STRING, 0);
+        handleError(0, display, drawable, 0, BadMatch, 0);
     }
     free((char*) text);
 }

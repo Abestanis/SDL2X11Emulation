@@ -3,6 +3,7 @@
 #include "drawing.h"
 #include "resourceTypes.h"
 #include "window.h"
+#include "display.h"
 
 // Inspired by https://github.com/csulmone/X11/blob/59029dc09211926a5c95ff1dd2b828574fefcde6/libX11-1.5.0/src/ImUtil.c
 
@@ -10,9 +11,10 @@ XImage* XCreateImage(Display* display, Visual* visual, unsigned int depth, int f
                      char* data, unsigned int width, unsigned int height, int bitmap_pad,
                      int bytes_per_line) {
     // https://tronche.com/gui/x/xlib/utilities/XCreateImage.html
+    SET_X_SERVER_REQUEST(display, XCB_CREATE_IMAGE);
     XImage* image = malloc(sizeof(XImage));
     if (image == NULL) {
-        handleOutOfMemory(0, display, 0, XCB_CREATE_IMAGE, 0);
+        handleOutOfMemory(0, display, 0, 0);
         return NULL;
     }
     fprintf(stderr, "%s: w = %d, h = %d\n", __func__, (int) width, (int) height);
@@ -123,7 +125,8 @@ void XDestroyImage(XImage* image) {
 void XPutImage(Display* display, Drawable drawable, GC gc, XImage* image, int src_x, int src_y,
                int dest_x, int dest_y, unsigned int width, unsigned int height) {
     // https://tronche.com/gui/x/xlib/graphics/XPutImage.html
-    TYPE_CHECK(drawable, DRAWABLE, XCB_PUT_IMAGE, display, );
+    SET_X_SERVER_REQUEST(display, XCB_PUT_IMAGE);
+    TYPE_CHECK(drawable, DRAWABLE, display);
     fprintf(stderr, "%s: Drawing %p on %p\n", __func__, image, drawable);
     // TODO: Implement this: Create Uint32* data, Create Texture from data, rendercopy
 //    LOCK_SURFACE(surface);
@@ -153,6 +156,7 @@ void XPutImage(Display* display, Drawable drawable, GC gc, XImage* image, int sr
 XImage* XGetImage(Display* display, Drawable drawable, int x, int y, unsigned int width,
                   unsigned int height, unsigned long plane_mask, int format) {
     // https://tronche.com/gui/x/xlib/graphics/XGetImage.html
+    SET_X_SERVER_REQUEST(display, XCB_GET_IMAGE);
     fprintf(stderr, "%s: From %p\n", __func__, drawable);
     if (IS_TYPE(drawable, WINDOW) && drawable->dataPointer == SCREEN_WINDOW) {
         fprintf(stderr, "XGetImage called with SCREEN_WINDOW as argument!\n");
@@ -167,7 +171,7 @@ XImage* XGetImage(Display* display, Drawable drawable, int x, int y, unsigned in
     int bytes_per_line = (depth / 8) * width;
     char* data = malloc(sizeof(char) * width * height);
     if (data == NULL) {
-        handleOutOfMemory(0, display, 0, XCB_GET_IMAGE, 0);
+        handleOutOfMemory(0, display, 0, 0);
         return NULL;
     }
     // FIXME: The NULL will cause problems.

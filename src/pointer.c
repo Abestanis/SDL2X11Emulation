@@ -2,6 +2,7 @@
 #include "SDL.h"
 #include "window.h"
 #include "events.h"
+#include "display.h"
 
 unsigned int currentEventMask = ~0;
 Bool mouseFrozen = False;
@@ -10,6 +11,7 @@ Bool keyboardFrozen = False;
 void XWarpPointer(Display* display, Window src_window, Window dest_window, int src_x, int src_y,
                   unsigned int src_width, unsigned int src_height, int dest_x, int dest_y) {
     // https://tronche.com/gui/x/xlib/input/XWarpPointer.html
+    SET_X_SERVER_REQUEST(display, XCB_WARP_POINTER);
     int curr_x, curr_y;
     if (dest_window == None) {
         #if SDL_VERSION_ATLEAST(2, 0, 4)
@@ -44,6 +46,7 @@ Bool XQueryPointer(Display* display, Window window, Window* root_return, Window*
                    int* root_x_return, int* root_y_return, int* win_x_return, int* win_y_return,
                    unsigned int* mask_return) {
     // https://tronche.com/gui/x/xlib/window-information/XQueryPointer.html
+    SET_X_SERVER_REQUEST(display, XCB_QUERY_POINTER);
     *root_return = SCREEN_WINDOW;
     SDL_GetMouseState(root_x_return, root_y_return);
     XTranslateCoordinates(display, SCREEN_WINDOW, window, *root_x_return, *root_y_return,
@@ -55,6 +58,7 @@ Bool XQueryPointer(Display* display, Window window, Window* root_return, Window*
 int XGrabPointer(Display* display, Window grab_window, Bool owner_events, unsigned int event_mask,
                  int pointer_mode, int keyboard_mode, Window confine_to, Cursor cursor, Time time) {
     // https://tronche.com/gui/x/xlib/input/XGrabPointer.html
+    SET_X_SERVER_REQUEST(display, XCB_GRAB_POINTER);
     if (SDL_SetRelativeMouseMode(SDL_TRUE) != 0) {
         fprintf(stderr, "SDL_SetRelativeMouseMode failed in XGrabPointer: %s", SDL_GetError());
         return GrabNotViewable;
@@ -84,6 +88,7 @@ int XGrabPointer(Display* display, Window grab_window, Bool owner_events, unsign
 
 void XUngrabPointer(Display* display, Time time) {
     // https://tronche.com/gui/x/xlib/input/XUngrabPointer.html
+    SET_X_SERVER_REQUEST(display, XCB_UNGRAB_POINTER);
     if (SDL_GetRelativeMouseMode() == SDL_TRUE) {
         if (SDL_SetRelativeMouseMode(SDL_FALSE) != 0) {
             fprintf(stderr, "SDL_SetRelativeMouseMode failed in XUngrabPointer: %s", SDL_GetError());

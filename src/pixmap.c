@@ -2,26 +2,27 @@
 #include "drawing.h"
 #include "errors.h"
 #include "resourceTypes.h"
-#include "window.h"
+#include "display.h"
 
 Pixmap XCreatePixmap(Display* display, Drawable drawable, unsigned int width, unsigned int height,
                      unsigned int depth) {
     // https://tronche.com/gui/x/xlib/pixmap-and-cursor/XCreatePixmap.html
+    SET_X_SERVER_REQUEST(display, XCB_CREATE_PIXMAP);
     // TODO: Adjust masks for depth
     if (width == 0 || height == 0) {
         fprintf(stderr, "Width and/or height are 0 in XCreatePixmap: w = %u, h = %u\n", width, height);
-        handleError(0, display, NULL, 0, BadValue, XCB_CREATE_PIXMAP, 0);
+        handleError(0, display, NULL, 0, BadValue, 0);
         return NULL;
     }
     if (depth < 1) {
         fprintf(stderr, "Got unsupported depth (%u) in XCreatePixmap\n", depth);
-        handleError(0, display, NULL, 0, BadValue, XCB_CREATE_PIXMAP, 0);
+        handleError(0, display, NULL, 0, BadValue, 0);
         return NULL;
     }
     XID pixmap = malloc(sizeof(XID));
     if (pixmap == NULL) {
         fprintf(stderr, "Out of memory: Could not allocate XID in XCreatePixmap!\n");
-        handleOutOfMemory(0, display, 0, XCB_CREATE_PIXMAP, 0);
+        handleOutOfMemory(0, display, 0, 0);
         return NULL;
     }
     fprintf(stderr, "%s: addr= %p, w = %d, h = %d\n", __func__, pixmap, width, height);
@@ -29,14 +30,14 @@ Pixmap XCreatePixmap(Display* display, Drawable drawable, unsigned int width, un
     if (image == NULL) {
         fprintf(stderr, "GPU_CreateImage failed in XCreatePixmap: %s\n", GPU_PopErrorCode().details);
         free(pixmap);
-        handleOutOfMemory(0, display, 0, XCB_CREATE_PIXMAP, 0);
+        handleOutOfMemory(0, display, 0, 0);
         return NULL;
     }
     if (GPU_LoadTarget(image) == NULL) {
         fprintf(stderr, "GPU_LoadTarget failed in XCreatePixmap: %s\n", GPU_PopErrorCode().details);
         free(pixmap);
         GPU_FreeImage(image);
-        handleOutOfMemory(0, display, 0, XCB_CREATE_PIXMAP, 0);
+        handleOutOfMemory(0, display, 0, 0);
         return NULL;
     }
     fprintf(stderr, "gpu target is %p\n", image->target);
@@ -47,8 +48,8 @@ Pixmap XCreatePixmap(Display* display, Drawable drawable, unsigned int width, un
 
 void XFreePixmap(Display* display, Pixmap pixmap) {
     // https://tronche.com/gui/x/xlib/pixmap-and-cursor/XFreePixmap.html
-    TYPE_CHECK(pixmap, PIXMAP, XCB_FREE_PIXMAP, display, );
-    SDL_Texture* texture = GET_PIXMAP_TEXTURE(pixmap);
+    SET_X_SERVER_REQUEST(display, XCB_FREE_PIXMAP);
+    TYPE_CHECK(pixmap, PIXMAP, display);
     GPU_Image* image = GET_PIXMAP_IMAGE(pixmap);
     free(pixmap);
     if (image->target != NULL) {

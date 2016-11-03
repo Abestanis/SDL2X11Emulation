@@ -2,6 +2,7 @@
 #include "colors.h"
 #include "stdColors.h"
 #include "errors.h"
+#include "display.h"
 
 SDL_Color uLongToColor(SDL_PixelFormat* pixelFormat, unsigned long color) {
     SDL_Color res;
@@ -20,6 +21,7 @@ SDL_Color uLongToColorFromVisual(Visual* visual, unsigned long color) {
 
 void XFreeColormap(Display* display, Colormap colormap) {
     // https://tronche.com/gui/x/xlib/color/XFreeColormap.html
+    SET_X_SERVER_REQUEST(display, XCB_FREE_COLORMAP);
 //    if (colormap->colors == NULL) {
 //        colormap->ncolors = 0;
 //    }
@@ -28,6 +30,7 @@ void XFreeColormap(Display* display, Colormap colormap) {
 
 Colormap XCreateColormap(Display* display, Window window, Visual* visual, int allocate) {
     // https://tronche.com/gui/x/xlib/color/XCreateColormap.html
+    SET_X_SERVER_REQUEST(display, XCB_CREATE_COLORMAP);
     // depth is assumed to be sizeof(SDL_Color)
 //    Uint32 i;
     int visualClass;
@@ -39,7 +42,7 @@ Colormap XCreateColormap(Display* display, Window window, Visual* visual, int al
 //    SDL_Palette* colormap = SDL_AllocPalette(allocate ? visual->map_entries : 0);
 //    if (colormap == NULL) {
 //        fprintf(stderr, "SDL_AllocPalette failed in XCreateColormap: %s\n", SDL_GetError());
-//        handleOutOfMemory(0, display, 0, XCB_CREATE_COLORMAP, 0);
+//        handleOutOfMemory(0, display, 0, 0);
 //        return NULL;
 //    }
     Colormap colormap;
@@ -58,7 +61,7 @@ Colormap XCreateColormap(Display* display, Window window, Visual* visual, int al
 //            free(colormap);
             fprintf(stderr, "Bad parameter: Got StaticGray, StaticColor or TrueColor but allocate "
                             "is not AllocAll in XCreateColormap!\n");
-            handleError(0, display, NULL, 0, BadMatch, XCB_CREATE_COLORMAP, 0);
+            handleError(0, display, NULL, 0, BadMatch, 0);
             return NULL;
         }
 //    } else if (visualClass != GrayScale && visualClass != PseudoColor
@@ -66,7 +69,7 @@ Colormap XCreateColormap(Display* display, Window window, Visual* visual, int al
 ////        free(colormap);
 //        fprintf(stderr, "Bad parameter: got an unknown visual class in XCreateColormap: %d\n",
 //                visualClass);
-//        handleError(0, display, NULL, 0, BadMatch, XCB_CREATE_COLORMAP, 0);
+//        handleError(0, display, NULL, 0, BadMatch, 0);
 //        return NULL;
     }
     switch (visualClass) {
@@ -83,7 +86,7 @@ Colormap XCreateColormap(Display* display, Window window, Visual* visual, int al
         default:
             fprintf(stderr, "Bad parameter: got an unknown visual class in XCreateColormap: %d\n",
                     visualClass);
-            handleError(0, display, NULL, 0, BadMatch, XCB_CREATE_COLORMAP, 0);
+            handleError(0, display, NULL, 0, BadMatch, 0);
             return NULL;
     }
 //    if (!allocate) {
@@ -94,6 +97,7 @@ Colormap XCreateColormap(Display* display, Window window, Visual* visual, int al
 
 void XQueryColors(Display *display, Colormap colormap, XColor defs_in_out[], int ncolors) {
     // https://tronche.com/gui/x/xlib/color/XQueryColors.html
+    SET_X_SERVER_REQUEST(display, XCB_QUERY_COLORS);
     int i;
     for (i = 0; i < ncolors; ++i) {
         XColor color = defs_in_out[i];
@@ -106,6 +110,7 @@ void XQueryColors(Display *display, Colormap colormap, XColor defs_in_out[], int
 Status XLookupColor(Display* display, Colormap colormap, char* color_name,
                     XColor* exact_def_return, XColor* screen_def_return) {
     // https://tronche.com/gui/x/xlib/color/XLookupColor.html
+    SET_X_SERVER_REQUEST(display, XCB_LOOKUP_COLOR);
     int nameLength = strlen(color_name);
     int i, strIndex, offset;
     StdColorEntry entry;
@@ -143,12 +148,14 @@ Status XLookupColor(Display* display, Colormap colormap, char* color_name,
 Status XAllocNamedColor(Display* display, Colormap colormap, char* color_name,
                         XColor* screen_def_return, XColor* exact_def_return) {
     // https://tronche.com/gui/x/xlib/color/XAllocNamedColor.html
+    SET_X_SERVER_REQUEST(display, XCB_ALLOC_NAMED_COLOR);
     return XLookupColor(display, colormap, color_name, screen_def_return, exact_def_return);
 }
 
 void XFreeColors(Display* display, Colormap colormap, unsigned long pixels[], int npixels,
                  unsigned long planes) {
     // https://tronche.com/gui/x/xlib/color/XFreeColors.html
+    SET_X_SERVER_REQUEST(display, XCB_FREE_COLORS);
     // We have no real colormap, so we don't need to free colors
 //    int i;
 //    for (i = 0; i < npixels; i++) {
@@ -158,6 +165,7 @@ void XFreeColors(Display* display, Colormap colormap, unsigned long pixels[], in
 
 Status XAllocColor(Display* display, Colormap colormap, XColor* screen_in_out) {
     // https://tronche.com/gui/x/xlib/color/XAllocColor.html
+    SET_X_SERVER_REQUEST(display, XCB_ALLOC_COLOR);
     // Since our "colormap" has as many colors as there are pixel, this call always succeeds.
     // screen_in_out is always the same.
     return 1;

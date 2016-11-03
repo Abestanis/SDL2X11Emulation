@@ -2,6 +2,7 @@
 #include "atoms.h"
 #include "atomList.h"
 #include "errors.h"
+#include "display.h"
 
 AtomStruct* atomStorageStart = NULL;
 AtomStruct* atomStorageLast = NULL;
@@ -57,9 +58,10 @@ char* getAtomName(Atom atom) {
 
 char* XGetAtomName(Display* display, Atom atom) {
     // https://tronche.com/gui/x/xlib/window-information/XGetAtomName.html
+    SET_X_SERVER_REQUEST(display, XCB_GET_ATOM_NAME);
     char* atomName = getAtomName(atom);
     if (atomName == NULL) {
-        handleError(0, display, NULL, 0, BadAtom, XCB_GET_ATOM_NAME, 0);
+        handleError(0, display, NULL, 0, BadAtom, 0);
         return NULL;
     }
     return atomName;
@@ -94,7 +96,7 @@ Atom internalInternAtom(char* atomName) {
 Atom XInternAtom(Display* display, _Xconst char* atom_name, Bool only_if_exists) {
     // https://tronche.com/gui/x/xlib/window-information/XInternAtom.html
     fprintf(stderr, "Intern Atom %s.\n", atom_name);
-    display->request++;
+    SET_X_SERVER_REQUEST(display, XCB_INTERN_ATOM);
     int preExistingIndex = -1;
     if (strncmp(atom_name, "XA_", 3) == 0) {
         int i = 0;
@@ -126,7 +128,7 @@ Atom XInternAtom(Display* display, _Xconst char* atom_name, Bool only_if_exists)
         fprintf(stderr, "Creating new Atom %lu.\n", lastUsedAtom + 1);
         atomStruct = malloc(sizeof(AtomStruct));
         if (atomStruct == NULL) {
-            handleError(0, display, NULL, 0, BadAlloc, XCB_INTERN_ATOM, 0);
+            handleError(0, display, NULL, 0, BadAlloc, 0);
             return None;
         }
         atomStruct->atom = ++lastUsedAtom;

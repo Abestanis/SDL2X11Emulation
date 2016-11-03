@@ -1,5 +1,6 @@
 #include "X11/Xlib.h"
 #include "X11/Xutil.h"
+#include "display.h"
 
 void XFree(void *data) {
     // https://tronche.com/gui/x/xlib/display/XFree.html
@@ -13,11 +14,13 @@ VisualID XVisualIDFromVisual(Visual* visual) {
 
 Status XGetGeometry(Display *display, Drawable d, Window *root_return, int *x_return, int* y_return, unsigned int *width_return, unsigned int *height_return, unsigned int *border_width_return, unsigned int *depth_return) {
     // https://tronche.com/gui/x/xlib/window-information/XGetGeometry.html
+    SET_X_SERVER_REQUEST(display, XCB_GET_GEOMETRY);
     fprintf(stderr, "Hit unimplemented function %s.\n", __func__);
 }
 
 void XCopyGC(Display *display, GC src, GC dest, unsigned long valuemask) {
     // https://tronche.com/gui/x/xlib/GC/XCopyGC.html
+    SET_X_SERVER_REQUEST(display, XCB_COPY_GC);
     fprintf(stderr, "Hit unimplemented function %s.\n", __func__);
 }
 

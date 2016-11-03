@@ -128,6 +128,7 @@ void XUnionRectWithRegion(XRectangle *rectangle, Region src_region, Region dest_
 
 void XSetRegion(Display* display, GC gc, Region region) {
     // https://tronche.com/gui/x/xlib/utilities/regions/XSetRegion.html
+//    SET_X_SERVER_REQUEST(display, XCB_);
     pixman_box16_t* extends = pixman_region_extents(region);
     int width  = abs(extends->x2 - extends->x1);
     int height = abs(extends->y2 - extends->y1);

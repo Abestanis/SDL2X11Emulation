@@ -1,6 +1,7 @@
 #include "inputMethod.h"
 #include <stdarg.h>
 #include "X11/keysym.h"
+#include "display.h"
 
 // http://www.x.org/archive/X11R7.6/doc/man/man3/XOpenIM.3.xhtml
 // http://www.x.org/archive/X11R7.6/doc/man/man3/XCreateIC.3.xhtml
@@ -405,6 +406,7 @@ char* XGetIMValues(XIM inputMethod, ...) {
 
 void XFreeFontSet(Display *display, XFontSet font_set) {
     // http://www.x.org/archive/X11R7.6/doc/man/man3/XCreateFontSet.3.xhtml
+//    SET_X_SERVER_REQUEST(display, XCB_);
     fprintf(stderr, "Hit unimplemented function %s.\n", __func__);
 }
 
@@ -415,6 +417,7 @@ void XFreeStringList(char **list) {
 
 XFontSet XCreateFontSet(Display *display, char *base_font_name_list, char ***missing_charset_list_return, int *missing_charset_count_return, char **def_string_return) {
     // http://www.x.org/archive/X11R7.6/doc/man/man3/XCreateFontSet.3.xhtml
+//    SET_X_SERVER_REQUEST(display, XCB_);
     fprintf(stderr, "Hit unimplemented function %s.\n", __func__);
 }
 

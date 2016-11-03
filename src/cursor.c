@@ -4,6 +4,7 @@
 #include "drawing.h"
 #include "colors.h"
 #include "resourceTypes.h"
+#include "display.h"
 
 // TODO: Make Cursor to SDL_Cursor*
 
@@ -12,17 +13,17 @@ Cursor createPixmapCursor(Display* display, GPU_Image* source, GPU_Image* mask,
                           unsigned int x, unsigned int y) {
 //    if (x > source->w || y > source->h) {
 //        fprintf(stderr, "x or y are not in source in XCreatePixmapCursor!\n");
-//        handleError(0, display, NULL, 0, BadMatch, XCB_CREATE_CURSOR, 0);
+//        handleError(0, display, NULL, 0, BadMatch, 0);
 //        return NULL;
 //    }
 //    if (mask != NULL && (mask->w != source->w || mask->h != source->h)) {
 //        fprintf(stderr, "Given mask is not the same size as source in XCreatePixmapCursor!\n");
-//        handleError(0, display, NULL, 0, BadMatch, XCB_CREATE_CURSOR, 0);
+//        handleError(0, display, NULL, 0, BadMatch, 0);
 //        return NULL;
 //    }
     Cursor cursor = malloc(sizeof(Cursor));
     if (cursor == NULL) {
-        handleOutOfMemory(0, display, 0, XCB_CREATE_CURSOR, 0);
+        handleOutOfMemory(0, display, 0, 0);
         return NULL;
     }
     // TODO: IMPLEMENT!!!
@@ -32,7 +33,7 @@ Cursor createPixmapCursor(Display* display, GPU_Image* source, GPU_Image* mask,
     if (cursor->surface == NULL) {
         fprintf(stderr, "CreateRGBSurface failed in XCreatePixmapCursor: %s\n", SDL_GetError());
         free(cursor);
-        handleOutOfMemory(0, display, 0, XCB_CREATE_CURSOR, 0);
+        handleOutOfMemory(0, display, 0, 0);
         return NULL;
     }
     LOCK_SURFACE(cursor->surface);
@@ -57,11 +58,12 @@ Cursor createPixmapCursor(Display* display, GPU_Image* source, GPU_Image* mask,
 Cursor XCreatePixmapCursor(Display* display, Pixmap source, Pixmap mask, XColor* foreground_color,
                            XColor* background_color, unsigned int x, unsigned int y) {
     // https://tronche.com/gui/x/xlib/pixmap-and-cursor/XCreatePixmapCursor.html
-    TYPE_CHECK(source, PIXMAP, XCB_CREATE_CURSOR, display, NULL);
+    SET_X_SERVER_REQUEST(display, XCB_CREATE_CURSOR);
+    TYPE_CHECK(source, PIXMAP, display, NULL);
     GPU_Image* sourcePixmap = GET_PIXMAP_IMAGE(source);
     GPU_Image* maskPixmap = NULL;
     if (mask != None) {
-        TYPE_CHECK(mask, PIXMAP, XCB_CREATE_CURSOR, display, NULL);
+        TYPE_CHECK(mask, PIXMAP, display, NULL);
         maskPixmap = GET_PIXMAP_IMAGE(mask);
     }
     return createPixmapCursor(display, sourcePixmap, maskPixmap, foreground_color,
@@ -72,9 +74,10 @@ Cursor XCreateGlyphCursor(Display* display, Font source_font, Font mask_font,
                           unsigned int source_char, unsigned int mask_char,
                           XColor* foreground_color, XColor* background_color) {
     // https://tronche.com/gui/x/xlib/pixmap-and-cursor/XCreateGlyphCursor.html
+    SET_X_SERVER_REQUEST(display, XCB_CREATE_GLYPH_CURSOR);
 //    if (!TTF_GlyphIsProvided(source_font, source_char)) {
 //        fprintf(stderr, "'source_char' is not defined in given font in XCreateGlyphCursor!\n");
-//        handleError(0, display, NULL, 0, BadValue, XCB_CREATE_GLYPH_CURSOR, 0);
+//        handleError(0, display, NULL, 0, BadValue, 0);
 //        return NULL;
 //    }
 //    SDL_Color color;
@@ -84,20 +87,20 @@ Cursor XCreateGlyphCursor(Display* display, Font source_font, Font mask_font,
 //    SDL_Surface* source = TTF_RenderGlyph_Blended(source_font, source_char, color);
 //    if (source == NULL) {
 //        fprintf(stderr, "TTF_RenderGlyph_Solid returned NULL for source: %s\n", TTF_GetError());
-//        handleOutOfMemory(0, display, 0, XCB_CREATE_GLYPH_CURSOR, 0);
+//        handleOutOfMemory(0, display, 0, 0);
 //        return NULL;
 //    }
 //    SDL_Surface* mask = None;
 //    if (mask_font != None) {
 //        if (!TTF_GlyphIsProvided(mask_font, mask_char)) {
 //            fprintf(stderr, "'mask_char' is not defined in given font in XCreateGlyphCursor!\n");
-//            handleError(0, display, NULL, 0, BadValue, XCB_CREATE_GLYPH_CURSOR, 0);
+//            handleError(0, display, NULL, 0, BadValue, 0);
 //            return NULL;
 //        }
 //        mask = TTF_RenderGlyph_Solid(mask_font, mask_char, color);
 //        if (mask == NULL) {
 //            fprintf(stderr, "TTF_RenderGlyph_Solid returned NULL for mask: %s\n", TTF_GetError());
-//            handleOutOfMemory(0, display, 0, XCB_CREATE_GLYPH_CURSOR, 0);
+//            handleOutOfMemory(0, display, 0, 0);
 //            return NULL;
 //        }
 //    }
@@ -112,12 +115,14 @@ Cursor XCreateGlyphCursor(Display* display, Font source_font, Font mask_font,
 
 void XFreeCursor(Display* display, Cursor cursor) {
     // https://tronche.com/gui/x/xlib/pixmap-and-cursor/XFreeCursor.html
+    SET_X_SERVER_REQUEST(display, XCB_FREE_CURSOR);
     SDL_DestroyTexture(cursor->texture);
     free(cursor);
 }
 
 void XDefineCursor(Display* display, Window window, Cursor cursor) {
     // https://tronche.com/gui/x/xlib/window/XDefineCursor.html
+//    SET_X_SERVER_REQUEST(display, XCB_);
     // TODO: This is not really implemented
     if (cursor == NULL) {
         SDL_SetCursor(SDL_GetDefaultCursor());

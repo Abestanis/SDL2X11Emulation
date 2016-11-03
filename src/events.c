@@ -7,6 +7,7 @@
 #include "window.h"
 #include "drawing.h"
 #include "inputMethod.h"
+#include "display.h"
 
 int eventFds[2];
 #define READ_EVENT_FD eventFds[0]
@@ -620,6 +621,7 @@ void updateWindowRenderTargets() {
 
 void XNextEvent(Display* display, XEvent* event_return) {
     // https://tronche.com/gui/x/xlib/event-handling/manipulating-event-queue/XNextEvent.html
+//    SET_X_SERVER_REQUEST(display, XCB_);
     SDL_Event event;
     Bool done = False;
     while (!done) {
@@ -702,8 +704,9 @@ Bool enqueueEvent(Display* display, XEvent* event) {
 
 Status XSendEvent(Display* display, Window window, Bool propagate, long event_mask, XEvent* event_send) {
     // https://tronche.com/gui/x/xlib/event-handling/XSendEvent.html
+    SET_X_SERVER_REQUEST(display, XCB_SEND_EVENT);
     //  We have to assume that window is our window
-    TYPE_CHECK(window, WINDOW, XCB_SEND_EVENT, display, 0);
+    TYPE_CHECK(window, WINDOW, display, 0);
     event_send->xany.send_event = True;
     return enqueueEvent(display, event_send) ? 1 : 0;
 }
@@ -739,6 +742,7 @@ Bool getEventQueueLength(int* qlen) {
 
 int XEventsQueued(Display *display, int mode) {
     // https://tronche.com/gui/x/xlib/event-handling/XEventsQueued.html
+//    SET_X_SERVER_REQUEST(display, XCB_);
     if (display->qlen == 0 && mode != QueuedAlready) {
         SDL_PumpEvents();
     }
@@ -747,5 +751,6 @@ int XEventsQueued(Display *display, int mode) {
 
 void XFlush(Display *display) {
     // https://tronche.com/gui/x/xlib/event-handling/XFlush.html
+//    SET_X_SERVER_REQUEST(display, XCB_);
 //    SDL_PumpEvents(); // TODO: This locks up the main thread
 }

@@ -3,9 +3,11 @@
 #include "X11/keysym.h"
 #include "keysymlist.h"
 #include "errors.h"
+#include "display.h"
 
 KeyCode XKeysymToKeycode(Display *display, KeySym keysym) {
     // https://tronche.com/gui/x/xlib/utilities/keyboard/XKeysymToKeycode.html
+//    SET_X_SERVER_REQUEST(display, XCB_);
     fprintf(stderr, "Hit unimplemented function %s.\n", __func__);
 }
 
@@ -48,6 +50,7 @@ char* XKeysymToString(KeySym keysym) {
 
 KeySym XKeycodeToKeysym(Display *display, KeyCode keycode, int index) {
     // https://tronche.com/gui/x/xlib/utilities/keyboard/XKeycodeToKeysym.html
+//    SET_X_SERVER_REQUEST(display, XCB_);
     if (keycode >= SDLK_0 && keycode <= SDLK_9) { // 0 - 9
         return XK_0 + (keycode - SDLK_0);
     } else if (keycode >= SDLK_z && keycode <= SDLK_z) { // A - Z
@@ -73,6 +76,7 @@ int XLookupString(XKeyEvent* event_struct, char* buffer_return, int bytes_buffer
 
 XModifierKeymap* XGetModifierMapping(Display* display) {
     // https://tronche.com/gui/x/xlib/input/XGetModifierMapping.html
+    SET_X_SERVER_REQUEST(display, XCB_GET_MODIFIER_MAPPING);
     static KeyCode MODIFIER_KEYS[] = {
         KMOD_SHIFT,
         KMOD_CTRL,
@@ -81,14 +85,14 @@ XModifierKeymap* XGetModifierMapping(Display* display) {
     static int NUM_MODIFIER_KEYS = sizeof(MODIFIER_KEYS) / sizeof(MODIFIER_KEYS[0]);
     XModifierKeymap* modifierKeymap = malloc(sizeof(XModifierKeymap));
     if (modifierKeymap == NULL) {
-        handleOutOfMemory(0, display, 0, XCB_QUERY_KEYMAP, 0);
+        handleOutOfMemory(0, display, 0, 0);
         return NULL;
     }
     modifierKeymap->max_keypermod = NUM_MODIFIER_KEYS;
     modifierKeymap->modifiermap = malloc(sizeof(KeyCode) * NUM_MODIFIER_KEYS);
     if (modifierKeymap->modifiermap == NULL) {
         free(modifierKeymap);
-        handleOutOfMemory(0, display, 0, XCB_QUERY_KEYMAP, 0);
+        handleOutOfMemory(0, display, 0, 0);
         return NULL;
     }
     memcpy(modifierKeymap->modifiermap, &MODIFIER_KEYS, sizeof(KeyCode) * NUM_MODIFIER_KEYS);
@@ -103,6 +107,7 @@ void XFreeModifiermap(XModifierKeymap* modmap) {
 
 void XGetInputFocus(Display *display, Window *focus_return, int *revert_to_return) {
     // https://tronche.com/gui/x/xlib/input/XGetInputFocus.html
+    SET_X_SERVER_REQUEST(display, XCB_GET_INPUT_FOCUS);
     fprintf(stderr, "Hit unimplemented function %s.\n", __func__);
     // TODO: This is temp
     *focus_return = (Window) PointerRoot;
@@ -111,16 +116,19 @@ void XGetInputFocus(Display *display, Window *focus_return, int *revert_to_retur
 
 void XSetInputFocus(Display *display, Window focus, int revert_to, Time time) {
     // https://tronche.com/gui/x/xlib/input/XSetInputFocus.html
+    SET_X_SERVER_REQUEST(display, XCB_SET_INPUT_FOCUS);
     fprintf(stderr, "Hit unimplemented function %s.\n", __func__);
 }
 
 int XGrabKeyboard(Display *display, Window grab_window, Bool owner_events, int pointer_mode, int keyboard_mode, Time time) {
     // https://tronche.com/gui/x/xlib/input/XGrabKeyboard.html
+    SET_X_SERVER_REQUEST(display, XCB_GRAB_KEYBOARD);
     fprintf(stderr, "Hit unimplemented function %s.\n", __func__);
 }
 
 void XUngrabKeyboard(Display *display, Time time) {
     // https://tronche.com/gui/x/xlib/input/XUngrabKeyboard.html
+    SET_X_SERVER_REQUEST(display, XCB_UNGRAB_KEYBOARD);
     fprintf(stderr, "Hit unimplemented function %s.\n", __func__);
 }
 

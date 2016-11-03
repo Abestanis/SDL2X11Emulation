@@ -8,6 +8,7 @@
 #include "events.h"
 #include "colors.h"
 #include "drawing.h"
+#include "display.h"
 #include <jni.h>
 #include <SDL_gpu.h>
 
@@ -105,6 +106,13 @@ Display* XOpenDisplay(char* display_name) {
     display->vendor = vendor;
     display->release = releaseVersion;
     display->request = XCB_NO_OPERATION;
+    display->next_event_serial_num = 1;
+    display->display_name = display_name;
+#if SDL_BYTEORDER == SDL_BIG_ENDIAN
+    display->byte_order = MSBFirst;
+#else
+    display->byte_order = LSBFirst;
+#endif
     display->default_screen = 0; // TODO: Investigate here, see SDL_GetCurrentVideoDisplay();
     display->nscreens = SDL_GetNumVideoDisplays();
     if (display->nscreens < 0) {
@@ -188,8 +196,9 @@ Display* XOpenDisplay(char* display_name) {
 
 void XBell(Display* display, int percent) {
     // https://tronche.com/gui/x/xlib/input/XBell.html
+    SET_X_SERVER_REQUEST(display, XCB_BELL);
     if (-100 > percent || 100 < percent) {
-        handleError(0, display, NULL, 0, BadValue, XCB_BELL, 0);
+        handleError(0, display, NULL, 0, BadValue, 0);
     } else {
         // TODO: Should it be implemented with audio or haptic feedback?
         printf("BLING!\n");
@@ -198,6 +207,7 @@ void XBell(Display* display, int percent) {
 
 void XSync(Display *display, Bool discard) {
     // https://tronche.com/gui/x/xlib/event-handling/XSync.html
+//    SET_X_SERVER_REQUEST(display, XCB_);
     fprintf(stderr, "Hit unimplemented function %s.\n", __func__);
     drawWindowDataToScreen();
 }
@@ -216,6 +226,7 @@ void XConvertSelection(Display* display, Atom selection, Atom target, Atom prope
 
 void XSetSelectionOwner(Display *display, Atom selection, Window owner, Time time) {
     // https://tronche.com/gui/x/xlib/window-information/XSetSelectionOwner.html
+    SET_X_SERVER_REQUEST(display, XCB_SET_SELECTION_OWNER);
     fprintf(stderr, "Hit unimplemented function %s.\n", __func__);
 }
 
@@ -226,41 +237,50 @@ int (*XSynchronize(Display *display, Bool onoff))() {
 
 void XNoOp(Display *display) {
     // https://tronche.com/gui/x/xlib/display/XNoOp.html
+    SET_X_SERVER_REQUEST(display, XCB_NO_OPERATION);
 //    fprintf(stderr, "Hit unimplemented function %s.\n", __func__);
 }
 
 void XGrabServer(Display *display) {
     // https://tronche.com/gui/x/xlib/window-and-session-manager/XGrabServer.html
+    SET_X_SERVER_REQUEST(display, XCB_GRAB_SERVER);
     fprintf(stderr, "Hit unimplemented function %s.\n", __func__);
 }
 
 void XUngrabServer(Display *display) {
     // https://tronche.com/gui/x/xlib/window-and-session-manager/XUngrabServer.html
+    SET_X_SERVER_REQUEST(display, XCB_UNGRAB_SERVER);
     fprintf(stderr, "Hit unimplemented function %s.\n", __func__);
 }
 
 XHostAddress *XListHosts(Display *display, int *nhosts_return, Bool *state_return) {
     // https://tronche.com/gui/x/xlib/window-and-session-manager/controlling-host-access/XListHosts.html
+    SET_X_SERVER_REQUEST(display, XCB_LIST_HOSTS);
     fprintf(stderr, "Hit unimplemented function %s.\n", __func__);
 }
 
+
 void XSetWMHints(Display *display, Window w, XWMHints *wmhints) {
     // https://tronche.com/gui/x/xlib/ICC/client-to-window-manager/XSetWMHints.html
+//    SET_X_SERVER_REQUEST(display, XCB_);
     fprintf(stderr, "Hit unimplemented function %s.\n", __func__);
 }
 
 void XSetCommand(Display *display, Window w, char **argv, int argc) {
     // https://tronche.com/gui/x/xlib/ICC/client-to-session-manager/XSetCommand.html
+//    SET_X_SERVER_REQUEST(display, XCB_);
     fprintf(stderr, "Hit unimplemented function %s.\n", __func__);
 }
 
 void XSetWMNormalHints(Display *display, Window w, XSizeHints *hints) {
     // https://tronche.com/gui/x/xlib/ICC/client-to-window-manager/XSetWMNormalHints.html
+//    SET_X_SERVER_REQUEST(display, XCB_);
     fprintf(stderr, "Hit unimplemented function %s.\n", __func__);
 }
 
 void XSetClassHint(Display *display, Window w, XClassHint *class_hints) {
     // https://tronche.com/gui/x/xlib/ICC/client-to-window-manager/XSetClassHint.html
+//    SET_X_SERVER_REQUEST(display, XCB_);
     fprintf(stderr, "Hit unimplemented function %s.\n", __func__);
 }
 
@@ -271,5 +291,6 @@ Status XStringListToTextProperty(char **list, int count, XTextProperty *text_pro
 
 void XSetWMClientMachine(Display *display, Window w, XTextProperty *text_prop) {
     // https://tronche.com/gui/x/xlib/ICC/client-to-session-manager/XSetWMClientMachine.html
+//    SET_X_SERVER_REQUEST(display, XCB_);
     fprintf(stderr, "Hit unimplemented function %s.\n", __func__);
 }

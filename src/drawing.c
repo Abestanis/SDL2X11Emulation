@@ -95,43 +95,48 @@ GPU_Target* getWindowRenderTarget(Window window) {
 
 void XFillPolygon(Display* display, Drawable d, GC gc, XPoint *points, int npoints, int shape, int mode) {
     // https://tronche.com/gui/x/xlib/graphics/filling-areas/XFillPolygon.html
+    SET_X_SERVER_REQUEST(display, XCB_FILL_POLY);
     fprintf(stderr, "Hit unimplemented function %s.\n", __func__);
 }
 
 void XFillArc(Display *display, Drawable d, GC gc, int x, int y, unsigned int width, unsigned int height, int angle1, int angle2) {
     // https://tronche.com/gui/x/xlib/graphics/filling-areas/XFillArc.html
+    SET_X_SERVER_REQUEST(display, XCB_POLY_FILL_ARC);
     fprintf(stderr, "Hit unimplemented function %s.\n", __func__);
 }
 
 void XDrawArc(Display *display, Drawable d, GC gc, int x, int y, unsigned int width, unsigned int height, int angle1, int angle2) {
     // https://tronche.com/gui/x/xlib/graphics/drawing/XDrawArc.html
+    SET_X_SERVER_REQUEST(display, XCB_POLY_ARC);
     fprintf(stderr, "Hit unimplemented function %s.\n", __func__);
 }
 
 void XCopyPlane(Display *display, Drawable src, Drawable dest, GC gc, int src_x, int src_y, unsigned int width, unsigned int height, int dest_x, int dest_y, unsigned long plane) {
     // https://tronche.com/gui/x/xlib/graphics/XCopyPlane.html
+    SET_X_SERVER_REQUEST(display, XCB_COPY_PLANE);
     fprintf(stderr, "Hit unimplemented function %s.\n", __func__);
 }
 
 void XDrawLines(Display *display, Drawable d, GC gc, XPoint *points, int npoints, int mode) {
     // https://tronche.com/gui/x/xlib/graphics/drawing/XDrawLines.html
-    TYPE_CHECK(d, DRAWABLE, XCB_POLY_LINE, display, );
+    SET_X_SERVER_REQUEST(display, XCB_POLY_LINE);
+    TYPE_CHECK(d, DRAWABLE, display);
     fprintf(stderr, "%s: Drawing on %p\n", __func__, d);
     if (npoints <= 1) {
         fprintf(stderr, "Invalid number of points in %s: %d\n", __func__, npoints);
-        handleError(0, display, NULL, 0, BadValue, XCB_POLY_LINE, 0);
+        handleError(0, display, NULL, 0, BadValue, 0);
         return;
     }
     if (mode != CoordModeOrigin && mode != CoordModePrevious) {
         fprintf(stderr, "Bad mode give to %s: %d\n", __func__, mode);
-        handleError(0, display, NULL, 0, BadValue, XCB_POLY_LINE, 0);
+        handleError(0, display, NULL, 0, BadValue, 0);
         return;
     }
     GPU_Target* renderTarget;
     GET_RENDER_TARGET(d, renderTarget);
     if (renderTarget == NULL) {
         fprintf(stderr, "Failed to get the render target of %p in %s\n", d, __func__);
-        handleError(0, display, d, 0, BadDrawable, XCB_POLY_LINE, 0);
+        handleError(0, display, d, 0, BadDrawable, 0);
         return;
     }
     fprintf(stderr, "%s: Drawing on render target %p\n", __func__, renderTarget);
@@ -161,13 +166,14 @@ void XDrawLines(Display *display, Drawable d, GC gc, XPoint *points, int npoints
 void XCopyArea(Display* display, Drawable src, Drawable dest, GC gc, int src_x, int src_y,
                unsigned int width, unsigned int height, int dest_x, int dest_y) {
     // https://tronche.com/gui/x/xlib/graphics/XCopyArea.html
-    TYPE_CHECK(src, DRAWABLE, XCB_COPY_AREA, display, );
-    TYPE_CHECK(dest, DRAWABLE, XCB_COPY_AREA, display, );
+    SET_X_SERVER_REQUEST(display, XCB_COPY_AREA);
+    TYPE_CHECK(src, DRAWABLE, display);
+    TYPE_CHECK(dest, DRAWABLE, display);
     fprintf(stderr, "%s: Copy area from %p to %p\n", __func__, src, dest);
     if (IS_TYPE(src, WINDOW)) {
         if (IS_INPUT_ONLY(src)) {
             fprintf(stderr, "BadMatch: Got input only window as the source in %s!\n", __func__);
-            handleError(0, display, src, 0, BadMatch, XCB_COPY_AREA, 0);
+            handleError(0, display, src, 0, BadMatch, 0);
             return;
         } else if (GET_WINDOW_STRUCT(src)->mapState == UnMapped && GET_WINDOW_STRUCT(src)->unmappedContent == NULL) {
             return;
@@ -175,7 +181,7 @@ void XCopyArea(Display* display, Drawable src, Drawable dest, GC gc, int src_x, 
     }
     if (IS_TYPE(dest, WINDOW) && IS_INPUT_ONLY(dest)) {
         fprintf(stderr, "BadMatch: Got input only window as the destination in %s!\n", __func__);
-        handleError(0, display, dest, 0, BadMatch, XCB_COPY_AREA, 0);
+        handleError(0, display, dest, 0, BadMatch, 0);
         return;
     }
     GPU_Target* sourceTarget;
@@ -183,14 +189,14 @@ void XCopyArea(Display* display, Drawable src, Drawable dest, GC gc, int src_x, 
     if (sourceTarget == NULL) {
         fprintf(stderr, "BadMatch: Failed to get render target of source drawable %p in %s!\n",
                 src, __func__);
-        handleError(0, display, src, 0, BadMatch, XCB_COPY_AREA, 0);
+        handleError(0, display, src, 0, BadMatch, 0);
         return;
     }
     GPU_Image* sourceImage = GPU_CopyImageFromTarget(sourceTarget);
     if (sourceImage == NULL) {
         fprintf(stderr, "BadMatch: Failed to get the source image from the source target of the "
                 "source drawable %p in %s!\n", src, __func__);
-        handleError(0, display, src, 0, BadMatch, XCB_COPY_AREA, 0);
+        handleError(0, display, src, 0, BadMatch, 0);
         return;
     }
     GPU_Target* renderDest;
@@ -198,7 +204,7 @@ void XCopyArea(Display* display, Drawable src, Drawable dest, GC gc, int src_x, 
     if (renderDest == NULL) {
         fprintf(stderr, "BadMatch: Failed to get render target of destination drawable %p in %s!\n",
                 dest, __func__);
-        handleError(0, display, dest, 0, BadMatch, XCB_COPY_AREA, 0);
+        handleError(0, display, dest, 0, BadMatch, 0);
         return;
     }
     fprintf(stderr, "%s: Copy area from target %p to target %p\n", __func__, sourceTarget, renderDest);
@@ -219,13 +225,14 @@ void XCopyArea(Display* display, Drawable src, Drawable dest, GC gc, int src_x, 
 
 void XDrawRectangle(Display *display, Drawable d, GC gc, int x, int y, unsigned int width, int height) {
     // https://tronche.com/gui/x/xlib/graphics/drawing/XDrawRectangle.html
-    TYPE_CHECK(d, DRAWABLE, XCB_POLY_RECTANGLE, display, );
+    SET_X_SERVER_REQUEST(display, XCB_POLY_RECTANGLE);
+    TYPE_CHECK(d, DRAWABLE, display);
     fprintf(stderr, "%s: Drawing on %p\n", __func__, d);
     GPU_Target* renderTarget;
     GET_RENDER_TARGET(d, renderTarget);
     if (renderTarget == NULL) {
         fprintf(stderr, "Failed to get the render target of %p in %s\n", d, __func__);
-        handleError(0, display, d, 0, BadDrawable, XCB_POLY_RECTANGLE, 0);
+        handleError(0, display, d, 0, BadDrawable, 0);
         return;
     }
     GPU_SetLineThickness(gc->line_width);
@@ -244,18 +251,19 @@ void XDrawRectangle(Display *display, Drawable d, GC gc, int x, int y, unsigned 
 
 void XFillRectangles(Display *display, Drawable d, GC gc, XRectangle *rectangles, int nrectangles) {
     // https://tronche.com/gui/x/xlib/graphics/filling-areas/XFillRectangles.html
-    TYPE_CHECK(d, DRAWABLE, XCB_POLY_FILL_RECTANGLE, display, );
+    SET_X_SERVER_REQUEST(display, XCB_POLY_FILL_RECTANGLE);
+    TYPE_CHECK(d, DRAWABLE, display);
     fprintf(stderr, "%s: Drawing on %p\n", __func__, d);
     if (nrectangles < 1) {
         fprintf(stderr, "Invalid number of rectangles in %s: %d\n", __func__, nrectangles);
-        handleError(0, display, NULL, 0, BadValue, XCB_POLY_FILL_RECTANGLE, 0);
+        handleError(0, display, NULL, 0, BadValue, 0);
         return;
     }
     GPU_Target* renderTarget;
     GET_RENDER_TARGET(d, renderTarget);
     if (renderTarget == NULL) {
         fprintf(stderr, "Failed to get the render target of %p in %s\n", d, __func__);
-        handleError(0, display, d, 0, BadDrawable, XCB_POLY_FILL_RECTANGLE, 0);
+        handleError(0, display, d, 0, BadDrawable, 0);
         return;
     }
     if (renderTarget->context != NULL) {

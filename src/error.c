@@ -53,19 +53,18 @@ int default_error_handler(Display* display, XErrorEvent* event) {
     abort();
 }
 
-inline void handleOutOfMemory(int type, Display* display, unsigned long serial,
-                       unsigned char request_code, unsigned char minor_code) {
-    handleError(type, display, NULL, serial, BadAlloc, request_code, minor_code);
+inline void handleOutOfMemory(int type, Display* display, unsigned long serial, unsigned char minor_code) {
+    handleError(type, display, NULL, serial, BadAlloc, minor_code);
 }
 void handleError(int type, Display* display, XID resourceId, unsigned long serial,
-                 unsigned char error_code, unsigned char request_code, unsigned char minor_code) {
+                 unsigned char error_code, unsigned char minor_code) {
     XErrorEvent event;
     event.type = type;
     event.display = display;
     event.resourceid = resourceId;
     event.serial = serial;
     event.error_code = error_code;
-    event.request_code = request_code;
+    event.request_code = (unsigned char) display->request;
     event.minor_code = minor_code;
     error_handler(display, &event);
 }

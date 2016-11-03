@@ -209,7 +209,7 @@ void XSync(Display *display, Bool discard) {
     // https://tronche.com/gui/x/xlib/event-handling/XSync.html
 //    SET_X_SERVER_REQUEST(display, XCB_);
     fprintf(stderr, "Hit unimplemented function %s.\n", __func__);
-    drawWindowDataToScreen();
+    flipScreen();
 }
 
 GContext XGContextFromGC(GC gc) {

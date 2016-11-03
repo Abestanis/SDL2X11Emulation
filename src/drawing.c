@@ -6,7 +6,10 @@
 #include "SDL_gpu.h"
 #include "display.h"
 
-void drawWindowDataToScreen() {
+/*
+ * Flip all screen children and cause them to draw their content to the screen.
+ */
+void flipScreen() {
     Window* children = GET_CHILDREN(SCREEN_WINDOW);
     size_t i;
     for (i = 0; i < GET_WINDOW_STRUCT(SCREEN_WINDOW)->childSpace; i++) {

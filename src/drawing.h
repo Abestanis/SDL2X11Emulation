@@ -29,8 +29,8 @@ if (IS_TYPE(drawable, WINDOW)) {\
 #  define GET_BLUE_FROM_COLOR(color)  ((Uint8) ((color >> 16) & 0xFF))
 #  define GET_ALPHA_FROM_COLOR(color) ((Uint8) ((color >> 24) & 0xFF))
 #endif
-void drawWindowDataToScreen(void);
 
 GPU_Target* getWindowRenderTarget(Window window);
+void flipScreen(void);
 
 #endif /* _DRAWING_H_ */

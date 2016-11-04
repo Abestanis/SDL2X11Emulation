@@ -13,10 +13,12 @@
 // TODO: Convert text decoding to Utf-8
 // http://www.cprogramming.com/tutorial/unicode.html
 
+#define FONT_SIZE 18
+
 Font XLoadFont(Display* display, char* name) {
     // https://tronche.com/gui/x/xlib/graphics/font-metrics/XLoadFont.html
-    int fontSize = 18;
     SET_X_SERVER_REQUEST(display, XCB_OPEN_FONT);
+    int fontSize = FONT_SIZE;
     // TODO: Remove static font size
     // TODO: Implement pattern matching
     // TODO: This function is called with "fixed" and "cursor" as a name
@@ -76,7 +78,7 @@ char* getFontXLFDName(XFontStruct* font_struct) {
     char* weightName = fontStyle & TTF_STYLE_BOLD ? "bold" : "medium";
     char slant = fontStyle & TTF_STYLE_ITALIC ? 'i' : 'r';
     char* setWidth = "normal";
-    int pointSize = 18 * 10;
+    int pointSize = FONT_SIZE * 10;
     char spacing = TTF_FontFaceIsFixedWidth(font_struct->fid) ? 'm' : 'p';
     short averageWidth = font_struct->max_bounds.width;
     char* charset = "Utf";

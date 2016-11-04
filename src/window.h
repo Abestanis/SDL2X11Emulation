@@ -75,6 +75,5 @@ extern Window SCREEN_WINDOW;
 }
 
 #define HAS_VALUE(valueMask, value) (value & valueMask)
-#define DEFAULT_TITLE "Untitled"
 
 #endif /* _WINDOW_H_ */

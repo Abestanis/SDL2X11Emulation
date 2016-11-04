@@ -200,8 +200,7 @@ void XMapWindow(Display* display, Window window) {
         if (windowStruct->borderWidth == 0) {
             flags |= SDL_WINDOW_BORDERLESS;
         }
-        SDL_Window* sdlWindow = SDL_CreateWindow(windowStruct->windowName != NULL ?
-                                                 windowStruct->windowName : DEFAULT_TITLE,
+        SDL_Window* sdlWindow = SDL_CreateWindow(windowStruct->windowName,
                                                  windowStruct->x, windowStruct->y,
                                                  windowStruct->w, windowStruct->h, flags);
         if (sdlWindow == NULL) {

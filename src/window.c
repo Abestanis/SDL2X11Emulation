@@ -44,35 +44,35 @@ Window XCreateWindow(Display* display, Window parent, int x, int y, unsigned int
     }
     windowID->type = WINDOW;
     windowID->dataPointer = windowStruct;
-    // TODO: Window struct not initialized
+    initWindowStruct(windowStruct, x, y, width, height, visual, NULL, inputOnly, 0, NULL);
+    windowStruct->depth = depth;
+    windowStruct->borderWidth = border_width;
+    if (!addChildToWindow(parent, windowID)) {
+        fprintf(stderr, "Out of memory: Could not increase size of parent's child list in XCreateWindow!\n");
+        handleOutOfMemory(0, display, 0, 0);
+        XDestroyWindow(display, windowID);
+        return NULL;
+    }
     int visualClass;
 #if defined(__cplusplus) || defined(c_plusplus)
     visualClass = visual->c_class;
 #else
     visualClass = visual->class;
 #endif
-    Colormap windowColormap = (Colormap) XCreateColormap(display, windowID, visual,
+    windowStruct->colormap = (Colormap) XCreateColormap(display, windowID, visual,
                                                          visualClass == StaticGray ||
                                                          visualClass == StaticColor ||
                                                          visualClass == TrueColor ?
                                                          AllocAll : AllocNone);
-    if (windowColormap == NULL) {
+    display->request = XCB_CREATE_WINDOW;
+    if (windowStruct->colormap == NULL) {
         fprintf(stderr, "Out of memory: Could not allocate the window colormap in XCreateWindow!\n");
-        handleOutOfMemory(0, display, 0, XCB_CREATE_WINDOW, 0);
+        handleOutOfMemory(0, display, 0, 0);
         free(windowStruct);
         free(windowID);
         return NULL;
     }
     // FIXME: Warning: Colormap is not initialized!
-    // TODO: depth? border_width?
-    initWindowStruct(windowStruct, x, y, width, height, visual, windowColormap, inputOnly, 0, NULL);
-    windowStruct->depth = depth;
-    windowStruct->borderWidth = border_width;
-    if (!addChildToWindow(parent, windowID)) {
-        fprintf(stderr, "Out of memory: Could not increase size of parent's child list in XCreateWindow!\n");
-        XDestroyWindow(display, windowID);
-        return NULL;
-    }
     if (valueMask != 0) {
         XChangeWindowAttributes(display, windowID, valueMask, attributes);
     }

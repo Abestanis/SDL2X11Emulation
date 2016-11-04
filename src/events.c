@@ -558,6 +558,7 @@ int convertEvent(Display* display, SDL_Event* sdlEvent, XEvent* xEvent) {
             GET_WINDOW_POS(eventWindow, xEvent->xexpose.x, xEvent->xexpose.y);
             GET_WINDOW_DIMS(eventWindow, xEvent->xexpose.width, xEvent->xexpose.height);
             xEvent->xexpose.count = 0;
+            break;
         default:
             if (sdlEvent->type >= SDL_USEREVENT && sdlEvent->type <= SDL_LASTEVENT) {
                 if (sdlEvent->user.code == SEND_EVENT_CODE) {

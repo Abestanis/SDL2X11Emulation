@@ -124,10 +124,10 @@ void XConfigureWindow(Display* display, Window window, unsigned int value_mask,
         int width, height;
         GET_WINDOW_DIMS(window, width, height);
         if (HAS_VALUE(value_mask, CWWidth)) {
-            width = values->x;
+            width = values->width;
         }
         if (HAS_VALUE(value_mask, CWHeight)) {
-            height = values->y;
+            height = values->height;
         }
         if (isMappedTopLevelWindow) {
             SDL_SetWindowSize(windowStruct->sdlWindow, width, height);

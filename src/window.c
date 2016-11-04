@@ -738,9 +738,8 @@ Status XGetWindowAttributes(Display* display, Window window,
             window_attributes_return->map_state = IsViewable;
         }
     }
-    // TODO: Not hardcode
-    window_attributes_return->depth = 32;
-    window_attributes_return->colormap = 0;
+    window_attributes_return->depth = SDL_SURFACE_DEPTH;
+    window_attributes_return->colormap = GET_WINDOW_STRUCT(window)->colormap;
     return 1;
 }
 

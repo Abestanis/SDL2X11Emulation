@@ -621,7 +621,7 @@ void XNextEvent(Display* display, XEvent* event_return) {
                 #endif
                 fprintf(stderr, "Got unknown SDL event %d!\n", event.type);
                 event_return->type = Expose;
-                event_return->xany.serial = 0;
+                event_return->xany.serial = display->next_event_serial_num;
                 event_return->xany.display = display;
                 event_return->xany.send_event = False;
                 event_return->xany.type = Expose;
@@ -638,6 +638,7 @@ void XNextEvent(Display* display, XEvent* event_return) {
                 event_return->xexpose.count = 0;
                 done = True;
             }
+            display->next_event_serial_num++;
             tmpVar = False;
         } else {
             fprintf(stderr, "SDL_WaitEvent failed: %s, retrying...\n", SDL_GetError());

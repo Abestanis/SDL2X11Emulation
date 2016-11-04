@@ -52,7 +52,7 @@ Status XInitImage(XImage* image) {
     return 1;
 }
 
-inline Status _XInitImageFuncPtrs(XImage *image) {
+Status _XInitImageFuncPtrs(XImage *image) {
     return XInitImage(image);
 }
 

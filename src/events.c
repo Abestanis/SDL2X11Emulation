@@ -121,7 +121,10 @@ int convertEvent(Display* display, SDL_Event* sdlEvent, XEvent* xEvent) {
     Bool sendEvent = False;
     Window eventWindow = None;
     int type = -1;
-    XEvent* allocEvent;
+#define FILL_STANDARD_VALUES(eventStruct) xEvent->eventStruct.type = type;\
+    xEvent->eventStruct.serial = display->next_event_serial_num;\
+    xEvent->eventStruct.send_event = sendEvent;\
+    xEvent->eventStruct.display = display
     //TODO: this needs to update the window attributes
     switch (sdlEvent->type) {
         case SDL_KEYDOWN:
@@ -132,10 +135,7 @@ int convertEvent(Display* display, SDL_Event* sdlEvent, XEvent* xEvent) {
                 fprintf(stderr, "SDL_KEYUP\n");
                 type = KeyRelease;
             }
-            xEvent->xkey.type = type;
-            xEvent->xkey.serial = 0;
-            xEvent->xkey.send_event = sendEvent;
-            xEvent->xkey.display = display;
+            FILL_STANDARD_VALUES(xkey);
             xEvent->xkey.root = getWindowFromId(sdlEvent->key.windowID);
             eventWindow = keyboardFocus == NULL ? xEvent->xkey.root : keyboardFocus;
             xEvent->xkey.window = eventWindow;
@@ -161,10 +161,7 @@ int convertEvent(Display* display, SDL_Event* sdlEvent, XEvent* xEvent) {
                     xEvent->xbutton.root = SCREEN_WINDOW;
                 }
                 eventWindow = getContainingWindow(xEvent->xcrossing.root, sdlEvent->button.x, sdlEvent->button.y);
-                xEvent->xcrossing.type = type;
-                xEvent->xcrossing.serial = 0;
-                xEvent->xcrossing.send_event = sendEvent;
-                xEvent->xcrossing.display = display;
+                FILL_STANDARD_VALUES(xcrossing);
                 xEvent->xcrossing.window = eventWindow;
                 // TODO: Check if pointer is in child
                 xEvent->xcrossing.subwindow = None;
@@ -190,10 +187,7 @@ int convertEvent(Display* display, SDL_Event* sdlEvent, XEvent* xEvent) {
                 fprintf(stderr, "SDL_MOUSEBUTTONUP\n");
                 type = ButtonRelease;
             }
-            xEvent->xbutton.type = type;
-            xEvent->xbutton.serial = 0;
-            xEvent->xbutton.send_event = sendEvent;
-            xEvent->xbutton.display = display;
+            FILL_STANDARD_VALUES(xbutton);
             xEvent->xbutton.root = getWindowFromId(sdlEvent->button.windowID);
             if (xEvent->xbutton.root == NULL) {
                 xEvent->xbutton.root = SCREEN_WINDOW;
@@ -226,15 +220,12 @@ int convertEvent(Display* display, SDL_Event* sdlEvent, XEvent* xEvent) {
         case SDL_MOUSEMOTION:
             fprintf(stderr, "SDL_MOUSEMOTION\n");
             type = MotionNotify;
-            xEvent->xmotion.type = type;
-            xEvent->xmotion.serial = 0;
-            xEvent->xmotion.send_event = sendEvent;
-            xEvent->xmotion.display = display;
+            FILL_STANDARD_VALUES(xmotion);
             xEvent->xmotion.root = getWindowFromId(sdlEvent->motion.windowID);
             if (xEvent->xbutton.root == NULL) {
                 xEvent->xbutton.root = SCREEN_WINDOW;
             }
-            eventWindow =  getContainingWindow(xEvent->xbutton.root, sdlEvent->motion.x, sdlEvent->motion.y);
+            eventWindow = getContainingWindow(xEvent->xbutton.root, sdlEvent->motion.x, sdlEvent->motion.y);
             xEvent->xmotion.window = eventWindow; // The event window is always the window the mouse is in.
             if (xEvent->xmotion.window == NULL) {
                 xEvent->xmotion.window = SCREEN_WINDOW;
@@ -255,10 +246,7 @@ int convertEvent(Display* display, SDL_Event* sdlEvent, XEvent* xEvent) {
                 case SDL_WINDOWEVENT_SHOWN:
                     fprintf(stderr, "Window %d shown\n", sdlEvent->window.windowID);
                     type = MapNotify;
-                    xEvent->xmap.type = type;
-                    xEvent->xmap.serial = 0;
-                    xEvent->xmap.send_event = sendEvent;
-                    xEvent->xmap.display = display;
+                    FILL_STANDARD_VALUES(xmap);
                     xEvent->xmap.window = eventWindow;
                     xEvent->xmap.event = xEvent->xmap.window;
                     xEvent->xmap.override_redirect = False;
@@ -266,10 +254,7 @@ int convertEvent(Display* display, SDL_Event* sdlEvent, XEvent* xEvent) {
                 case SDL_WINDOWEVENT_HIDDEN:
                     fprintf(stderr, "Window %d hidden\n", sdlEvent->window.windowID);
                     type = UnmapNotify;
-                    xEvent->xunmap.type = type;
-                    xEvent->xunmap.serial = 0;
-                    xEvent->xunmap.send_event = sendEvent;
-                    xEvent->xunmap.display = display;
+                    FILL_STANDARD_VALUES(xunmap);
                     xEvent->xunmap.window = eventWindow;
                     xEvent->xunmap.event = xEvent->xunmap.window;
                     xEvent->xunmap.from_configure = False;
@@ -295,10 +280,7 @@ int convertEvent(Display* display, SDL_Event* sdlEvent, XEvent* xEvent) {
                                 sdlEvent->window.data2);
                     }
                     type = ConfigureNotify;
-                    xEvent->xconfigure.type = type;
-                    xEvent->xconfigure.serial = 0;
-                    xEvent->xconfigure.send_event = sendEvent;
-                    xEvent->xconfigure.display = display;
+                    FILL_STANDARD_VALUES(xconfigure);
                     xEvent->xconfigure.event = eventWindow;
                     xEvent->xconfigure.window = xEvent->xconfigure.event;
                     if (sdlEvent->window.event == SDL_WINDOWEVENT_MOVED) {
@@ -348,10 +330,7 @@ int convertEvent(Display* display, SDL_Event* sdlEvent, XEvent* xEvent) {
                         fprintf(stderr, "Mouse left window %d\n", sdlEvent->window.windowID);
                         type = LeaveNotify;
                     }
-                    xEvent->xcrossing.type = type;
-                    xEvent->xcrossing.serial = 0;
-                    xEvent->xcrossing.send_event = sendEvent;
-                    xEvent->xcrossing.display = display;
+                    FILL_STANDARD_VALUES(xcrossing);
                     xEvent->xcrossing.root = eventWindow;
                     xEvent->xcrossing.window = xEvent->xcrossing.root;
                     // TODO: Check if pointer is in child
@@ -382,10 +361,7 @@ int convertEvent(Display* display, SDL_Event* sdlEvent, XEvent* xEvent) {
                                 sdlEvent->window.windowID);
                         type = FocusOut;
                     }
-                    xEvent->xfocus.type = type;
-                    xEvent->xfocus.serial = 0;
-                    xEvent->xfocus.send_event = sendEvent;
-                    xEvent->xfocus.display = display;
+                    FILL_STANDARD_VALUES(xfocus);
                     xEvent->xfocus.window = eventWindow;
                     xEvent->xfocus.mode = NotifyNormal;
                     xEvent->xfocus.detail = NotifyAncestor;
@@ -450,10 +426,7 @@ int convertEvent(Display* display, SDL_Event* sdlEvent, XEvent* xEvent) {
             inputMethodSetCurrentText(sdlEvent->text.text);
             // Send synthetic key down and up events with keycode = 0
             type = KeyPress;
-            xEvent->xkey.type = type;
-            xEvent->xkey.serial = 0;
-            xEvent->xkey.send_event = sendEvent;
-            xEvent->xkey.display = display;
+            FILL_STANDARD_VALUES(xkey);
             xEvent->xkey.root = getWindowFromId(sdlEvent->text.windowID);
             eventWindow = keyboardFocus == NULL ? xEvent->xkey.root : keyboardFocus;
             xEvent->xkey.window = eventWindow;
@@ -528,10 +501,7 @@ int convertEvent(Display* display, SDL_Event* sdlEvent, XEvent* xEvent) {
             if (sdlEvent->type == SDL_FINGERUP) {
                 type = ButtonRelease;
             }
-            xEvent->xbutton.type = type;
-            xEvent->xbutton.serial = 0;
-            xEvent->xbutton.send_event = sendEvent;
-            xEvent->xbutton.display = display;
+            FILL_STANDARD_VALUES(xbutton);
             eventWindow = SCREEN_WINDOW;
             xEvent->xbutton.root = eventWindow;
             xEvent->xbutton.window = xEvent->xbutton.root; // The event window is always the SDL Window.
@@ -549,10 +519,7 @@ int convertEvent(Display* display, SDL_Event* sdlEvent, XEvent* xEvent) {
             fprintf(stderr, "SDL_FINGERMOTION\n");
             return -1;
             type = MotionNotify;
-            xEvent->xmotion.type = type;
-            xEvent->xmotion.serial = 0;
-            xEvent->xmotion.send_event = sendEvent;
-            xEvent->xmotion.display = display;
+            FILL_STANDARD_VALUES(xmotion);
             eventWindow = SCREEN_WINDOW;
             xEvent->xmotion.root = eventWindow;
             xEvent->xmotion.window = xEvent->xmotion.root; // The event window is always the SDL Window.
@@ -586,10 +553,7 @@ int convertEvent(Display* display, SDL_Event* sdlEvent, XEvent* xEvent) {
             updateWindowRenderTargets();
             type = Expose;
             eventWindow = *GET_CHILDREN(SCREEN_WINDOW);
-            xEvent->xexpose.type = type;
-            xEvent->xexpose.serial = 0;
-            xEvent->xexpose.send_event = False;
-            xEvent->xexpose.display = display;
+            FILL_STANDARD_VALUES(xexpose);
             xEvent->xexpose.window = eventWindow;
             GET_WINDOW_POS(eventWindow, xEvent->xexpose.x, xEvent->xexpose.y);
             GET_WINDOW_DIMS(eventWindow, xEvent->xexpose.width, xEvent->xexpose.height);
@@ -606,13 +570,12 @@ int convertEvent(Display* display, SDL_Event* sdlEvent, XEvent* xEvent) {
             }
             return -1;
     }
-    xEvent->xany.serial = 0;
-    xEvent->xany.display = display;
-    xEvent->xany.send_event = sendEvent;
-    xEvent->xany.type = type;
+    FILL_STANDARD_VALUES(xany);
     xEvent->xany.window = eventWindow;
     xEvent->type = type;
     return 0;
+#undef FILL_STANDARD_VALUES
+}
 
 void updateWindowRenderTargets() {
     size_t i;

@@ -314,7 +314,7 @@ typedef struct _XDisplay {
 //    XID resource_id;	/* allocator current ID */
 //    int resource_shift;	/* allocator shift to correct bits */
 //    XID (*resource_alloc)(); /* allocator function */
-//    int byte_order;		/* screen byte order, LSBFirst, MSBFirst */
+    int byte_order;		/* screen byte order, LSBFirst, MSBFirst */
 //    int bitmap_unit;	/* padding and data requirements */
 //    int bitmap_pad;		/* padding requirements on bitmaps */
 //    int bitmap_bit_order;	/* LeastSignificant or MostSignificant */
@@ -332,7 +332,7 @@ typedef struct _XDisplay {
 //    unsigned max_request_size; /* maximum number 32 bit words in request*/
 //    struct _XrmHashBucketRec *db;
 //    int (*synchandler)();	/* Synchronization handler */
-//    char *display_name;	/* "host:display" string used on this connect*/
+    char *display_name;	/* "host:display" string used on this connect*/
     int default_screen;	/* default screen for operations */
     int nscreens;		/* number of screens on this server*/
     Screen *screens;	/* pointer to list of screens */
@@ -381,7 +381,7 @@ typedef struct _XDisplay {
 //    } cms;
 //    struct _XIMFilter *im_filters;
 //    struct _XSQEvent *qfree; /* unallocated event queue elements */
-//    unsigned long next_event_serial_num; /* inserted into next queue elt */
+    unsigned long next_event_serial_num; /* inserted into next queue elt */
 //    int (*savedsynchandler)(); /* user synchandler when Xlib usurps */
 } Display;
 
@@ -554,7 +554,7 @@ typedef struct {
 
 typedef struct {
 //    int type;
-//    unsigned long serial;	/* # of last request processed by server */
+    unsigned long serial;	/* # of last request processed by server */
 //    Bool send_event;	/* true if this came from a SendEvent request */
 //    Display *display;	/* Display the event was read from */
 //    Drawable drawable;
@@ -738,7 +738,7 @@ typedef struct {
 
 typedef struct {
 //    int type;
-//    unsigned long serial;	/* # of last request processed by server */
+    unsigned long serial;	/* # of last request processed by server */
 //    Bool send_event;	/* true if this came from a SendEvent request */
     Display *display;	/* Display the event was read from */
 //    Window owner;
@@ -778,7 +778,7 @@ typedef struct {
 
 typedef struct {
 //    int type;
-//    unsigned long serial;	/* # of last request processed by server */
+    unsigned long serial;	/* # of last request processed by server */
 //    Bool send_event;	/* true if this came from a SendEvent request */
 //    Display *display;	/* Display the event was read from */
     Window window;
@@ -793,7 +793,7 @@ typedef struct {
 
 typedef struct {
 //    int type;
-//    unsigned long serial;	/* # of last request processed by server */
+    unsigned long serial;	/* # of last request processed by server */
 //    Bool send_event;	/* true if this came from a SendEvent request */
     Display *display;	/* Display the event was read from */
 //    Window window;		/* unused */

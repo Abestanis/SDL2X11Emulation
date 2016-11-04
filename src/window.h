@@ -17,13 +17,24 @@ typedef struct {
 typedef enum {UnMapped, Mapped, MapRequested} MapState;
 
 typedef struct {
+    /* Parent window of this window, never NULL (except SCREEN_WINDOW). */
     Window parent;
-    Window* children; /* List of children, must end with NULL, can contain NULL between values */
+    /* List of children, must end with NULL, can contain NULL between values, can be NULL if no children exist. */
+    Window* children;
+    /* Number of Windows that can fit in the currently allocated children list. */
     unsigned int childSpace;
+    /* This is the drawing target of the window and its children while it is unmapped. Might be NULL.*/
     GPU_Image* unmappedContent;
+    /* 
+     * This is the SDL Window handler to the real window of this window.
+     * Only set if this window is a mapped top level window.
+     */
     SDL_Window* sdlWindow;
+    /* The render target of this window. Only set if sdlWindow or unmappedContent is set. */
     GPU_Target* renderTarget;
+    /* The position of this window relative to its parent. */
     int x, y;
+    /* The dimensions of this window. */
     unsigned int w, h;
     Bool inputOnly;
     Visual* visual;
@@ -35,13 +46,17 @@ typedef struct {
     unsigned int propertyCount;
     unsigned int propertySize;
     WindowProperty* properties;
+    /* The window name. Only used if this window has a corresponding sdlWindow. */
     char* windowName;
+    /* The icon of this window. Only used if this window has a corresponding sdlWindow. */
     SDL_Surface* icon;
     unsigned int borderWidth;
     int depth;
+    /* Indicates if this window is Mapped, if mapping it is requested or if it is Unmapped. */
     MapState mapState;
     long eventMask;
     #ifdef DEBUG_WINDOWS
+    /* Random id used for debugging. */
     unsigned long debugId;
     #endif /* DEBUG_WINDOWS */
 } WindowStruct;

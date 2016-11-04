@@ -55,6 +55,7 @@ typedef struct {
     /* Indicates if this window is Mapped, if mapping it is requested or if it is Unmapped. */
     MapState mapState;
     long eventMask;
+    Bool overrideRedirect;
     #ifdef DEBUG_WINDOWS
     /* Random id used for debugging. */
     unsigned long debugId;

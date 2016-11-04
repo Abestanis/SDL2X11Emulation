@@ -35,7 +35,7 @@ void initWindowStruct(WindowStruct* windowStruct, int x, int y, unsigned int wid
     windowStruct->borderWidth = 0;
     windowStruct->depth = 0;
     windowStruct->mapState = UnMapped;
-    windowStruct->eventMask = 0;
+    windowStruct->eventMask = NoEventMask;
     windowStruct->overrideRedirect = False;
 #ifdef DEBUG_WINDOWS
     windowStruct->debugId = ((unsigned long) rand() << 16) | rand();

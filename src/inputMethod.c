@@ -332,8 +332,9 @@ char* XSetICValues(XIC inputConnection, ...) {
 
 XVaNestedList XVaCreateNestedList(int dummy, ...) {
     // http://www.x.org/archive/X11R7.6/doc/man/man3/XVaCreateNestedList.3.xhtml
+    (void) dummy;
     va_list argumentList, argCount;
-    int i, nArgs = 0;
+    size_t i = 0, nArgs = 0;
     void* item;
     va_start(argumentList, dummy);
     va_copy(argCount, argumentList);
@@ -343,11 +344,11 @@ XVaNestedList XVaCreateNestedList(int dummy, ...) {
     if (list == NULL) {
         return NULL;
     }
-    va_end(argumentList);
     while ((item = va_arg(argumentList, void*)) != NULL) {
         list[i++] = item;
     }
-    list[i++] = NULL;
+    va_end(argumentList);
+    list[i] = NULL;
     return list;
 }
 

@@ -28,7 +28,7 @@ static const int releaseVersion = 1;
 Visual* trueColorVisual = NULL;
 
 void XCloseDisplay(Display* display) {
-    https://tronche.com/gui/x/xlib/display/XCloseDisplay.html
+    // https://tronche.com/gui/x/xlib/display/XCloseDisplay.html
     if (numDisplaysOpen == 1) {
         destroyScreenWindow(display);
         TTF_Quit();

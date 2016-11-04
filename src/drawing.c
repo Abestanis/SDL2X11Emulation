@@ -1,7 +1,6 @@
-#include "X11/Xlib.h"
+#include <X11/Xlib.h>
 #include "drawing.h"
 #include "errors.h"
-#include "resourceTypes.h"
 #include "window.h"
 #include "SDL_gpu.h"
 #include "display.h"

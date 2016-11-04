@@ -1,9 +1,8 @@
-#include "X11/Xlib.h"
+#include <X11/Xlib.h>
 #include "window.h"
 #include "errors.h"
 #include "drawing.h"
 #include "atoms.h"
-#include "netAtoms.h"
 #include "events.h"
 #include "display.h"
 
@@ -245,16 +244,16 @@ void XMapWindow(Display* display, Window window) {
             SDL_SetWindowIcon(windowStruct->sdlWindow, windowStruct->icon);
         }
         parentWithSubstructureRedirect = enqueueMapEvent(display, window, None, True);
-    } else {
-        if (GET_WINDOW_STRUCT(GET_PARENT(window))->mapState == Mapped) {
-            if (!mergeWindowDrawables(GET_PARENT(window), window)) {
+    } else { /* Mapping a window that is not a top level window  */
+        Window parent = GET_PARENT(window);
+        if (GET_WINDOW_STRUCT(parent)->mapState == Mapped) {
+            if (!mergeWindowDrawables(parent, window)) {
                 fprintf(stderr, "Failed to merge the window drawables in %s\n", __func__);
                 return;
             }
             parentWithSubstructureRedirect = enqueueMapEvent(display, window, None, True);
-            WindowStruct* windowStruct = GET_WINDOW_STRUCT(window);
-            windowStruct->mapState = Mapped;
-        } else {
+            GET_WINDOW_STRUCT(window)->mapState = Mapped;
+        } else { /* Parent not mapped */
             // mapRequestedChildren will do all the work
             GET_WINDOW_STRUCT(window)->mapState = MapRequested;
             return;
@@ -415,8 +414,8 @@ Bool XTranslateCoordinates(Display* display, Window sourceWindow, Window destina
     TYPE_CHECK(destinationWindow, WINDOW, display, False);
     int currX = sourceX;
     int currY = sourceY;
-    int parentIndex;
-    int i, x, y, width, height;
+    int parentIndex = -1;
+    int x, y, width, height;
     int numDestParents;
     Window destParents[256];
     *destinationXReturn = 0;
@@ -427,7 +426,7 @@ Bool XTranslateCoordinates(Display* display, Window sourceWindow, Window destina
         numDestParents = 0;
     } else {
         Window nextParent = GET_PARENT(destinationWindow);
-        int numDestParents = 0;
+        numDestParents = 0;
         while (nextParent != SCREEN_WINDOW) {
             destParents[numDestParents++] = nextParent;
             if (nextParent == sourceWindow) {
@@ -541,7 +540,7 @@ void XChangeProperty(Display* display, Window window, Atom property, Atom type, 
         case PropModePrepend:
             combinedData = malloc(sizeof(unsigned char) * (previousDataSize + actualDataSize));
             if (combinedData == NULL) {
-                fprintf(stderr, "Out of memory: Failed to allocate space for compined data "
+                fprintf(stderr, "Out of memory: Failed to allocate space for combined data "
                                 "in XChangeProperty!\n");
                 handleOutOfMemory(0, display, 0, 0);
                 if (previousData == NULL) { // We created the new property just above
@@ -840,6 +839,8 @@ void XChangeWindowAttributes(Display* display, Window window, unsigned long valu
 Window XRootWindow(Display* display, int screen_number) {
     // https://tronche.com/gui/x/xlib/display/display-macros.html#RootWindow
 //    SET_X_SERVER_REQUEST(display, XCB_);
+    (void) display;
+    (void) screen_number;
     return SCREEN_WINDOW;
 }
 
@@ -867,10 +868,10 @@ Status XQueryTree(Display* display, Window window, Window* root_return, Window* 
     int i, counter = 0;
     for (i = 0; i < GET_WINDOW_STRUCT(window)->childSpace; i++) {
         if (children[i] != NULL) {
-            *nchildren_return++;
+            (*nchildren_return)++;
         }
     }
-    *children_return = malloc(sizeof(Window) * *nchildren_return);
+    *children_return = malloc(sizeof(Window) * (*nchildren_return));
     for (i = 0; i < GET_WINDOW_STRUCT(window)->childSpace; i++) {
         if (children[i] != NULL) {
             *children_return[counter++] = children[i];

@@ -1,12 +1,10 @@
 #ifndef _WINDOW_H_
 #define _WINDOW_H_
 
-#define DEBUG_WINDOWS 1
-
 #include "SDL.h"
-#include "resourceTypes.h"
 #include <SDL_gpu.h>
 #include "windowDebug.h"
+#include "resourceTypes.h"
 
 typedef struct {
     Atom property;

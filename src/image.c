@@ -59,7 +59,7 @@ Status _XInitImageFuncPtrs(XImage *image) {
 char* getImageDataPointer(XImage* image, int x, int y) {
     char* pointer = image->data;
     pointer += image->bytes_per_line * y;
-    return  pointer + (image->bits_per_pixel / 8) * y;
+    return pointer + (image->bits_per_pixel / 8) * x;
 }
 
 void XPutPixel(XImage* image, int x, int y, unsigned long pixel) {
@@ -117,7 +117,7 @@ unsigned long XGetPixel(XImage* image, int x, int y) {
 void XDestroyImage(XImage* image) {
     // https://tronche.com/gui/x/xlib/utilities/XDestroyImage.html
     if (image->data != NULL) {
-        free((char*) image->data);
+        free(image->data);
     }
     free(image);
 }

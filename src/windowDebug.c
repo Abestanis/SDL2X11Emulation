@@ -3,15 +3,16 @@
 //
 
 #include "windowDebug.h"
+
 #ifdef DEBUG_WINDOWS
 
-
 #include <unistd.h>
+#include "window.h"
 #include "drawing.h"
+
 
 void printWindowHierarchyOfChild(Window window, char* prepend, int prependLen) {
     Window* children = GET_CHILDREN(window);
-    const static char* WINDOW_STATES[] = {[Mapped] = "Mapped", [MapRequested] = "MapRequested", [UnMapped] = "UnMapped"};
     char* childPrepend = malloc(sizeof(char) * (prependLen + 2));
     int childCounter = 0;
     int i;
@@ -26,12 +27,16 @@ void printWindowHierarchyOfChild(Window window, char* prepend, int prependLen) {
             int x, y, w, h;
             GET_WINDOW_POS(children[i], x, y);
             GET_WINDOW_DIMS(children[i], w, h);
-            printf("%s+- Window (adress: %p, id: 0x%08lx, x: %d, y: %d, %dx%d, state: %s)",
-                   prepend, children[i], GET_WINDOW_STRUCT(children[i])->debugId, x, y, w, h,
-                   WINDOW_STATES[GET_WINDOW_STRUCT(children[i])->mapState]);
-            if (GET_WINDOW_STRUCT(children[i])->sdlRenderer != NULL) {
-                printf(", renderer = %p", GET_WINDOW_STRUCT(children[i])->sdlRenderer);
+            char* mapState;
+            switch (GET_WINDOW_STRUCT(children[i])->mapState) {
+                case UnMapped: mapState = "UnMapped"; break;
+                case Mapped: mapState = "Mapped"; break;
+                case MapRequested: mapState = "MapRequested"; break;
+                default: mapState = "Unknown";
             }
+            printf("%s+- Window (address: %p, id: 0x%08lx, x: %d, y: %d, %dx%d, state: %s)",
+                   prepend, children[i], GET_WINDOW_STRUCT(children[i])->debugId, x, y, w, h, mapState);
+                   
             if (GET_WINDOW_STRUCT(children[i])->renderTarget != NULL) {
                 printf(", rendererTarget = %p", GET_WINDOW_STRUCT(children[i])->renderTarget);
             }
@@ -43,7 +48,7 @@ void printWindowHierarchyOfChild(Window window, char* prepend, int prependLen) {
                 printf(", unmappedContent = %p (%d x %d)", unmappedContent, unmappedContent->w, unmappedContent->h);
             }
             printf("\n");
-            *charPointer = childCounter == 1 ? ' ' : '|';
+            *charPointer = (char) (childCounter == 1 ? ' ' : '|');
             fflush(stdout);
             printWindowHierarchyOfChild(children[i], childPrepend, prependLen + 1);
             childCounter--;
@@ -53,7 +58,7 @@ void printWindowHierarchyOfChild(Window window, char* prepend, int prependLen) {
 }
 
 void printWindowsHierarchy() {
-    printf("- SCREEN_WINDOW (adress: %p, id = 0x%08lx)\n", SCREEN_WINDOW, GET_WINDOW_STRUCT(SCREEN_WINDOW)->debugId);
+    printf("- SCREEN_WINDOW (address: %p, id = 0x%08lx)\n", SCREEN_WINDOW, GET_WINDOW_STRUCT(SCREEN_WINDOW)->debugId);
     printWindowHierarchyOfChild(SCREEN_WINDOW, "", 0);
     fflush(stdout);
 }

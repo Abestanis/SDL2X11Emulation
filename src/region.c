@@ -31,10 +31,10 @@ int XRectInRegion(Region region, int x, int y, unsigned int width, unsigned int 
     // https://tronche.com/gui/x/xlib/utilities/regions/XRectInRegion.html
     pixman_region_overlap_t res;
     pixman_box16_t box;
-    box.x1 = x;
-    box.y1 = y;
-    box.x2 = x + width;
-    box.y2 = y + height;
+    box.x1 = (int16_t) x;
+    box.y1 = (int16_t) y;
+    box.x2 = (int16_t) (x + width);
+    box.y2 = (int16_t) (y + height);
     res = pixman_region_contains_rectangle(region, &box);
     if (res == PIXMAN_REGION_OUT) {
         return RectangleOut;

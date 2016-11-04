@@ -1,4 +1,4 @@
-#include "X11/Xlib.h"
+#include <X11/Xlib.h>
 #include "X11/Xatom.h"
 #include <stdio.h>
 #include "SDL.h"
@@ -76,10 +76,10 @@ char* getFontXLFDName(XFontStruct* font_struct) {
     char* familyName = TTF_FontFaceFamilyName(font_struct->fid);
     if (familyName == NULL) familyName = emptyValue;
     char* weightName = fontStyle & TTF_STYLE_BOLD ? "bold" : "medium";
-    char slant = fontStyle & TTF_STYLE_ITALIC ? 'i' : 'r';
+    char slant = (char) (fontStyle & TTF_STYLE_ITALIC ? 'i' : 'r');
     char* setWidth = "normal";
     int pointSize = FONT_SIZE * 10;
-    char spacing = TTF_FontFaceIsFixedWidth(font_struct->fid) ? 'm' : 'p';
+    char spacing = (char) (TTF_FontFaceIsFixedWidth(font_struct->fid) ? 'm' : 'p');
     short averageWidth = font_struct->max_bounds.width;
     char* charset = "Utf";
     int charsetEncoding = 8;
@@ -119,8 +119,8 @@ Bool fillXCharStruct(TTF_Font* font, unsigned int character, XCharStruct* charSt
         fprintf(stderr, "Failed to determine metrics for character '%u': %s\n", character, TTF_GetError());
         return False;
     }
-    charStruct->width = advance;
-    charStruct->rbearing = maxX;
+    charStruct->width = (short) advance;
+    charStruct->rbearing = (short) maxX;
     return True;
 }
 
@@ -248,7 +248,7 @@ const char* decodeString(char* string, int count) {
                     text[counter] = '\f';
                     break;
                 default:
-                    fprintf(stderr, "Warn: Got unknown controll character in %s: '\\%c'\n", __func__, string[i]);
+                    fprintf(stderr, "Warn: Got unknown control character in %s: '\\%c'\n", __func__, string[i]);
                     text[counter] = '\\';
                     text[++counter] = string[i];
             }
@@ -265,7 +265,7 @@ int getTextWidth(XFontStruct* font_struct, const char* string) {
     int width, height;
     if (TTF_SizeUTF8(font_struct->fid, string, &width, &height) != 0) {
         fprintf(stderr, "Failed to calculate the text with in XTextWidth[16]: %s! Returning max width of font.\n", TTF_GetError());
-        return font_struct->max_bounds.rbearing * strlen(string);
+        return (int) (font_struct->max_bounds.rbearing * strlen(string));
     }
     return width;
 }

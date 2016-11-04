@@ -95,8 +95,8 @@ Atom internalInternAtom(char* atomName) {
 
 Atom XInternAtom(Display* display, _Xconst char* atom_name, Bool only_if_exists) {
     // https://tronche.com/gui/x/xlib/window-information/XInternAtom.html
-    fprintf(stderr, "Intern Atom %s.\n", atom_name);
     SET_X_SERVER_REQUEST(display, XCB_INTERN_ATOM);
+    fprintf(stderr, "Intern Atom %s.\n", atom_name);
     int preExistingIndex = -1;
     if (strncmp(atom_name, "XA_", 3) == 0) {
         int i = 0;
@@ -122,7 +122,7 @@ Atom XInternAtom(Display* display, _Xconst char* atom_name, Bool only_if_exists)
     }
     AtomStruct* atomStruct = getAtomStructByName(atom_name);
     if (atomStruct != NULL) {
-        fprintf(stderr, "Atom already %lu.\n", atomStruct->atom);
+        fprintf(stderr, "Atom already existed %lu.\n", atomStruct->atom);
         return atomStruct->atom;
     } else if (!only_if_exists) {
         fprintf(stderr, "Creating new Atom %lu.\n", lastUsedAtom + 1);

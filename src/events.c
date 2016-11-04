@@ -1,4 +1,3 @@
-#include "X11/Xlib.h"
 #include <errno.h>
 #include <fcntl.h>
 #include "events.h"
@@ -7,6 +6,7 @@
 #include "window.h"
 #include "drawing.h"
 #include "inputMethod.h"
+#include "SDL_gpu.h"
 #include "display.h"
 
 int eventFds[2];
@@ -16,6 +16,8 @@ SDL_Event waitingEvent;
 Bool eventWaiting = False;
 Bool tmpVar = False;
 Window keyboardFocus = NULL;
+
+void updateWindowRenderTargets();
 
 #define ENQUEUE_EVENT_IN_PIPE(display) { char buffer = 'e'; write(WRITE_EVENT_FD, &buffer, sizeof(buffer)); (display)->qlen++; }
 #define READ_EVENT_IN_PIPE(display) if ((display)->qlen > 0) { char buffer; read(READ_EVENT_FD, &buffer, sizeof(buffer)); (display)->qlen--; }
@@ -58,6 +60,16 @@ int onSdlEvent(void* userdata, SDL_Event* event) {
             ENQUEUE_EVENT_IN_PIPE((Display *) userdata);
     }
     return 1;
+}
+
+Bool getEventQueueLength(int* qlen) {
+    SDL_Event tmp[25];
+    *qlen = SDL_PeepEvents((SDL_Event*) &tmp, 25, SDL_PEEKEVENT, SDL_FIRSTEVENT, SDL_LASTEVENT);
+    if (*qlen < 0) {
+        fprintf(stderr, "Failed to get the length of the input queue: %s\n", SDL_GetError());
+        return False;
+    }
+    return True;
 }
 
 int initEventPipe(Display* display) {
@@ -713,6 +725,7 @@ Status XSendEvent(Display* display, Window window, Bool propagate, long event_ma
 
 void XSelectInput(Display* display, Window window, long event_mask) {
     // https://tronche.com/gui/x/xlib/event-handling/XSelectInput.html
+//    SET_X_SERVER_REQUEST(display, XCB_);
     fprintf(stderr, "Hit unimplemented function %s.\n", __func__);
     fprintf(stderr, "%s: %d, %d\n", __func__, event_mask & KeyPressMask, event_mask & KeyReleaseMask);
     if (event_mask & KeyPressMask || event_mask & KeyReleaseMask) {
@@ -728,16 +741,6 @@ Bool XFilterEvent(XEvent *event, Window w) {
     // http://www.x.org/archive/X11R7.6/doc/man/man3/XFilterEvent.3.xhtml
     // We dont get an event from sdl, if an IM gets it before us.
     return False;
-}
-
-Bool getEventQueueLength(int* qlen) {
-    SDL_Event tmp[25];
-    *qlen = SDL_PeepEvents((SDL_Event*) &tmp, 25, SDL_PEEKEVENT, SDL_FIRSTEVENT, SDL_LASTEVENT);
-    if (*qlen < 0) {
-        fprintf(stderr, "Failed to get the length of the input queue: %s\n", SDL_GetError());
-        return False;
-    }
-    return True;
 }
 
 int XEventsQueued(Display *display, int mode) {

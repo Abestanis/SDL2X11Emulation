@@ -8,6 +8,7 @@ Pixmap XCreatePixmap(Display* display, Drawable drawable, unsigned int width, un
                      unsigned int depth) {
     // https://tronche.com/gui/x/xlib/pixmap-and-cursor/XCreatePixmap.html
     SET_X_SERVER_REQUEST(display, XCB_CREATE_PIXMAP);
+    (void) drawable;
     // TODO: Adjust masks for depth
     if (width == 0 || height == 0) {
         fprintf(stderr, "Width and/or height are 0 in XCreatePixmap: w = %u, h = %u\n", width, height);

@@ -831,7 +831,7 @@ typedef union _XEvent {
     XFocusChangeEvent xfocus;
     XExposeEvent xexpose;
     XGraphicsExposeEvent xgraphicsexpose;
-//    XNoExposeEvent xnoexpose;
+    XNoExposeEvent xnoexpose;
     XVisibilityEvent xvisibility;
     XCreateWindowEvent xcreatewindow;
     XDestroyWindowEvent xdestroywindow;
@@ -840,7 +840,7 @@ typedef union _XEvent {
     XMapRequestEvent xmaprequest;
     XReparentEvent xreparent;
     XConfigureEvent xconfigure;
-//    XGravityEvent xgravity;
+    XGravityEvent xgravity;
     XResizeRequestEvent xresizerequest;
     XConfigureRequestEvent xconfigurerequest;
     XCirculateEvent xcirculate;
@@ -849,11 +849,11 @@ typedef union _XEvent {
     XSelectionClearEvent xselectionclear;
     XSelectionRequestEvent xselectionrequest;
     XSelectionEvent xselection;
-//    XColormapEvent xcolormap;
+    XColormapEvent xcolormap;
     XClientMessageEvent xclient;
     XMappingEvent xmapping;
-//    XErrorEvent xerror;
-//    XKeymapEvent xkeymap;
+    XErrorEvent xerror;
+    XKeymapEvent xkeymap;
     long pad[24];
 } XEvent;
 

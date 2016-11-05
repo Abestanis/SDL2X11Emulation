@@ -17,47 +17,48 @@ Bool eventWaiting = False;
 Bool tmpVar = False;
 Window keyboardFocus = NULL;
 
-void updateWindowRenderTargets();
+void updateWindowRenderTargets(Display* display);
 
 #define ENQUEUE_EVENT_IN_PIPE(display) { char buffer = 'e'; write(WRITE_EVENT_FD, &buffer, sizeof(buffer)); (display)->qlen++; }
 #define READ_EVENT_IN_PIPE(display) if ((display)->qlen > 0) { char buffer; read(READ_EVENT_FD, &buffer, sizeof(buffer)); (display)->qlen--; }
 
 //TODO: Generate Enter & Leave events on MouseButton down and MouseMotion
 
-void generateExposureEventsForChildren(Display* display, Window window) {
-    int i;
-    XEvent xEvent;
+void postExposeEvent(Display* display, Window window, SDL_Rect damagedArea) {
+    static unsigned exposeEventsToFollow = 0;
+    SDL_Rect childDamagedArea;
+    size_t i;
+    int width, height;
+    GET_WINDOW_DIMS(window, width, height);
+    if (damagedArea.x < 0 || damagedArea.x > width || damagedArea.y < 0
+        || damagedArea.y > height || width < 0 || height < 0) return;
+    exposeEventsToFollow++;
     Window* children = GET_CHILDREN(window);
     for (i = 0; i < GET_WINDOW_STRUCT(window)->childSpace; i++) {
-        if (children[i] == NULL || GET_WINDOW_STRUCT(children[i])->mapState == UnMapped) continue;
-        xEvent.xany.serial = 0;
-        xEvent.xany.display = display;
-        xEvent.xany.send_event = False;
-        xEvent.xany.type = Expose;
-        xEvent.xany.window = children[i];
-        xEvent.type = Expose;
-        xEvent.xexpose.type = Expose;
-        xEvent.xexpose.serial = 0;
-        xEvent.xexpose.send_event = False;
-        xEvent.xexpose.display = display;
-        xEvent.xexpose.window = children[i];
-        xEvent.xexpose.x = 0;
-        xEvent.xexpose.y = 0;
-        GET_WINDOW_DIMS(children[i], xEvent.xexpose.width, xEvent.xexpose.height);
-        xEvent.xexpose.count = 0;
-        generateExposureEventsForChildren(display, children[i]);
+        if (children[i] != NULL && !IS_INPUT_ONLY(children[0])
+            && GET_WINDOW_STRUCT(children[i])->mapState == Mapped) {
+            WindowStruct* childWindowStruct = GET_WINDOW_STRUCT(children[i]);
+            childDamagedArea.x = damagedArea.x - childWindowStruct->x;
+            childDamagedArea.y = damagedArea.y - childWindowStruct->y;
+            childDamagedArea.w = childDamagedArea.x + damagedArea.w;
+            childDamagedArea.h = childDamagedArea.y + damagedArea.h;
+            childDamagedArea.x = MAX(0, childDamagedArea.x);
+            childDamagedArea.y = MAX(0, childDamagedArea.y);
+            postExposeEvent(display, children[i], childDamagedArea);
+        }
     }
+    exposeEventsToFollow--;
+    postEvent(display, window, Expose, damagedArea, exposeEventsToFollow);
 }
 
 int onSdlEvent(void* userdata, SDL_Event* event) {
-    switch (event->type) {
-        case SDL_RENDER_TARGETS_RESET:
-            generateExposureEventsForChildren((Display *) userdata, SCREEN_WINDOW);
+//    switch (event->type) {
+//        case SDL_QUIT: // TODO: Returning 0 can prevent program exit here
+//            ENQUEUE_EVENT_IN_PIPE((Display *) userdata);
+//            break;
+//        default:
             ENQUEUE_EVENT_IN_PIPE((Display *) userdata);
-            break;
-        default:
-            ENQUEUE_EVENT_IN_PIPE((Display *) userdata);
-    }
+//    }
     return 1;
 }
 
@@ -549,7 +550,7 @@ int convertEvent(Display* display, SDL_Event* sdlEvent, XEvent* xEvent) {
             return -1;
         case SDL_RENDER_TARGETS_RESET:
             fprintf(stderr, "SDL_RENDER_TARGETS_RESET\n");
-            updateWindowRenderTargets();
+            updateWindowRenderTargets(display);
             type = Expose;
             eventWindow = *GET_CHILDREN(SCREEN_WINDOW);
             FILL_STANDARD_VALUES(xexpose);
@@ -648,7 +649,7 @@ int convertEvent(Display* display, SDL_Event* sdlEvent, XEvent* xEvent) {
 #undef FILL_STANDARD_VALUES
 }
 
-void updateWindowRenderTargets() {
+void updateWindowRenderTargets(Display* display) {
     size_t i;
     fprintf(stderr, "Resetting window render targets\n");
     Window* children = GET_CHILDREN(SCREEN_WINDOW);
@@ -660,6 +661,11 @@ void updateWindowRenderTargets() {
             fprintf(stderr, "Went past the free\n");
             sleep(1);
             windowStruct->renderTarget = GPU_CreateTargetFromWindow(SDL_GetWindowID(windowStruct->sdlWindow));
+            SDL_Rect exposeRect;
+            exposeRect.x = 0;
+            exposeRect.y = 0;
+            GET_WINDOW_DIMS(children[i], exposeRect.w, exposeRect.h);
+            postExposeEvent(display, children[i], exposeRect);
         }
     }
 }

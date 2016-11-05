@@ -86,40 +86,7 @@ void XConfigureWindow(Display* display, Window window, unsigned int value_mask,
     // https://tronche.com/gui/x/xlib/window/XConfigureWindow.html
     SET_X_SERVER_REQUEST(display, XCB_CONFIGURE_WINDOW);
     TYPE_CHECK(window, WINDOW, display);
-    WindowStruct* windowStruct = GET_WINDOW_STRUCT(window);
-    Bool isMappedTopLevelWindow = IS_MAPPED_TOP_LEVEL_WINDOW(window);
-    if (HAS_VALUE(value_mask, CWX) || HAS_VALUE(value_mask, CWY)) {
-        int x, y;
-        GET_WINDOW_POS(window, x, y);
-        if (HAS_VALUE(value_mask, CWX)) {
-            x = values->x;
-        }
-        if (HAS_VALUE(value_mask, CWY)) {
-            y = values->y;
-        }
-        if (isMappedTopLevelWindow) {
-            SDL_SetWindowPosition(windowStruct->sdlWindow, x, y);
-        }
-        windowStruct->x = x;
-        windowStruct->y = y;
-    }
-    if (HAS_VALUE(value_mask, CWWidth) || HAS_VALUE(value_mask, CWHeight)) {
-        int width, height;
-        GET_WINDOW_DIMS(window, width, height);
-        if (HAS_VALUE(value_mask, CWWidth)) {
-            width = values->width;
-        }
-        if (HAS_VALUE(value_mask, CWHeight)) {
-            height = values->height;
-        }
-        if (isMappedTopLevelWindow) {
-            SDL_SetWindowSize(windowStruct->sdlWindow, width, height);
-        }
-        windowStruct->w = width;
-        windowStruct->h = height;
-        resizeWindowSurface(window); // TODO: Handle fail
-    }
-    // TODO: Implement re-stacking: https://tronche.com/gui/x/xlib/window/configure.html#XWindowChanges
+    configureWindow(display, window, value_mask, values);
 }
 
 Status XReconfigureWMWindow(Display* display, Window window, int screen_number,
@@ -316,15 +283,10 @@ void XResizeWindow(Display* display, Window window, unsigned int width, unsigned
     // https://tronche.com/gui/x/xlib/window/XResizeWindow.html
     SET_X_SERVER_REQUEST(display, XCB_RESIZE_WINDOW);
     TYPE_CHECK(window, WINDOW, display);
-    if (window != SCREEN_WINDOW) {
-        WindowStruct *windowStruct = GET_WINDOW_STRUCT(window);
-        if (IS_MAPPED_TOP_LEVEL_WINDOW(window)) {
-            SDL_SetWindowSize(windowStruct->sdlWindow, (int) width, (int) height);
-        }
-        windowStruct->w = width;
-        windowStruct->h = height;
-        resizeWindowSurface(window);
-    }
+    XWindowChanges changes;
+    changes.width = width;
+    changes.height = height;
+    configureWindow(display, window, CWWidth | CWHeight, &changes);
 }
 
 void XReparentWindow(Display* display, Window window, Window parent, int x, int y) {

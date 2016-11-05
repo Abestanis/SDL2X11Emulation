@@ -345,3 +345,62 @@ void mapRequestedChildren(Display* display, Window window) {
         }
     }
 }
+
+Bool configureWindow(Display* display, Window window, unsigned long value_mask, XWindowChanges* values) {
+    if (window == SCREEN_WINDOW) return True;
+    WindowStruct* windowStruct = GET_WINDOW_STRUCT(window);
+    if (!windowStruct->overrideRedirect && HAS_EVENT_MASK(GET_PARENT(window), SubstructureRedirectMask)) {
+        return postEvent(display, window, ConfigureRequest, value_mask, values);
+    }
+    Bool isMappedTopLevelWindow = IS_MAPPED_TOP_LEVEL_WINDOW(window);
+    if (HAS_VALUE(value_mask, CWX) || HAS_VALUE(value_mask, CWY)) {
+        int x, y;
+        GET_WINDOW_POS(window, x, y);
+        if (HAS_VALUE(value_mask, CWX)) {
+            x = values->x;
+        }
+        if (HAS_VALUE(value_mask, CWY)) {
+            y = values->y;
+        }
+        if (isMappedTopLevelWindow) {
+            SDL_SetWindowPosition(windowStruct->sdlWindow, x, y);
+        }
+        windowStruct->x = x;
+        windowStruct->y = y;
+        // TODO: Generate expose events
+    }
+    if (HAS_VALUE(value_mask, CWWidth) || HAS_VALUE(value_mask, CWHeight)) {
+        int width, height;
+        GET_WINDOW_DIMS(window, width, height);
+        if (HAS_VALUE(value_mask, CWWidth)) {
+            width = values->width;
+            if (width <= 0) {
+                handleError(BadValue, display, NULL, 0, 0, 0);
+                return False;
+            }
+        }
+        if (HAS_VALUE(value_mask, CWHeight)) {
+            height = values->height;
+            if (height <= 0) {
+                handleError(BadValue, display, NULL, 0, 0, 0);
+                return False;
+            }
+        }
+        printWindowsHierarchy();
+        fprintf(stderr, "Resizing window %p to (%ux%u)", window, width, height);
+        if (isMappedTopLevelWindow) {
+            SDL_SetWindowSize(windowStruct->sdlWindow, width, height);
+            int wOut, hOut;
+            SDL_GetWindowPosition(windowStruct->sdlWindow, &wOut, &hOut);
+            windowStruct->w = (unsigned int) wOut;
+            windowStruct->h = (unsigned int) hOut;
+        } else {
+            windowStruct->w = (unsigned int) width;
+            windowStruct->h = (unsigned int) height;
+        }
+        resizeWindowSurface(window); // TODO: Handle fail
+        // TODO: Generate expose events
+    }
+    return postEvent(display, window, ConfigureNotify);
+    // TODO: Implement re-stacking: https://tronche.com/gui/x/xlib/window/configure.html#XWindowChanges
+}

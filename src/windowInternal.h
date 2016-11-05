@@ -31,5 +31,6 @@ WindowProperty* increasePropertySize(WindowProperty* properties, unsigned int cu
 WindowProperty* findProperty(WindowProperty* properties, unsigned int numProperties, Atom property);
 Bool mergeWindowDrawables(Window parent, Window child);
 void mapRequestedChildren(Display* display, Window window);
+Bool configureWindow(Display* display, Window window, unsigned long value_mask, XWindowChanges* values);
 
 #endif /* WINDOWINTERNAL_H */

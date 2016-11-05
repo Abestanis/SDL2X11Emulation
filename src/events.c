@@ -561,12 +561,16 @@ int convertEvent(Display* display, SDL_Event* sdlEvent, XEvent* xEvent) {
             break;
         default:
             if (sdlEvent->type >= SDL_USEREVENT && sdlEvent->type <= SDL_LASTEVENT) {
-                if (sdlEvent->user.code == SEND_EVENT_CODE) {
                     allocEvent = sdlEvent->user.data1;
                     memcpy(xEvent, allocEvent, sizeof(XEvent));
                     fprintf(stderr, "SDL_USEREVENT: %d\n", xEvent->type);
+                if (sdlEvent->user.code == INTERNAL_EVENT_CODE) {
                     free(allocEvent);
                     return 0;
+                } else if (sdlEvent->user.code == SEND_EVENT_CODE) {
+                    memcpy(xEvent, sdlEvent->user.data1, sizeof(XEvent));
+                    free(sdlEvent->user.data1);
+                    break;
                 }
             }
             return -1;
@@ -659,17 +663,11 @@ Bool enqueueEvent(Display* display, XEvent* event) {
         sendEventType = SDL_RegisterEvents(1);
     }
     if (sendEventType != ((Uint32) -1)) {
-        memcpy(allocEvent, event, sizeof(XEvent));
-        if (event->type == MapNotify) {
-            fprintf(stderr, "Mapping window %p\n", event->xmap.window);
-        } else if (event->type == MapRequest) {
-            fprintf(stderr, "Mapping window %p\n", event->xmaprequest.window);
-        }
         SDL_Event sdlEvent;
         SDL_zero(sdlEvent);
         sdlEvent.type = sendEventType;
-        sdlEvent.user.code = SEND_EVENT_CODE;
         sdlEvent.user.data1 = allocEvent;
+        sdlEvent.user.code = INTERNAL_EVENT_CODE;
         fprintf(stderr, "Enqueuing event\n");
         SDL_PushEvent(&sdlEvent);
         return True;
@@ -682,10 +680,33 @@ Bool enqueueEvent(Display* display, XEvent* event) {
 Status XSendEvent(Display* display, Window window, Bool propagate, long event_mask, XEvent* event_send) {
     // https://tronche.com/gui/x/xlib/event-handling/XSendEvent.html
     SET_X_SERVER_REQUEST(display, XCB_SEND_EVENT);
+    // TODO: propagate, event_mask
     //  We have to assume that window is our window
     TYPE_CHECK(window, WINDOW, display, 0);
     event_send->xany.send_event = True;
-    return enqueueEvent(display, event_send) ? 1 : 0;
+    event_send->xany.serial = display->next_event_serial_num;
+    display->next_event_serial_num++;
+    static Uint32 sendEventType = (Uint32) -1;
+    if (sendEventType == ((Uint32) -1)) {
+        sendEventType = SDL_RegisterEvents(1);
+    }
+    if (sendEventType != ((Uint32) -1)) {
+        XEvent* copy = malloc(sizeof(XEvent));
+        if (copy == NULL) {
+            handleOutOfMemory(0, display, 0, 0);
+            return 0;
+        }
+        memcpy(copy, event_send, sizeof(XEvent));
+        SDL_Event sdlEvent;
+        SDL_zero(sdlEvent);
+        sdlEvent.type = sendEventType;
+        sdlEvent.user.code = SEND_EVENT_CODE;
+        sdlEvent.user.data1 = copy;
+        fprintf(stderr, "SEND event\n");
+        SDL_PushEvent(&sdlEvent);
+        return 1;
+    }
+    return 0;
 }
 
 void XSelectInput(Display* display, Window window, long event_mask) {

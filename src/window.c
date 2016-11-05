@@ -13,6 +13,7 @@ void XDestroyWindow(Display* display, Window window) {
     // https://tronche.com/gui/x/xlib/window/XDestroyWindow.html
     SET_X_SERVER_REQUEST(display, XCB_DESTROY_WINDOW);
     TYPE_CHECK(window, WINDOW, display);
+    if (window == SCREEN_WINDOW) return;
     destroyWindow(display, window, True);
 }
 

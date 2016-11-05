@@ -3,6 +3,7 @@
 //
 #include "windowInternal.h"
 #include "drawing.h"
+#include "events.h"
 #include "window.h"
 
 Window SCREEN_WINDOW = NULL;
@@ -138,22 +139,21 @@ void removeChildFromParent(Window child) {
 }
 
 void destroyWindow(Display* display, Window window, Bool freeParentData) {
-    if (window == NULL || window == SCREEN_WINDOW) { return; }
-    int i;
-    if (freeParentData) {
-        removeChildFromParent(window);
-    }
-    XFreeColormap(display, GET_COLORMAP(window));
+    size_t i;
     WindowStruct* windowStruct = GET_WINDOW_STRUCT(window);
     if (windowStruct->childSpace > 0) {
-        Window* childPointer = GET_CHILDREN(window);
+        Window* children = GET_CHILDREN(window);
         for (i = 0; i < windowStruct->childSpace; i++) {
-            if (childPointer[i] != NULL) {
-                destroyWindow(display, childPointer[i], False);
+            if (children[i] != NULL) {
+                destroyWindow(display, children[i], False);
+                children[i] = NULL;
             }
         }
-        free(childPointer);
     }
+    if (windowStruct->mapState == Mapped) {
+        XUnmapWindow(display, window);
+    }
+    XFreeColormap(display, GET_COLORMAP(window));
     if (windowStruct->propertySize > 0) {
         WindowProperty* propertyPointer = windowStruct->properties;
         free(propertyPointer);
@@ -176,9 +176,12 @@ void destroyWindow(Display* display, Window window, Bool freeParentData) {
     if (windowStruct->unmappedContent != NULL) {
         GPU_FreeImage(windowStruct->unmappedContent);
     }
+    postEvent(display, window, DestroyNotify);
+    if (freeParentData) {
+        removeChildFromParent(window);
+    }
     free(windowStruct);
     free(window);
-    // TODO: DestroyNotify Event
 }
 
 

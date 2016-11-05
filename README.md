@@ -1,7 +1,9 @@
 # SDL2X11Emulation
 This library was designed in order to allow programs that depend on [X11](https://en.wikipedia.org/wiki/X_Window_System)
 to be run on platforms that don't run a XServer.
-It implements all the X11 Api functions with [SDL2](https://www.libsdl.org/).
+It implements all the X11 API functions with [SDL2](https://www.libsdl.org/) and [SDL_gpu](http://dinomage.com/reference/SDL_gpu/).
+
+Note: SDL_gpu requires OpenGl, OpenGL ES or some graphics API to be avaliable on the target system. If your target system does not support that, you could try to revert the changes made in [this patch](https://github.com/Abestanis/SDL2X11Emulation/commit/cb26a90e22837256a31dbd89abf477377000f9bb) and see if you can get away with just SDL.
 
 ## License
 Copied from [X.h](https://github.com/Abestanis/SDL2X11Emulation/blob/master/include/X11/X.h#L11):
@@ -33,8 +35,7 @@ I designed this library in order to allow [Tk](https://www.tcl.tk/) to run on An
 This was a goal I wanted to achieve for my [APython project](https://github.com/Abestanis/APython).
 
 ## Progress and Contribution
-This library is probably full of bugs, it has unimplemented Api functions and has a really bad performance,
-but the basic stuff is working (what I tested with Tk).
+This library is not finished and it will probably never have the performance of the real X-System.
 I never heard of X11 before I started this project and the documentation is not really easy to understand.
 Also, I never used SDL before. Consequently, every and all help is appreciated, and if you look over the code
 and see something that is wrong or that could be improved, please tell me so I can fix it!

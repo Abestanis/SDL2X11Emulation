@@ -87,7 +87,7 @@ char* getFontXLFDName(XFontStruct* font_struct) {
     char* name = malloc(sizeof(char) * (14 + strlen(foundry) + strlen(familyName) +
             strlen(weightName) + 1 + strlen(setWidth) + 1 + 6 + 1 + 1 + 1 + 5 + strlen(charset) + 1));
     if (name != NULL) {
-        sprintf(name, "-%s-%s-%s-%c-%s--0-%d-0-0-%c-%hd-%s-%d", foundry, familyName, weightName,
+        sprintf(name, "-%s-%s-%s-%c-%s-0-%d-0-0-%c-%hd-%s-%d", foundry, familyName, weightName,
                 slant, setWidth, pointSize, spacing, averageWidth, charset, charsetEncoding);
     }
     fprintf(stderr, "Font name = '%s'\n", name);
@@ -139,7 +139,7 @@ XFontStruct* XLoadQueryFont(Display* display, char* name) {
     }
     fontStruct->fid = font;
     fontStruct->ascent = TTF_FontAscent(font);
-    fontStruct->descent = TTF_FontDescent(font);
+    fontStruct->descent = abs(TTF_FontDescent(font));
     fontStruct->per_char = NULL;
     unsigned int numChars = 0;
     unsigned int i;

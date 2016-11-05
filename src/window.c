@@ -173,8 +173,11 @@ void XMapWindow(Display* display, Window window) {
     // https://tronche.com/gui/x/xlib/window/XMapWindow.html
     SET_X_SERVER_REQUEST(display, XCB_MAP_WINDOW);
     TYPE_CHECK(window, WINDOW, display);
-    Window parentWithSubstructureRedirect = None;
     if (GET_WINDOW_STRUCT(window)->mapState == Mapped || GET_WINDOW_STRUCT(window)->mapState == MapRequested) { return; }
+    if (!GET_WINDOW_STRUCT(window)->overrideRedirect && HAS_EVENT_MASK(GET_PARENT(window), SubstructureRedirectMask)) {
+        postEvent(display, window, MapRequest);
+        return;
+    }
     if (IS_TOP_LEVEL(window)) {
         if (IS_MAPPED_TOP_LEVEL_WINDOW(window)) { return; }
         fprintf(stderr, "Mapping Window %p\n", window);
@@ -225,7 +228,6 @@ void XMapWindow(Display* display, Window window) {
         if (windowStruct->icon != NULL) {
             SDL_SetWindowIcon(windowStruct->sdlWindow, windowStruct->icon);
         }
-        parentWithSubstructureRedirect = enqueueMapEvent(display, window, None, True);
     } else { /* Mapping a window that is not a top level window  */
         Window parent = GET_PARENT(window);
         if (GET_WINDOW_STRUCT(parent)->mapState == Mapped) {
@@ -233,18 +235,16 @@ void XMapWindow(Display* display, Window window) {
                 fprintf(stderr, "Failed to merge the window drawables in %s\n", __func__);
                 return;
             }
-            parentWithSubstructureRedirect = enqueueMapEvent(display, window, None, True);
             GET_WINDOW_STRUCT(window)->mapState = Mapped;
         } else { /* Parent not mapped */
             // mapRequestedChildren will do all the work
+            // TODO: Have a look at this: https://tronche.com/gui/x/xlib/window/map.html
             GET_WINDOW_STRUCT(window)->mapState = MapRequested;
             return;
         }
     }
-    if (parentWithSubstructureRedirect == None) {
-        parentWithSubstructureRedirect = getParentWithEventBit(window, SubstructureRedirectMask);
-    }
-    mapRequestedChildren(display, window, parentWithSubstructureRedirect);
+    postEvent(display, window, MapNotify);
+    mapRequestedChildren(display, window);
     #ifdef DEBUG_WINDOWS
     printWindowsHierarchy();
     #endif
@@ -264,6 +264,7 @@ void XUnmapWindow(Display* display, Window window) {
     }
     // TODO: Expose events
     windowStruct->mapState = UnMapped;
+    postEvent(display, window, UnmapNotify, False);
 }
 
 Status XWithdrawWindow(Display* display, Window window, int screen_number) {

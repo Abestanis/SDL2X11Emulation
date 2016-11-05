@@ -309,15 +309,6 @@ Bool resizeWindowSurface(Window window) {
     return TRUE;
 }
 
-Window getParentWithEventBit(Window window, long eventBit) {
-    for (window = GET_PARENT(window); window != SCREEN_WINDOW; window = GET_PARENT(window)) {
-        if (GET_WINDOW_STRUCT(window)->eventMask & eventBit) {
-            return window;
-        }
-    }
-    return None;
-}
-
 Bool mergeWindowDrawables(Window parent, Window child) {
     WindowStruct* childWindowStruct = GET_WINDOW_STRUCT(child);
     if (childWindowStruct->unmappedContent == NULL) { return True; }
@@ -339,42 +330,7 @@ Bool mergeWindowDrawables(Window parent, Window child) {
     return True;
 }
 
-Window enqueueMapEvent(Display* display, Window window, Window parentWithSubstructureRedirect, Bool searchForSRParent) {
-    if (searchForSRParent) {
-        parentWithSubstructureRedirect = getParentWithEventBit(window, SubstructureRedirectMask);
-    }
-    XEvent event;
-    if (parentWithSubstructureRedirect == None) {
-        event.type = MapNotify;
-        event.xmap.type = MapNotify;
-        event.xmap.serial = 0;
-        event.xmap.send_event = False;
-        event.xmap.display = display;
-        event.xmap.window = window;
-        event.xmap.event = window;
-        event.xmap.override_redirect = False;
-        event.xany.serial = 0;
-        event.xany.display = display;
-        event.xany.send_event = False;
-        event.xany.type = MapNotify;
-        event.xany.window = window;
-    } else {
-        event.type = MapRequest;
-        event.xmaprequest.type = MapRequest;
-        event.xmaprequest.serial = 0;
-        event.xmaprequest.send_event = False;
-        event.xmaprequest.display = display;
-        event.xmaprequest.parent = parentWithSubstructureRedirect;
-        event.xmaprequest.window = window;
-        event.xany.serial = 0;
-        event.xany.display = display;
-        event.xany.send_event = False;
-        event.xany.type = MapRequest;
-        event.xany.window = window;
-    }
-}
-
-void mapRequestedChildren(Display* display, Window window, Window subStructureRedirectParent) {
+void mapRequestedChildren(Display* display, Window window) {
     Window* children = GET_CHILDREN(window);
     size_t i;
     for (i = 0; i < GET_WINDOW_STRUCT(window)->childSpace; i++) {
@@ -383,9 +339,9 @@ void mapRequestedChildren(Display* display, Window window, Window subStructureRe
                 fprintf(stderr, "Failed to merge the window drawables in %s\n", __func__);
                 return;
             }
-            enqueueMapEvent(display, children[i], subStructureRedirectParent, False);
             GET_WINDOW_STRUCT(children[i])->mapState = Mapped;
-            mapRequestedChildren(display, children[i], subStructureRedirectParent);
+            postEvent(display, children[i], MapNotify);
+            mapRequestedChildren(display, children[i]);
         }
     }
 }

@@ -30,9 +30,6 @@ WindowProperty* increasePropertySize(WindowProperty* properties, unsigned int cu
                                      unsigned int* newSize);
 WindowProperty* findProperty(WindowProperty* properties, unsigned int numProperties, Atom property);
 Bool mergeWindowDrawables(Window parent, Window child);
-Window enqueueMapEvent(Display* display, Window window, Window parentWithSubstructureRedirect,
-                       Bool searchForSRParent);
-Window getParentWithEventBit(Window window, long eventBit);
-void mapRequestedChildren(Display* display, Window window, Window subStructureRedirectParent);
+void mapRequestedChildren(Display* display, Window window);
 
 #endif /* WINDOWINTERNAL_H */

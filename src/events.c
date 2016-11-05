@@ -45,7 +45,6 @@ void generateExposureEventsForChildren(Display* display, Window window) {
         xEvent.xexpose.y = 0;
         GET_WINDOW_DIMS(children[i], xEvent.xexpose.width, xEvent.xexpose.height);
         xEvent.xexpose.count = 0;
-        enqueueEvent(display, &xEvent);
         generateExposureEventsForChildren(display, children[i]);
     }
 }
@@ -561,12 +560,79 @@ int convertEvent(Display* display, SDL_Event* sdlEvent, XEvent* xEvent) {
             break;
         default:
             if (sdlEvent->type >= SDL_USEREVENT && sdlEvent->type <= SDL_LASTEVENT) {
-                    allocEvent = sdlEvent->user.data1;
-                    memcpy(xEvent, allocEvent, sizeof(XEvent));
-                    fprintf(stderr, "SDL_USEREVENT: %d\n", xEvent->type);
                 if (sdlEvent->user.code == INTERNAL_EVENT_CODE) {
+                    XAnyEvent* allocEvent = sdlEvent->user.data1;
+                    eventWindow = sdlEvent->user.data2;
+                    type = allocEvent->type;
+                    sendEvent = allocEvent->send_event;
+                    allocEvent->serial = display->next_event_serial_num;
+                    switch(xEvent->type) {
+                        case KeyRelease:
+                        case KeyPress:
+                            memcpy(&xEvent->xkey, allocEvent, sizeof(XKeyEvent)); break;
+                        case ButtonPress:
+                        case ButtonRelease:
+                            memcpy(&xEvent->xbutton, allocEvent, sizeof(XButtonEvent)); break;
+                        case MotionNotify:
+                            memcpy(&xEvent->xmotion, allocEvent, sizeof(XMotionEvent)); break;
+                        case EnterNotify:
+                        case LeaveNotify:
+                            memcpy(&xEvent->xcrossing, allocEvent, sizeof(XCrossingEvent)); break;
+                        case FocusIn:
+                        case FocusOut:
+                            memcpy(&xEvent->xfocus, allocEvent, sizeof(XFocusChangeEvent)); break;
+                        case Expose:
+                            memcpy(&xEvent->xkeymap, allocEvent, sizeof(XKeymapEvent)); break;
+                        case KeymapNotify:
+                            memcpy(&xEvent->xexpose, allocEvent, sizeof(XExposeEvent)); break;
+                        case GraphicsExpose:
+                            memcpy(&xEvent->xgraphicsexpose, allocEvent, sizeof(XGraphicsExposeEvent)); break;
+                        case NoExpose:
+                            memcpy(&xEvent->xnoexpose, allocEvent, sizeof(XNoExposeEvent)); break;
+                        case VisibilityNotify:
+                            memcpy(&xEvent->xvisibility, allocEvent, sizeof(XVisibilityEvent)); break;
+                        case CreateNotify:
+                            memcpy(&xEvent->xcreatewindow, allocEvent, sizeof(XCreateWindowEvent)); break;
+                        case DestroyNotify:
+                            memcpy(&xEvent->xdestroywindow, allocEvent, sizeof(XDestroyWindowEvent)); break;
+                        case UnmapNotify:
+                            memcpy(&xEvent->xunmap, allocEvent, sizeof(XUnmapEvent)); break;
+                        case MapNotify:
+                            memcpy(&xEvent->xmap, allocEvent, sizeof(XMapEvent)); break;
+                        case MapRequest:
+                            memcpy(&xEvent->xmaprequest, allocEvent, sizeof(XMapRequestEvent)); break;
+                        case ReparentNotify:
+                            memcpy(&xEvent->xreparent, allocEvent, sizeof(XReparentEvent)); break;
+                        case ConfigureNotify:
+                            memcpy(&xEvent->xconfigure, allocEvent, sizeof(XConfigureEvent)); break;
+                        case ConfigureRequest:
+                            memcpy(&xEvent->xconfigurerequest, allocEvent, sizeof(XConfigureRequestEvent)); break;
+                        case GravityNotify:
+                            memcpy(&xEvent->xgravity, allocEvent, sizeof(XGravityEvent)); break;
+                        case ResizeRequest:
+                            memcpy(&xEvent->xresizerequest, allocEvent, sizeof(XResizeRequestEvent)); break;
+                        case CirculateNotify:
+                            memcpy(&xEvent->xcirculate, allocEvent, sizeof(XCirculateEvent)); break;
+                        case CirculateRequest:
+                            memcpy(&xEvent->xconfigurerequest, allocEvent, sizeof(XConfigureRequestEvent)); break;
+                        case PropertyNotify:
+                            memcpy(&xEvent->xproperty, allocEvent, sizeof(XPropertyEvent)); break;
+                        case SelectionClear:
+                            memcpy(&xEvent->xselectionclear, allocEvent, sizeof(XSelectionClearEvent)); break;
+                        case SelectionRequest:
+                            memcpy(&xEvent->xselectionrequest, allocEvent, sizeof(XSelectionRequestEvent)); break;
+                        case SelectionNotify:
+                            memcpy(&xEvent->xselection, allocEvent, sizeof(XSelectionEvent)); break;
+                        case ColormapNotify:
+                            memcpy(&xEvent->xcolormap, allocEvent, sizeof(XColormapEvent)); break;
+                        case ClientMessage:
+                            memcpy(&xEvent->xclient, allocEvent, sizeof(XClientMessageEvent)); break;
+                        case MappingNotify:
+                            memcpy(&xEvent->xmapping, allocEvent, sizeof(XMappingEvent)); break;
+                        default: break;
+                    }
                     free(allocEvent);
-                    return 0;
+                    break;
                 } else if (sdlEvent->user.code == SEND_EVENT_CODE) {
                     memcpy(xEvent, sdlEvent->user.data1, sizeof(XEvent));
                     free(sdlEvent->user.data1);
@@ -652,12 +718,7 @@ void XNextEvent(Display* display, XEvent* event_return) {
     fprintf(stderr, "Leaving XNextEvent\n");
 }
 
-Bool enqueueEvent(Display* display, XEvent* event) {
-    XEvent* allocEvent = malloc(sizeof(XEvent));
-    if (allocEvent == NULL) {
-        fprintf(stderr, "Failed to enqueue event: Could not allocate XEvent!\n");
-        return False;
-    }
+Bool enqueueEvent(Display* display, Window eventWindow, void* event) {
     static Uint32 sendEventType = (Uint32) -1;
     if (sendEventType == ((Uint32) -1)) {
         sendEventType = SDL_RegisterEvents(1);
@@ -666,14 +727,14 @@ Bool enqueueEvent(Display* display, XEvent* event) {
         SDL_Event sdlEvent;
         SDL_zero(sdlEvent);
         sdlEvent.type = sendEventType;
-        sdlEvent.user.data1 = allocEvent;
         sdlEvent.user.code = INTERNAL_EVENT_CODE;
+        sdlEvent.user.data1 = event;
+        sdlEvent.user.data2 = eventWindow;
         fprintf(stderr, "Enqueuing event\n");
         SDL_PushEvent(&sdlEvent);
         return True;
     }
     fprintf(stderr, "Failed to send event: SDL_RegisterEvents failed!");
-    free(allocEvent);
     return False;
 }
 
@@ -742,4 +803,299 @@ void XFlush(Display *display) {
     // https://tronche.com/gui/x/xlib/event-handling/XFlush.html
 //    SET_X_SERVER_REQUEST(display, XCB_);
 //    SDL_PumpEvents(); // TODO: This locks up the main thread
+}
+
+Window getSiblingBelow(Window window) {
+    Window parent = GET_PARENT(window);
+    Window* children = GET_CHILDREN(parent);
+    Bool foundMe = False;
+    size_t i;
+    for (i = 0; i < GET_WINDOW_STRUCT(parent)->childSpace; i++) {
+        if (children[i] != NULL) {
+            if (foundMe) {
+                return children[i];
+            }
+            foundMe = children[i] == window;
+        }
+    }
+    return None;
+}
+
+Bool postEvent(Display* display, Window eventWindow, unsigned int eventId, ...) {
+#define SKIP {eventNeeded = False; break;}
+    void* eventData = NULL;
+    Bool eventNeeded = True;
+    va_list args;
+    va_start(args, eventId);
+    switch (eventId) {
+        case CreateNotify: {
+            if (!HAS_EVENT_MASK(GET_PARENT(eventWindow), SubstructureNotifyMask)) SKIP
+            XCreateWindowEvent* event = malloc(sizeof(XCreateWindowEvent));
+            if (event == NULL) break;
+            event->type = eventId;
+            event->send_event = False;
+            event->display = display;
+            WindowStruct *windowStruct = GET_WINDOW_STRUCT(eventWindow);
+            event->parent = windowStruct->parent;
+            event->window = eventWindow;
+            event->x = windowStruct->x;
+            event->y = windowStruct->y;
+            event->width = windowStruct->w;
+            event->height = windowStruct->h;
+            event->border_width = windowStruct->borderWidth;
+            event->override_redirect = windowStruct->overrideRedirect;
+            eventData = event;
+            break;
+        }
+        case DestroyNotify: {
+            if (!(HAS_EVENT_MASK(GET_PARENT(eventWindow), SubstructureNotifyMask) ||
+                  HAS_EVENT_MASK(eventWindow, StructureNotifyMask))) SKIP
+            XDestroyWindowEvent* event = malloc(sizeof(XDestroyWindowEvent));
+            if (event == NULL) break;
+            event->type = eventId;
+            event->send_event = False;
+            event->display = display;
+            event->window = eventWindow;
+            if (HAS_EVENT_MASK(GET_PARENT(eventWindow), SubstructureNotifyMask)) {
+                // Enqueue the event for the parent first
+                event->event = GET_PARENT(eventWindow);
+                if (!enqueueEvent(display, GET_PARENT(eventWindow), event)) {
+                    break; // Break out and return False
+                }
+            }
+            if (HAS_EVENT_MASK(eventWindow, StructureNotifyMask)) {
+                // Now enqueue the event for the destroyed window
+                event->event = eventWindow;
+            } else SKIP
+            eventData = event;
+            break;
+        }
+        case Expose: {
+            if (!HAS_EVENT_MASK(eventWindow, ExposureMask) || IS_INPUT_ONLY(eventWindow)
+                || !GET_WINDOW_STRUCT(eventWindow)->mapState == Mapped) SKIP
+            XExposeEvent* event = malloc(sizeof(XExposeEvent));
+            if (event == NULL) break;
+            event->type = eventId;
+            event->send_event = False;
+            event->display = display;
+            event->window = eventWindow;
+            SDL_Rect exposeRect = va_arg(args, SDL_Rect);
+            event->x = exposeRect.x;
+            event->y = exposeRect.y;
+            event->width = exposeRect.w;
+            event->height = exposeRect.h;
+            event->count = va_arg(args, int);
+            eventData = event;
+            break;
+        }
+        case ConfigureRequest: {
+            if (GET_WINDOW_STRUCT(eventWindow)->overrideRedirect
+                || !HAS_EVENT_MASK(GET_PARENT(eventWindow), SubstructureRedirectMask)) SKIP
+            XConfigureRequestEvent* event = malloc(sizeof(XConfigureRequestEvent));
+            if (event == NULL) break;
+            event->type = eventId;
+            event->send_event = False;
+            event->display = display;
+            event->window = eventWindow;
+            event->parent = GET_PARENT(eventWindow);
+            event->value_mask = va_arg(args, unsigned long);
+            XWindowChanges *windowChanges = va_arg(args, XWindowChanges*);
+            GET_WINDOW_POS(eventWindow, event->x, event->y);
+            if (HAS_VALUE(event->value_mask, CWX)) {
+                event->x = windowChanges->x;
+            }
+            if (HAS_VALUE(event->value_mask, CWY)) {
+                event->y = windowChanges->y;
+            }
+            GET_WINDOW_DIMS(eventWindow, event->width, event->height);
+            if (HAS_VALUE(event->value_mask, CWWidth)) {
+                event->width = windowChanges->width;
+            }
+            if (HAS_VALUE(event->value_mask, CWHeight)) {
+                event->height = windowChanges->height;
+            }
+            if (HAS_VALUE(event->value_mask, CWBorderWidth)) {
+                event->border_width = windowChanges->border_width;
+            } else {
+                event->border_width = GET_WINDOW_STRUCT(eventWindow)->borderWidth;
+            }
+            event->above = HAS_VALUE(event->value_mask, CWSibling)
+                                           ? windowChanges->sibling : None;
+            event->detail = HAS_VALUE(event->value_mask, CWStackMode)
+                                            ? windowChanges->stack_mode : Above;
+            eventData = event;
+            break;
+        }
+        case ConfigureNotify: {
+            if (!(HAS_EVENT_MASK(GET_PARENT(eventWindow), SubstructureNotifyMask) ||
+                  HAS_EVENT_MASK(eventWindow, StructureNotifyMask))) SKIP
+            XConfigureEvent* event = malloc(sizeof(XConfigureEvent));
+            if (event == NULL) break;
+            event->type = eventId;
+            event->send_event = False;
+            event->display = display;
+            event->window = eventWindow;
+            GET_WINDOW_POS(eventWindow, event->x, event->y);
+            GET_WINDOW_DIMS(eventWindow, event->width, event->height);
+            event->border_width = GET_WINDOW_STRUCT(eventWindow)->borderWidth;
+            event->above = getSiblingBelow(eventWindow);
+            event->override_redirect = GET_WINDOW_STRUCT(eventWindow)->overrideRedirect;
+            if (HAS_EVENT_MASK(GET_PARENT(eventWindow), SubstructureNotifyMask)) {
+                // Enqueue the event for the parent first
+                event->event = GET_PARENT(eventWindow);
+                if (!enqueueEvent(display, GET_PARENT(eventWindow), event)) {
+                    break; // Break out and return False
+                }
+            }
+            if (HAS_EVENT_MASK(eventWindow, StructureNotifyMask)) {
+                event->event = eventWindow;
+            } else SKIP
+            eventData = event;
+            break;
+        }
+        case ReparentNotify: {
+            Window oldParent = va_arg(args, Window);
+            if (!(HAS_EVENT_MASK(GET_PARENT(eventWindow), SubstructureNotifyMask) ||
+                  HAS_EVENT_MASK(oldParent, SubstructureNotifyMask) ||
+                  HAS_EVENT_MASK(eventWindow, StructureNotifyMask))) SKIP
+            XReparentEvent* event = malloc(sizeof(XReparentEvent));
+            if (event == NULL) break;
+            event->type = eventId;
+            event->send_event = False;
+            event->display = display;
+            event->window = eventWindow;
+            event->parent = GET_PARENT(eventWindow);
+            GET_WINDOW_POS(eventWindow, event->x, event->y);
+            event->override_redirect = GET_WINDOW_STRUCT(eventWindow)->overrideRedirect;
+            if (HAS_EVENT_MASK(oldParent, SubstructureNotifyMask)) {
+                // Enqueue the event for the old parent first
+                event->event = oldParent;
+                if (!enqueueEvent(display, oldParent, event)) {
+                    break; // Break out and return False
+                }
+            }
+            if (HAS_EVENT_MASK(GET_PARENT(eventWindow), SubstructureNotifyMask)) {
+                // Enqueue the event for the parent second
+                event->event = GET_PARENT(eventWindow);
+                if (!enqueueEvent(display, GET_PARENT(eventWindow), event)) {
+                    break; // Break out and return False
+                }
+            }
+            if (HAS_EVENT_MASK(eventWindow, StructureNotifyMask)) {
+                event->event = eventWindow;
+            } else SKIP
+            eventData = event;
+            break;
+        }
+        case MapRequest: {
+            if (!HAS_EVENT_MASK(GET_PARENT(eventWindow), SubstructureRedirectMask)
+                || GET_WINDOW_STRUCT(eventWindow)->overrideRedirect
+                || GET_WINDOW_STRUCT(eventWindow)->mapState != UnMapped) SKIP
+            XMapRequestEvent* event = malloc(sizeof(XMapRequestEvent));
+            if (event == NULL) break;
+            event->type = eventId;
+            event->send_event = False;
+            event->display = display;
+            event->window = eventWindow;
+            event->parent = GET_PARENT(eventWindow);
+            eventData = event;
+            break;
+        }
+        case MapNotify: {
+            if (!HAS_EVENT_MASK(GET_PARENT(eventWindow), SubstructureNotifyMask)
+                && !HAS_EVENT_MASK(eventWindow, StructureNotifyMask)) SKIP
+            XMapEvent* event = malloc(sizeof(XMapEvent));
+            if (event == NULL) break;
+            event->type = eventId;
+            event->send_event = False;
+            event->display = display;
+            event->window = eventWindow;
+            event->override_redirect = GET_WINDOW_STRUCT(eventWindow)->overrideRedirect;
+            if (HAS_EVENT_MASK(GET_PARENT(eventWindow), SubstructureNotifyMask)) {
+                // Enqueue the event for the parent second
+                event->event = GET_PARENT(eventWindow);
+                if (!enqueueEvent(display, GET_PARENT(eventWindow), event)) {
+                    break; // Break out and return False
+                }
+            }
+            if (HAS_EVENT_MASK(eventWindow, StructureNotifyMask)) {
+                event->event = eventWindow;
+            } else SKIP
+            eventData = event;
+            break;
+        }
+        case UnmapNotify: {
+            if (!HAS_EVENT_MASK(GET_PARENT(eventWindow), SubstructureNotifyMask)
+                && !HAS_EVENT_MASK(eventWindow, StructureNotifyMask)) SKIP
+            XUnmapEvent* event = malloc(sizeof(XUnmapEvent));
+            if (event == NULL) break;
+            event->type = eventId;
+            event->send_event = False;
+            event->display = display;
+            event->window = eventWindow;
+            event->from_configure = va_arg(args, Bool);
+            if (HAS_EVENT_MASK(GET_PARENT(eventWindow), SubstructureNotifyMask)) {
+                // Enqueue the event for the parent second
+                event->event = GET_PARENT(eventWindow);
+                if (!enqueueEvent(display, GET_PARENT(eventWindow), event)) {
+                    break; // Break out and return False
+                }
+            }
+            if (HAS_EVENT_MASK(eventWindow, StructureNotifyMask)) {
+                event->event = eventWindow;
+            } else SKIP
+            eventData = event;
+            break;
+        }
+        case KeyRelease:
+        case KeyPress:
+//            memcpy(&xEvent->xkey, allocEvent, sizeof(XKeyEvent)); break;
+        case ButtonPress:
+        case ButtonRelease:
+//            memcpy(&xEvent->xbutton, allocEvent, sizeof(XButtonEvent)); break;
+        case MotionNotify:
+//            memcpy(&xEvent->xmotion, allocEvent, sizeof(XMotionEvent)); break;
+        case EnterNotify:
+        case LeaveNotify:
+//            memcpy(&xEvent->xcrossing, allocEvent, sizeof(XCrossingEvent)); break;
+        case FocusIn:
+        case FocusOut:
+//            memcpy(&xEvent->xfocus, allocEvent, sizeof(XFocusChangeEvent)); break;
+        case KeymapNotify:
+//            memcpy(&xEvent->xexpose, allocEvent, sizeof(XExposeEvent)); break;
+        case GraphicsExpose:
+//            memcpy(&xEvent->xgraphicsexpose, allocEvent, sizeof(XGraphicsExposeEvent)); break;
+        case NoExpose:
+            /*memcpy(&xEvent->xnoexpose, allocEvent, sizeof(XNoExposeEvent)); */break; // TODO
+        case VisibilityNotify:
+//            memcpy(&xEvent->xvisibility, allocEvent, sizeof(XVisibilityEvent)); break;
+        case GravityNotify:
+            /*memcpy(&xEvent->xgravity, allocEvent, sizeof(XGravityEvent)); */break; // TODO
+        case ResizeRequest:
+//            memcpy(&xEvent->xresizerequest, allocEvent, sizeof(XResizeRequestEvent)); break;
+        case CirculateNotify:
+//            memcpy(&xEvent->xcirculate, allocEvent, sizeof(XCirculateEvent)); break;
+        case CirculateRequest:
+//            memcpy(&xEvent->xconfigurerequest, allocEvent, sizeof(XConfigureRequestEvent)); break;
+        case PropertyNotify:
+//            memcpy(&xEvent->xproperty, allocEvent, sizeof(XPropertyEvent)); break;
+        case SelectionClear:
+//            memcpy(&xEvent->xselectionclear, allocEvent, sizeof(XSelectionClearEvent)); break;
+        case SelectionRequest:
+//            memcpy(&xEvent->xselectionrequest, allocEvent, sizeof(XSelectionRequestEvent)); break;
+        case SelectionNotify:
+//            memcpy(&xEvent->xselection, allocEvent, sizeof(XSelectionEvent)); break;
+        case ColormapNotify:
+            /*memcpy(&xEvent->xcolormap, allocEvent, sizeof(XColormapEvent)); */break; // TODO
+        case ClientMessage:
+//            memcpy(&xEvent->xclient, allocEvent, sizeof(XClientMessageEvent)); break;
+        case MappingNotify:
+//            memcpy(&xEvent->xmapping, allocEvent, sizeof(XMappingEvent)); break;
+        default:
+            break;
+    }
+    va_end(args);
+    if (eventData == NULL) return !eventNeeded;
+    return enqueueEvent(display, eventWindow, eventData);
+#undef SKIP
 }

@@ -72,29 +72,12 @@ Window XCreateWindow(Display* display, Window parent, int x, int y, unsigned int
         return NULL;
     }
     // FIXME: Warning: Colormap is not initialized!
+    // Set up the window ahead of time for event processing, so we can send the CreateNotify event
+    if (HAS_VALUE(valueMask, CWEventMask)) windowStruct->eventMask = attributes->event_mask;
+    postEvent(display, windowID, CreateNotify); 
     if (valueMask != 0) {
         XChangeWindowAttributes(display, windowID, valueMask, attributes);
     }
-    XEvent event;
-    event.type = CreateNotify;
-    event.xcreatewindow.type = CreateNotify;
-    event.xcreatewindow.serial = 0;
-    event.xcreatewindow.send_event = False;
-    event.xcreatewindow.display = display;
-    event.xcreatewindow.parent = parent;
-    event.xcreatewindow.window = windowID;
-    event.xcreatewindow.x = x;
-    event.xcreatewindow.y = y;
-    event.xcreatewindow.width = width;
-    event.xcreatewindow.height = height;
-    event.xcreatewindow.border_width = border_width;
-    event.xcreatewindow.override_redirect = False;
-    event.xany.serial = 0;
-    event.xany.display = display;
-    event.xany.send_event = False;
-    event.xany.type = CreateNotify;
-    event.xany.window = windowID;
-    enqueueEvent(display, &event);
     return windowID;
 }
 
@@ -363,34 +346,17 @@ void XReparentWindow(Display* display, Window window, Window parent, int x, int 
     }
     MapState mapState = GET_WINDOW_STRUCT(window)->mapState;
     XUnmapWindow(display, window);
-    XMoveWindow(display, window, x, y);
+    Window oldParent = GET_PARENT(window);
     removeChildFromParent(window);
     if (!addChildToWindow(parent, window)) {
         fprintf(stderr, "Out of memory: Failed to reattach window in XReparentWindow!\n");
         return;
     }
-    if (mapState == Mapped || mapState == MapRequested) {
+    XMoveWindow(display, window, x, y); // TODO: Do this without generating events
+    postEvent(display, window, ReparentNotify, oldParent);
+    if (mapState != UnMapped) {
         XMapWindow(display, window);
     }
-    // TODO: ReparentNotify event
-    XEvent event;
-    event.type = ReparentNotify;
-    event.xreparent.type = ReparentNotify;
-    event.xreparent.serial = 0;
-    event.xreparent.send_event = False;
-    event.xreparent.display = display;
-    event.xreparent.event = parent;
-    event.xreparent.parent = parent;
-    event.xreparent.window = window;
-    event.xreparent.x = x;
-    event.xreparent.y = y;
-    event.xreparent.override_redirect = False;
-    event.xany.serial = 0;
-    event.xany.display = display;
-    event.xany.send_event = False;
-    event.xany.type = ReparentNotify;
-    event.xany.window = parent;
-    enqueueEvent(display, &event);
 }
 
 int indexInWindowList(Window* windowList, int numWindows, Window window) {

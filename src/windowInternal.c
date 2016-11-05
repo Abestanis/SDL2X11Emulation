@@ -372,7 +372,6 @@ Window enqueueMapEvent(Display* display, Window window, Window parentWithSubstru
         event.xany.type = MapRequest;
         event.xany.window = window;
     }
-    enqueueEvent(display, &event);
 }
 
 void mapRequestedChildren(Display* display, Window window, Window subStructureRedirectParent) {

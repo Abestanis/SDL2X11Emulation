@@ -374,6 +374,7 @@ Bool configureWindow(Display* display, Window window, unsigned long value_mask, 
     if (HAS_VALUE(value_mask, CWWidth) || HAS_VALUE(value_mask, CWHeight)) {
         int width, height;
         GET_WINDOW_DIMS(window, width, height);
+        int oldWidth = width, oldHeight = height;
         if (HAS_VALUE(value_mask, CWWidth)) {
             width = values->width;
             if (width <= 0) {
@@ -389,7 +390,7 @@ Bool configureWindow(Display* display, Window window, unsigned long value_mask, 
             }
         }
         printWindowsHierarchy();
-        fprintf(stderr, "Resizing window %p to (%ux%u)", window, width, height);
+        fprintf(stderr, "Resizing window %p to (%ux%u)\n", window, width, height);
         if (isMappedTopLevelWindow) {
             SDL_SetWindowSize(windowStruct->sdlWindow, width, height);
             int wOut, hOut;
@@ -401,6 +402,10 @@ Bool configureWindow(Display* display, Window window, unsigned long value_mask, 
             windowStruct->h = (unsigned int) height;
         }
         resizeWindowSurface(window); // TODO: Handle fail
+        if (oldWidth < width || oldHeight < height) {
+            SDL_Rect exposedRect = { 0, 0, width, height }; // TODO: Calculate exposed rect
+            postExposeEvent(display, window, exposedRect);
+        }
         // TODO: Generate expose events
     }
     return postEvent(display, window, ConfigureNotify);

@@ -168,7 +168,7 @@ void XDrawLines(Display *display, Drawable d, GC gc, XPoint *points, int npoints
         GPU_Line(renderTarget, last.x, last.y, current.x, current.y, drawColor);
         last = current;
     }
-/**/    GPU_Flip(renderTarget);
+    GPU_Flip(renderTarget);
 }
 
 void XCopyArea(Display* display, Drawable src, Drawable dest, GC gc, int src_x, int src_y,
@@ -226,7 +226,7 @@ void XCopyArea(Display* display, Drawable src, Drawable dest, GC gc, int src_x, 
     fprintf(stderr, "Copy area {x = %f, y = %f, w = %f, h = %f}\n", sourceRect.x, sourceRect.y, sourceRect.w, sourceRect.h);
     GPU_Blit(sourceImage, &sourceRect, renderDest, dest_x + sourceRect.w / 2, dest_y + sourceRect.h / 2);
     GPU_FreeImage(sourceImage);
-/**/    GPU_Flip(renderDest);
+    GPU_Flip(renderDest);
     
     // TODO: Events
 }
@@ -254,7 +254,7 @@ void XDrawRectangle(Display *display, Drawable d, GC gc, int x, int y, unsigned 
     GPU_Rect rectangle = {x, y, width, height};
     fprintf(stderr, "Drawing rectangle {x = %f, y = %f, w = %f, h = %f}\n", rectangle.x, rectangle.y, rectangle.w, rectangle.h);
     GPU_Rectangle2(renderTarget, rectangle, drawColor);
-/**/    GPU_Flip(renderTarget);
+    GPU_Flip(renderTarget);
 }
 
 void XFillRectangles(Display *display, Drawable d, GC gc, XRectangle *rectangles, int nrectangles) {
@@ -295,7 +295,7 @@ void XFillRectangles(Display *display, Drawable d, GC gc, XRectangle *rectangles
                 rectangles[i].x,
                 rectangles[i].y,
                 rectangles[i].width,
-                rectangles[i].height,
+                rectangles[i].height
             };
             fprintf(stderr, "Drawing filled rectangle {x = %f, y = %f, w = %f, h = %f}\n", rectangle.x, rectangle.y, rectangle.w, rectangle.h);
             GPU_RectangleFilled2(renderTarget, rectangle, drawColor);
@@ -307,5 +307,5 @@ void XFillRectangles(Display *display, Drawable d, GC gc, XRectangle *rectangles
     } else if (gc->fill_style == FillStippled) {
         fprintf(stderr, "Fill_style is %s\n", "FillStippled");
     }
-/**/    GPU_Flip(renderTarget);
+    GPU_Flip(renderTarget);
 }

@@ -171,7 +171,7 @@ void XMapWindow(Display* display, Window window) {
         }
         if (windowStruct->unmappedContent != NULL) {
             if (windowStruct->renderTarget != NULL) {
-/**/                GPU_Flip(windowStruct->renderTarget);
+                GPU_Flip(windowStruct->renderTarget);
             }
             fprintf(stderr, "BLITTING in %s\n", __func__);
             int x, y;

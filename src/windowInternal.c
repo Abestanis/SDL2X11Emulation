@@ -4,7 +4,6 @@
 #include "windowInternal.h"
 #include "drawing.h"
 #include "events.h"
-#include "window.h"
 
 Window SCREEN_WINDOW = NULL;
 
@@ -300,7 +299,7 @@ Bool resizeWindowSurface(Window window) {
             fprintf(stderr, "Failed to resize the window surface: Failed to create render target from new window surface!\n");
             return FALSE;
         }
-/**/        if (windowStruct->renderTarget != NULL) GPU_Flip(windowStruct->renderTarget);
+        if (windowStruct->renderTarget != NULL) GPU_Flip(windowStruct->renderTarget);
         fprintf(stderr, "Resizing surface of window %p\n", window);
         fprintf(stderr, "BLITTING in %s\n", __func__);
         GPU_Blit(oldContent, NULL, newTarget, oldContent->w / 2, oldContent->h / 2);
@@ -319,7 +318,7 @@ Bool mergeWindowDrawables(Window parent, Window child) {
     GPU_Target* parentTarget = getWindowRenderTarget(parent);
     if (parentTarget == NULL) return FALSE;
     if (childWindowStruct->renderTarget != NULL) {
-/**/        GPU_Flip(childWindowStruct->renderTarget);
+        GPU_Flip(childWindowStruct->renderTarget);
     }
     fprintf(stderr, "BLITTING in %s\b", __func__);
     GPU_Blit(childWindowStruct->unmappedContent, NULL, parentTarget,

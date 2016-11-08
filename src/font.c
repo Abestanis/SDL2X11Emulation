@@ -315,6 +315,7 @@ Bool renderText(Display* display, GPU_Target* renderTarget, GC gc, int x, int y,
     y -= TTF_FontAscent(gc->font);
     GPU_Blit(fontImage, NULL, renderTarget, x + fontImage->w / 2, y + fontImage->h / 2);
     GPU_FreeImage(fontImage);
+    GPU_Flip(renderTarget);
     return True;
 }
 

@@ -299,20 +299,19 @@ int convertEvent(Display* display, SDL_Event* sdlEvent, XEvent* xEvent) {
                         || sdlEvent->window.event == SDL_WINDOWEVENT_SIZE_CHANGED) {
                         xEvent->xconfigure.width  = sdlEvent->window.data1;
                         xEvent->xconfigure.height = sdlEvent->window.data2;
-                        Window resizedWindow = getWindowFromId(sdlEvent->window.windowID);
-                        if (GET_WINDOW_STRUCT(resizedWindow)->renderTarget != NULL) {
+                        if (GET_WINDOW_STRUCT(eventWindow)->renderTarget != NULL) {
                             // This is necessary, because sdl gpu will otherwise use an incorrect virtual resolution
                             // which will offset the rendering.
-                            GPU_MakeCurrent(GET_WINDOW_STRUCT(resizedWindow)->renderTarget, sdlEvent->window.windowID);
+                            GPU_MakeCurrent(GET_WINDOW_STRUCT(eventWindow)->renderTarget, sdlEvent->window.windowID);
                             GPU_SetWindowResolution(sdlEvent->window.data1, sdlEvent->window.data2);
                         }
                     } else {
                         SDL_GetWindowSize(SDL_GetWindowFromID(sdlEvent->window.windowID),
                                           &xEvent->xconfigure.width, &xEvent->xconfigure.height);
                     }
-                    xEvent->xconfigure.border_width;
+                    xEvent->xconfigure.border_width = GET_WINDOW_STRUCT(eventWindow)->borderWidth;
                     xEvent->xconfigure.above = NULL;
-                    xEvent->xconfigure.override_redirect;
+                    xEvent->xconfigure.override_redirect = GET_WINDOW_STRUCT(eventWindow)->overrideRedirect;
                     break;
                 case SDL_WINDOWEVENT_MINIMIZED:
                     fprintf(stderr, "Window %d minimized\n", sdlEvent->window.windowID);

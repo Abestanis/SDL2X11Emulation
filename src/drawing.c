@@ -42,17 +42,16 @@ void flipScreen() {
 GPU_Target* getWindowRenderTarget(Window window) {
     Window targetWindow = window;
     int x = 0, y = 0, w = 0, h = 0;
-    GPU_Rect viewPort = {0, 0, 0, 0};
-    GET_WINDOW_DIMS(window, viewPort.w, viewPort.h);
-//    if (viewPort.w <= 1 && viewPort.h <= 1) abort();
+    GPU_Rect clipRect = {0, 0, 0, 0};
+    GET_WINDOW_DIMS(window, clipRect.w, clipRect.h);
     while (GET_PARENT(targetWindow) != NULL && GET_WINDOW_STRUCT(targetWindow)->sdlWindow == NULL
            && GET_WINDOW_STRUCT(targetWindow)->mapState != UnMapped) {
         GET_WINDOW_DIMS(targetWindow, w, h);
-        if (viewPort.w > w - viewPort.x) viewPort.w = w - viewPort.x;
-        if (viewPort.h > h - viewPort.y) viewPort.h = h - viewPort.y;
+        if (clipRect.w > w - clipRect.x) clipRect.w = w - clipRect.x;
+        if (clipRect.h > h - clipRect.y) clipRect.h = h - clipRect.y;
         GET_WINDOW_POS(targetWindow, x, y);
-        viewPort.x += x;
-        viewPort.y += y;
+        clipRect.x += x;
+        clipRect.y += y;
         targetWindow = GET_PARENT(targetWindow);
     }
     if (targetWindow == SCREEN_WINDOW) {
@@ -92,9 +91,13 @@ GPU_Target* getWindowRenderTarget(Window window) {
         fprintf(stderr, "Failed to find a render target in %s for window %p!\n", __func__, window);
         return NULL;
     }
+    GPU_SetClipRect(windowStruct->renderTarget, clipRect);
+    GPU_Rect viewPort;
+    viewPort.x = clipRect.x;
+    viewPort.y = clipRect.y;
+    GET_WINDOW_DIMS(SCREEN_WINDOW, viewPort.w, viewPort.h);
     GPU_SetViewport(windowStruct->renderTarget, viewPort);
-    GPU_SetClipRect(windowStruct->renderTarget, viewPort);
-    fprintf(stderr, "Render viewport is {x = %f, y = %f, w = %f, h = %f}\n", viewPort.x, viewPort.y, viewPort.w, viewPort.h);
+    fprintf(stderr, "Render viewport is {x = %d, y = %d, w = %d, h = %d}\n", (int) viewPort.x, (int) viewPort.y, (int) viewPort.w, (int) viewPort.h);
     return windowStruct->renderTarget;
 }
 

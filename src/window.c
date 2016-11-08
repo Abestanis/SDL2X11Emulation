@@ -50,7 +50,8 @@ Window XCreateWindow(Display* display, Window parent, int x, int y, unsigned int
     if (!addChildToWindow(parent, windowID)) {
         fprintf(stderr, "Out of memory: Could not increase size of parent's child list in XCreateWindow!\n");
         handleOutOfMemory(0, display, 0, 0);
-        XDestroyWindow(display, windowID);
+        free(windowStruct);
+        free(windowID);
         return NULL;
     }
     int visualClass;

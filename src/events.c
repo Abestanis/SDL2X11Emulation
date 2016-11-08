@@ -52,13 +52,18 @@ void postExposeEvent(Display* display, Window window, SDL_Rect damagedArea) {
 }
 
 int onSdlEvent(void* userdata, SDL_Event* event) {
-//    switch (event->type) {
+    switch (event->type) {
 //        case SDL_QUIT: // TODO: Returning 0 can prevent program exit here
 //            ENQUEUE_EVENT_IN_PIPE((Display *) userdata);
 //            break;
-//        default:
+        case SDL_WINDOWEVENT:
+            if (GET_WINDOW_STRUCT(SCREEN_WINDOW)->sdlWindow == NULL || 
+                    event->window.windowID == SDL_GetWindowID(GET_WINDOW_STRUCT(SCREEN_WINDOW)->sdlWindow)) {
+                return 0;
+            } // else fall trough to default
+        default:
             ENQUEUE_EVENT_IN_PIPE((Display *) userdata);
-//    }
+    }
     return 1;
 }
 
@@ -96,7 +101,7 @@ int initEventPipe(Display* display) {
     for (; qlen > 0; qlen--) {
         ENQUEUE_EVENT_IN_PIPE(display);
     }
-    SDL_AddEventWatch(onSdlEvent, display);
+    SDL_SetEventFilter(onSdlEvent, display);
     return READ_EVENT_FD;
 }
 

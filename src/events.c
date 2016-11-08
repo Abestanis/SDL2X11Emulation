@@ -637,7 +637,7 @@ int convertEvent(Display* display, SDL_Event* sdlEvent, XEvent* xEvent) {
                 } else if (sdlEvent->user.code == SEND_EVENT_CODE) {
                     memcpy(xEvent, sdlEvent->user.data1, sizeof(XEvent));
                     free(sdlEvent->user.data1);
-                    break;
+                    return 0;
                 }
             }
             return -1;

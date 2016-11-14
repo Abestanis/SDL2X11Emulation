@@ -226,6 +226,7 @@ void XUnmapWindow(Display* display, Window window) {
     WindowStruct* windowStruct = GET_WINDOW_STRUCT(window);
     if (windowStruct->renderTarget != NULL) {
         GPU_FreeTarget(windowStruct->renderTarget);
+        windowStruct->renderTarget = NULL;
     }
     if (IS_MAPPED_TOP_LEVEL_WINDOW(window)) {
         SDL_DestroyWindow(windowStruct->sdlWindow);

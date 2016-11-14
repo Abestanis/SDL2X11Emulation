@@ -87,6 +87,9 @@ GPU_Target* getWindowRenderTarget(Window window) {
                     window, SDL_GetWindowID(windowStruct->sdlWindow), __func__);
             return NULL;
         }
+        if (GPU_GetContextTarget() == NULL) {
+            GPU_MakeCurrent(windowStruct->renderTarget, SDL_GetWindowID(windowStruct->sdlWindow));
+        }
     } else {
         fprintf(stderr, "Failed to find a render target in %s for window %p!\n", __func__, window);
         return NULL;

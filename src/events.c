@@ -729,7 +729,28 @@ void XNextEvent(Display* display, XEvent* event_return) {
         int qlen;
         getEventQueueLength(&qlen);
         fprintf(stderr, "Events in queue = %d, qlen = %d\n", qlen, display->qlen);
-        if (qlen == 0 || eventWaiting || SDL_WaitEvent(&event) == 1) {
+        if (qlen == 0 && display->qlen > 0 && !eventWaiting) {
+            READ_EVENT_IN_PIPE(display);
+            fprintf(stderr, "PREVENTING HANGING!!!\n");
+            event_return->type = Expose;
+            event_return->xany.serial = display->next_event_serial_num;
+            event_return->xany.display = display;
+            event_return->xany.send_event = False;
+            event_return->xany.type = Expose;
+            event_return->xany.window = *GET_CHILDREN(display->screens[0].root);
+            event_return->xexpose.type = Expose;
+            event_return->xexpose.serial = 0;
+            event_return->xexpose.send_event = False;
+            event_return->xexpose.display = display;
+            event_return->xexpose.window = event_return->xany.window;
+            event_return->xexpose.x = 0;
+            event_return->xexpose.y = 0;
+            event_return->xexpose.width = 0;
+            event_return->xexpose.height = 0;
+            event_return->xexpose.count = 0;
+            break;
+        }
+        if (eventWaiting || SDL_WaitEvent(&event) == 1) {
             tmpVar = False;
             if (eventWaiting) {
                 event = waitingEvent;

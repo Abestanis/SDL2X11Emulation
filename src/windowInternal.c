@@ -394,7 +394,7 @@ Bool configureWindow(Display* display, Window window, unsigned long value_mask, 
         if (isMappedTopLevelWindow) {
             SDL_SetWindowSize(windowStruct->sdlWindow, width, height);
             int wOut, hOut;
-            SDL_GetWindowPosition(windowStruct->sdlWindow, &wOut, &hOut);
+            SDL_GetWindowSize(windowStruct->sdlWindow, &wOut, &hOut);
             windowStruct->w = (unsigned int) wOut;
             windowStruct->h = (unsigned int) hOut;
         } else {

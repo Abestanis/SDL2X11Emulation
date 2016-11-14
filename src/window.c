@@ -275,9 +275,11 @@ void XMoveWindow(Display* display, Window window, int x, int y) {
         WindowStruct *windowStruct = GET_WINDOW_STRUCT(window);
         if (IS_MAPPED_TOP_LEVEL_WINDOW(window)) {
             SDL_SetWindowPosition(windowStruct->sdlWindow, x, y);
+            SDL_GetWindowPosition(windowStruct->sdlWindow, &windowStruct->x, &windowStruct->y);
+        } else {
+            windowStruct->x = x;
+            windowStruct->y = y;
         }
-        windowStruct->x = x;
-        windowStruct->y = y;
     }
 }
 

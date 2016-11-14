@@ -77,18 +77,16 @@ extern Window SCREEN_WINDOW;
 #define IS_MAPPED_TOP_LEVEL_WINDOW(window) (IS_TOP_LEVEL(window) && GET_WINDOW_STRUCT(window)->sdlWindow != NULL)
 #define IS_INPUT_ONLY(window) GET_WINDOW_STRUCT(window)->inputOnly
 #define GET_WINDOW_POS(window, out_x, out_y) if (IS_MAPPED_TOP_LEVEL_WINDOW(window)) {\
-    SDL_GetWindowPosition(GET_WINDOW_STRUCT(window)->sdlWindow, &out_x, &out_y);\
-} else {\
-    out_x = GET_WINDOW_STRUCT(window)->x;\
-    out_y = GET_WINDOW_STRUCT(window)->y;\
-}
+    SDL_GetWindowPosition(GET_WINDOW_STRUCT(window)->sdlWindow, &GET_WINDOW_STRUCT(window)->x, &GET_WINDOW_STRUCT(window)->y);\
+}\
+out_x = GET_WINDOW_STRUCT(window)->x;\
+out_y = GET_WINDOW_STRUCT(window)->y
 
 #define GET_WINDOW_DIMS(window, width, height) if (IS_MAPPED_TOP_LEVEL_WINDOW(window)) {\
-    SDL_GetWindowSize(GET_WINDOW_STRUCT(window)->sdlWindow, &width, &height);\
-} else {\
-    width = GET_WINDOW_STRUCT(window)->w;\
-    height = GET_WINDOW_STRUCT(window)->h;\
-}
+    SDL_GetWindowSize(GET_WINDOW_STRUCT(window)->sdlWindow, &GET_WINDOW_STRUCT(window)->w, &GET_WINDOW_STRUCT(window)->h);\
+}\
+width = GET_WINDOW_STRUCT(window)->w;\
+height = GET_WINDOW_STRUCT(window)->h
 
 #define HAS_VALUE(valueMask, value) (value & valueMask)
 

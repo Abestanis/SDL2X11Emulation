@@ -28,10 +28,11 @@ void postExposeEvent(Display* display, Window window, SDL_Rect damagedArea) {
     static unsigned exposeEventsToFollow = 0;
     SDL_Rect childDamagedArea;
     size_t i;
-    int width, height;
-    GET_WINDOW_DIMS(window, width, height);
-    if (damagedArea.x < 0 || damagedArea.x > width || damagedArea.y < 0
-        || damagedArea.y > height || width < 0 || height < 0) return;
+    SDL_Rect windowRect;
+    windowRect.x = 0;
+    windowRect.y = 0;
+    GET_WINDOW_DIMS(window, windowRect.w, windowRect.h);
+    if (!SDL_HasIntersection(&damagedArea, &windowRect)) return;
     exposeEventsToFollow++;
     Window* children = GET_CHILDREN(window);
     for (i = 0; i < GET_WINDOW_STRUCT(window)->childSpace; i++) {

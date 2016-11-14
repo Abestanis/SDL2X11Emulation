@@ -14,18 +14,11 @@ void flipScreen() {
     for (i = 0; i < GET_WINDOW_STRUCT(SCREEN_WINDOW)->childSpace; i++) {
         if (children[i] != NULL && GET_WINDOW_STRUCT(children[i])->renderTarget != NULL) {
             GPU_Target* target = GET_WINDOW_STRUCT(children[i])->renderTarget;
-//            SDL_Color color = { 0x00, 0xFF, 0x00, 0xFF };
-//            int w, h;
-//            GET_WINDOW_DIMS(children[i], w, h);
-//            GPU_Rect rect;
-//            rect.x = 0; rect.y = h - 20;
-//            rect.w = 20; rect.h = 20;
-//            GPU_RectangleFilled2(target, rect, color);
             GPU_Flip(target);
         }
     }
-//    printWindowsHierarchy();
 #ifdef DEBUG_WINDOWS
+//    printWindowsHierarchy();
 //    drawWindowsDebugSurfacePlane();
 //    drawWindowsDebugBorder();
 #endif
@@ -219,12 +212,7 @@ void XCopyArea(Display* display, Drawable src, Drawable dest, GC gc, int src_x, 
         return;
     }
     fprintf(stderr, "%s: Copy area from target %p to target %p\n", __func__, sourceTarget, renderDest);
-    GPU_Rect sourceRect = {
-            src_x + 1,
-            src_y + 1,
-            width - 2,
-            height -2
-    };
+    GPU_Rect sourceRect = { src_x, src_y, width, height };
 
     fprintf(stderr, "Copy area {x = %f, y = %f, w = %f, h = %f}\n", sourceRect.x, sourceRect.y, sourceRect.w, sourceRect.h);
     GPU_Blit(sourceImage, &sourceRect, renderDest, dest_x + sourceRect.w / 2, dest_y + sourceRect.h / 2);

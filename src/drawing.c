@@ -304,6 +304,36 @@ void XFillRectangles(Display *display, Drawable d, GC gc, XRectangle *rectangles
         fprintf(stderr, "Fill_style is %s\n", "FillTiled");
     } else if (gc->fill_style == FillOpaqueStippled) {
         fprintf(stderr, "Fill_style is %s\n", "FillOpaqueStippled");
+        TYPE_CHECK(gc->stipple, PIXMAP, display);
+        GPU_Image* stipple = GET_PIXMAP_IMAGE(gc->stipple);
+        GPU_Image* tile = GPU_CopyImage(stipple);
+        if (tile == NULL) {
+            fprintf(stderr, "Failed to copy image from gc->stipple: %s\n", GPU_PopErrorCode().details);
+            handleError(0, display, gc->stipple, 0 , BadMatch, 0);
+            return;
+        }
+        GPU_Target* tileTarget = GPU_LoadTarget(tile);
+        if (tileTarget == NULL) {
+            fprintf(stderr, "Failed to create image target from gc->stipple: %s\n", GPU_PopErrorCode().details);
+            handleError(0, display, gc->stipple, 0 , BadMatch, 0);
+            return;
+        }
+        GPU_SetShapeBlendFunction(GPU_FUNC_SRC_COLOR, GPU_FUNC_ZERO, GPU_FUNC_ZERO, GPU_FUNC_DST_ALPHA);
+        SDL_Color color = GPU_MakeColor(GET_RED_FROM_COLOR(gc->foreground), GET_GREEN_FROM_COLOR(gc->foreground), GET_BLUE_FROM_COLOR(gc->foreground), GET_ALPHA_FROM_COLOR(gc->foreground));
+        GPU_RectangleFilled(tileTarget, 0, 0, tile->w, tile->h, color);
+        GPU_SetShapeBlendFunction(GPU_FUNC_SRC_COLOR, GPU_FUNC_ZERO, GPU_FUNC_ZERO, GPU_FUNC_ONE_MINUS_DST_ALPHA);
+        color = GPU_MakeColor(GET_RED_FROM_COLOR(gc->background), GET_GREEN_FROM_COLOR(gc->background), GET_BLUE_FROM_COLOR(gc->background), GET_ALPHA_FROM_COLOR(gc->background));
+        GPU_RectangleFilled(tileTarget, 0, 0, tile->w, tile->h, color);
+        GPU_SetShapeBlendMode(GPU_BLEND_NORMAL);
+        GPU_SetWrapMode(tile, GPU_WRAP_REPEAT, GPU_WRAP_REPEAT);
+        
+        size_t i;
+        for (i = 0; i < nrectangles; i++) {
+            GPU_Rect rectangle = { 0, 0, rectangles[i].width, rectangles[i].height };
+            fprintf(stderr, "Drawing filled rectangle using FillOpaqueStippled {x = %f, y = %f, w = %f, h = %f}\n", rectangle.x, rectangle.y, rectangle.w, rectangle.h);
+            GPU_Blit(tile, &rectangle, renderTarget, rectangles[i].x, rectangles[i].y);
+        }
+        GPU_FreeImage(tile);
     } else if (gc->fill_style == FillStippled) {
         fprintf(stderr, "Fill_style is %s\n", "FillStippled");
     }

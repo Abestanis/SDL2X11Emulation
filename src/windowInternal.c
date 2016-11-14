@@ -166,14 +166,14 @@ void destroyWindow(Display* display, Window window, Bool freeParentData) {
     if (windowStruct->icon != NULL) {
         SDL_FreeSurface(windowStruct->icon);
     }
-    if (windowStruct->sdlWindow != NULL) {
-        SDL_DestroyWindow(windowStruct->sdlWindow);
-    }
     if (windowStruct->renderTarget != NULL) {
         GPU_FreeTarget(windowStruct->renderTarget);
     }
     if (windowStruct->unmappedContent != NULL) {
         GPU_FreeImage(windowStruct->unmappedContent);
+    }
+    if (windowStruct->sdlWindow != NULL) {
+        SDL_DestroyWindow(windowStruct->sdlWindow);
     }
     postEvent(display, window, DestroyNotify);
     if (freeParentData) {

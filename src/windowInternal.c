@@ -69,6 +69,15 @@ Bool initScreenWindow(Display* display) {
 
 void destroyScreenWindow(Display* display) {
     if (SCREEN_WINDOW != NULL) {
+        size_t i;
+        Window* children = GET_CHILDREN(SCREEN_WINDOW);
+        for (i = 0; i < GET_WINDOW_STRUCT(SCREEN_WINDOW)->childSpace; i++) {
+            if (children[i] != NULL) {
+                destroyWindow(display, children[i], False);
+                children[i] = NULL;
+            }
+        }
+        free(children);
         GPU_FreeTarget(GET_WINDOW_STRUCT(SCREEN_WINDOW)->renderTarget);
         SDL_DestroyWindow(GET_WINDOW_STRUCT(SCREEN_WINDOW)->sdlWindow);
         free(SCREEN_WINDOW->dataPointer);
@@ -86,6 +95,8 @@ WindowSdlIdMapper* getWindowSdlIdMapperStructFromId(Uint32 sdlWindowId) {
     }
     return NULL;
 }
+
+//TODO: Unregister window mapping
 
 void registerWindowMapping(Window window, Uint32 sdlWindowId) {
     WindowSdlIdMapper* mapper = getWindowSdlIdMapperStructFromId(sdlWindowId);
@@ -140,6 +151,9 @@ void removeChildFromParent(Window child) {
 void destroyWindow(Display* display, Window window, Bool freeParentData) {
     size_t i;
     WindowStruct* windowStruct = GET_WINDOW_STRUCT(window);
+    if (windowStruct->mapState == Mapped) {
+        XUnmapWindow(display, window);
+    }
     if (windowStruct->childSpace > 0) {
         Window* children = GET_CHILDREN(window);
         for (i = 0; i < windowStruct->childSpace; i++) {
@@ -148,9 +162,9 @@ void destroyWindow(Display* display, Window window, Bool freeParentData) {
                 children[i] = NULL;
             }
         }
-    }
-    if (windowStruct->mapState == Mapped) {
-        XUnmapWindow(display, window);
+        free(children);
+        windowStruct->childSpace = 0;
+        windowStruct->children = NULL;
     }
     XFreeColormap(display, GET_COLORMAP(window));
     if (windowStruct->propertySize > 0) {
@@ -406,7 +420,6 @@ Bool configureWindow(Display* display, Window window, unsigned long value_mask, 
             SDL_Rect exposedRect = { 0, 0, width, height }; // TODO: Calculate exposed rect
             postExposeEvent(display, window, exposedRect);
         }
-        // TODO: Generate expose events
     }
     return postEvent(display, window, ConfigureNotify);
     // TODO: Implement re-stacking: https://tronche.com/gui/x/xlib/window/configure.html#XWindowChanges

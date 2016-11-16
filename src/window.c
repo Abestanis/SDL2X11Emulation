@@ -233,6 +233,7 @@ void XUnmapWindow(Display* display, Window window) {
         windowStruct->sdlWindow = NULL;
     }
     // TODO: Expose events
+    // TODO: Change subwindow state to MapRequested?
     windowStruct->mapState = UnMapped;
     postEvent(display, window, UnmapNotify, False);
 }
@@ -264,8 +265,8 @@ void XStoreName(Display* display, Window window, char* window_name) {
 
 void XSetIconName(Display* display, Window window, char* icon_name) {
     // https://tronche.com/gui/x/xlib/ICC/client-to-window-manager/XSetIconName.html
-    // There is not really anything to do here
 //    SET_X_SERVER_REQUEST(display, XCB_);
+    // There is not really anything to do here // TODO: Check if this is true
 }
 
 void XMoveWindow(Display* display, Window window, int x, int y) {
@@ -636,6 +637,7 @@ void XRaiseWindow(Display* display, Window window) {
     if (IS_MAPPED_TOP_LEVEL_WINDOW(window)) {
         SDL_RaiseWindow(GET_WINDOW_STRUCT(window)->sdlWindow);
     }
+    // TODO: Rearrange child in child list of parent.
 }
 
 Status XGetWindowAttributes(Display* display, Window window,
@@ -739,9 +741,9 @@ void XSetWindowColormap(Display* display, Window window, Colormap colormap) {
 void XChangeWindowAttributes(Display* display, Window window, unsigned long valueMask,
                              XSetWindowAttributes *attributes) {
     // https://tronche.com/gui/x/xlib/window/XChangeWindowAttributes.html
-    if (IS_TOP_LEVEL(window) && HAS_VALUE(valueMask, CWCursor)) {
     SET_X_SERVER_REQUEST(display, XCB_CHANGE_WINDOW_ATTRIBUTES);
     TYPE_CHECK(window, WINDOW, display);
+    if (IS_TOP_LEVEL(window) && HAS_VALUE(valueMask, CWCursor)) {
         XDefineCursor(display, window, attributes->cursor);
     }
     if (window != SCREEN_WINDOW) {

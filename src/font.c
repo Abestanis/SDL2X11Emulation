@@ -10,10 +10,11 @@
 #include "drawing.h"
 #include "display.h"
 
+// TODO: Maybe implement character atlas
 // TODO: Convert text decoding to Utf-8
 // http://www.cprogramming.com/tutorial/unicode.html
 
-#define FONT_SIZE 18
+#define FONT_SIZE 8
 
 Font XLoadFont(Display* display, char* name) {
     // https://tronche.com/gui/x/xlib/graphics/font-metrics/XLoadFont.html

@@ -22,7 +22,8 @@ void updateWindowRenderTargets(Display* display);
 #define ENQUEUE_EVENT_IN_PIPE(display) { char buffer = 'e'; write(WRITE_EVENT_FD, &buffer, sizeof(buffer)); (display)->qlen++; }
 #define READ_EVENT_IN_PIPE(display) if ((display)->qlen > 0) { char buffer; read(READ_EVENT_FD, &buffer, sizeof(buffer)); (display)->qlen--; }
 
-//TODO: Generate Enter & Leave events on MouseButton down and MouseMotion
+// TODO: Generate Enter & Leave events on MouseButton down and MouseMotion
+// TODO: prioritize events like RENDER_TARGETS_RESET
 
 void postExposeEvent(Display* display, Window window, SDL_Rect damagedArea) {
     static unsigned exposeEventsToFollow = 0;
@@ -663,8 +664,6 @@ void updateWindowRenderTargets(Display* display) {
             WindowStruct* windowStruct = GET_WINDOW_STRUCT(children[i]);
             fprintf(stderr, "Resetting render target of window %p\n", children[i]);
             GPU_FreeTarget(windowStruct->renderTarget);
-            fprintf(stderr, "Went past the free\n");
-            sleep(1);
             windowStruct->renderTarget = GPU_CreateTargetFromWindow(SDL_GetWindowID(windowStruct->sdlWindow));
             SDL_Rect exposeRect;
             exposeRect.x = 0;

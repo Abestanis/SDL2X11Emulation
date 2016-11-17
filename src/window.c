@@ -236,6 +236,8 @@ void XUnmapWindow(Display* display, Window window) {
     // TODO: Change subwindow state to MapRequested?
     windowStruct->mapState = UnMapped;
     postEvent(display, window, UnmapNotify, False);
+    SDL_Rect exposeRect = {windowStruct->x, windowStruct->y, windowStruct->w, windowStruct->h};
+    postExposeEvent(display, GET_PARENT(window), exposeRect);
 }
 
 Status XWithdrawWindow(Display* display, Window window, int screen_number) {

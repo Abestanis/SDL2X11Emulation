@@ -392,14 +392,14 @@ Bool configureWindow(Display* display, Window window, unsigned long value_mask, 
         if (HAS_VALUE(value_mask, CWWidth)) {
             width = values->width;
             if (width <= 0) {
-                handleError(BadValue, display, NULL, 0, 0, 0);
+                handleError(0, display, NULL, 0, BadValue, 0);
                 return False;
             }
         }
         if (HAS_VALUE(value_mask, CWHeight)) {
             height = values->height;
             if (height <= 0) {
-                handleError(BadValue, display, NULL, 0, 0, 0);
+                handleError(0, display, NULL, 0, BadValue, 0);
                 return False;
             }
         }

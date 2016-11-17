@@ -305,7 +305,8 @@ int convertEvent(Display* display, SDL_Event* sdlEvent, XEvent* xEvent) {
                             // This is necessary, because sdl gpu will otherwise use an incorrect virtual resolution
                             // which will offset the rendering.
                             GPU_MakeCurrent(GET_WINDOW_STRUCT(eventWindow)->renderTarget, sdlEvent->window.windowID);
-                            GPU_SetWindowResolution(sdlEvent->window.data1, sdlEvent->window.data2);
+                            GPU_SetWindowResolution((Uint16) sdlEvent->window.data1,
+                                                    (Uint16) sdlEvent->window.data2);
                         }
                     } else {
                         SDL_GetWindowSize(SDL_GetWindowFromID(sdlEvent->window.windowID),

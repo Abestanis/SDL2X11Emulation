@@ -364,14 +364,17 @@ void mapRequestedChildren(Display* display, Window window) {
 
 Bool configureWindow(Display* display, Window window, unsigned long value_mask, XWindowChanges* values) {
     if (window == SCREEN_WINDOW) return True;
+    Bool hasChanged = False;
     WindowStruct* windowStruct = GET_WINDOW_STRUCT(window);
     if (!windowStruct->overrideRedirect && HAS_EVENT_MASK(GET_PARENT(window), SubstructureRedirectMask)) {
         return postEvent(display, window, ConfigureRequest, value_mask, values);
     }
     Bool isMappedTopLevelWindow = IS_MAPPED_TOP_LEVEL_WINDOW(window);
-    if (HAS_VALUE(value_mask, CWX) || HAS_VALUE(value_mask, CWY)) {
-        int x, y;
-        GET_WINDOW_POS(window, x, y);
+    int oldX, oldY, oldWidth, oldHeight;
+    GET_WINDOW_POS(window, oldX, oldY);
+    GET_WINDOW_DIMS(window, oldWidth, oldHeight);
+    if (HAS_VALUE(value_mask, CWX) || HAS_VALUE(value_mask, CWY)) { 
+        int x = oldX, y = oldY;
         if (HAS_VALUE(value_mask, CWX)) {
             x = values->x;
         }
@@ -380,15 +383,17 @@ Bool configureWindow(Display* display, Window window, unsigned long value_mask, 
         }
         if (isMappedTopLevelWindow) {
             SDL_SetWindowPosition(windowStruct->sdlWindow, x, y);
+            SDL_GetWindowPosition(windowStruct->sdlWindow, &windowStruct->x, &windowStruct->y);
+        } else {
+            windowStruct->x = x;
+            windowStruct->y = y;
         }
-        windowStruct->x = x;
-        windowStruct->y = y;
-        // TODO: Generate expose events
+        if (oldX != windowStruct->x || oldY != windowStruct->y) {
+            hasChanged = True;
+        }
     }
     if (HAS_VALUE(value_mask, CWWidth) || HAS_VALUE(value_mask, CWHeight)) {
-        int width, height;
-        GET_WINDOW_DIMS(window, width, height);
-        int oldWidth = width, oldHeight = height;
+        int width = oldWidth, height = oldHeight;
         if (HAS_VALUE(value_mask, CWWidth)) {
             width = values->width;
             if (width <= 0) {
@@ -415,12 +420,31 @@ Bool configureWindow(Display* display, Window window, unsigned long value_mask, 
             windowStruct->w = (unsigned int) width;
             windowStruct->h = (unsigned int) height;
         }
-        resizeWindowSurface(window); // TODO: Handle fail
-        if (oldWidth < width || oldHeight < height) {
-            SDL_Rect exposedRect = { 0, 0, width, height }; // TODO: Calculate exposed rect
-            postExposeEvent(display, window, exposedRect);
+        if (oldWidth != windowStruct->w || oldHeight != windowStruct->h) {
+            resizeWindowSurface(window); // TODO: Handle fail
+            hasChanged = True;
         }
     }
-    return postEvent(display, window, ConfigureNotify);
+    if (!hasChanged) return True;
+    if (!postEvent(display, window, ConfigureNotify)) {
+        return False;
+    }
+    if (oldX != windowStruct->x || oldY != windowStruct->y
+        || oldWidth != windowStruct->w || oldHeight != windowStruct->h) {
+        SDL_Rect exposedRect;  // TODO: Handle whe window shrinks or moves, update parent
+        if (oldX != windowStruct->x || oldY != windowStruct->y) {
+            exposedRect.x = 0;
+            exposedRect.y = 0;
+            exposedRect.w = windowStruct->w;
+            exposedRect.h = windowStruct->h;
+        } else {
+            exposedRect.x = 0;
+            exposedRect.y = 0;
+            exposedRect.w = windowStruct->w;
+            exposedRect.h = windowStruct->h;// TODO Calculate exposed rect
+        }
+        postExposeEvent(display, window, &exposedRect, 1);
+    }
+    return True;
     // TODO: Implement re-stacking: https://tronche.com/gui/x/xlib/window/configure.html#XWindowChanges
 }

@@ -1,5 +1,6 @@
 #include <errno.h>
 #include <fcntl.h>
+#include <X11/Xlib.h>
 #include "events.h"
 #include "errors.h"
 #include "SDL.h"
@@ -25,32 +26,49 @@ void updateWindowRenderTargets(Display* display);
 // TODO: Generate Enter & Leave events on MouseButton down and MouseMotion
 // TODO: prioritize events like RENDER_TARGETS_RESET
 
-void postExposeEvent(Display* display, Window window, SDL_Rect damagedArea) {
-    static unsigned exposeEventsToFollow = 0;
-    SDL_Rect childDamagedArea;
-    size_t i;
-    SDL_Rect windowRect;
-    windowRect.x = 0;
-    windowRect.y = 0;
-    GET_WINDOW_DIMS(window, windowRect.w, windowRect.h);
-    if (!SDL_HasIntersection(&damagedArea, &windowRect)) return;
-    exposeEventsToFollow++;
+Bool getRectIntersection(const SDL_Rect* rect1, const SDL_Rect* rect2, SDL_Rect *rectOut) { // TODO: Refine this
+    if (rect2->x < rect1->x && rect2->x > rect1->x + rect1->w
+        && rect2->y < rect1->y && rect2->y > rect1->y + rect1->h
+        && rect2->x + rect2->w < rect1->x && rect2->x + rect2->w > rect1->y + rect1->w
+        && rect2->y + rect2->h < rect1->y && rect2->y + rect2->h > rect1->y + rect1->h) {
+        return False;
+    }
+    SDL_UnionRect(rect1, rect2, rectOut);
+    rectOut->x -= rect2->x;
+    rectOut->y -= rect2->y;
+    return True;
+}
+
+void postExposeEvent(Display* display, Window window, const SDL_Rect* damagedAreaList, size_t numAreas) {
+    size_t i = numAreas, j;
+    while (i-- > 0) {
+        postEvent(display, window, Expose, &damagedAreaList[i], i);
+    }
+    SDL_Rect* childDamagedAreaList = malloc(sizeof(SDL_Rect) * numAreas);
+    if (childDamagedAreaList == NULL) return;
     Window* children = GET_CHILDREN(window);
     for (i = 0; i < GET_WINDOW_STRUCT(window)->childSpace; i++) {
-        if (children[i] != NULL && !IS_INPUT_ONLY(children[0])
+        if (children[i] != NULL && !IS_INPUT_ONLY(children[i])
             && GET_WINDOW_STRUCT(children[i])->mapState == Mapped) {
             WindowStruct* childWindowStruct = GET_WINDOW_STRUCT(children[i]);
-            childDamagedArea.x = damagedArea.x - childWindowStruct->x;
-            childDamagedArea.y = damagedArea.y - childWindowStruct->y;
-            childDamagedArea.w = childDamagedArea.x + damagedArea.w;
-            childDamagedArea.h = childDamagedArea.y + damagedArea.h;
-            childDamagedArea.x = MAX(0, childDamagedArea.x);
-            childDamagedArea.y = MAX(0, childDamagedArea.y);
-            postExposeEvent(display, children[i], childDamagedArea);
+            SDL_Rect childWindowRect = {
+                    childWindowStruct->x,
+                    childWindowStruct->y,
+                    childWindowStruct->w,
+                    childWindowStruct->h,
+            };
+            size_t numChildAreas = 0;
+            for (j = 0; j < numAreas; j++) {
+                if (getRectIntersection(&damagedAreaList[j], &childWindowRect, &childDamagedAreaList[numChildAreas])) {
+                    numChildAreas++;
+                }
+            }
+            if (numChildAreas > 0) {
+                postExposeEvent(display, children[i], childDamagedAreaList, numChildAreas);
+            }
         }
     }
-    exposeEventsToFollow--;
-    postEvent(display, window, Expose, damagedArea, exposeEventsToFollow);
+    free(childDamagedAreaList);
 }
 
 int onSdlEvent(void* userdata, SDL_Event* event) {
@@ -566,6 +584,17 @@ int convertEvent(Display* display, SDL_Event* sdlEvent, XEvent* xEvent) {
             GET_WINDOW_DIMS(eventWindow, xEvent->xexpose.width, xEvent->xexpose.height);
             xEvent->xexpose.count = 0;
             break;
+        case SDL_RENDER_DEVICE_RESET: // TODO: This is WIP
+            fprintf(stderr, "SDL_RENDER_DEVICE_RESET\n");
+            updateWindowRenderTargets(display);
+            type = Expose;
+            eventWindow = *GET_CHILDREN(SCREEN_WINDOW);
+            FILL_STANDARD_VALUES(xexpose);
+            xEvent->xexpose.window = eventWindow;
+            GET_WINDOW_POS(eventWindow, xEvent->xexpose.x, xEvent->xexpose.y);
+            GET_WINDOW_DIMS(eventWindow, xEvent->xexpose.width, xEvent->xexpose.height);
+            xEvent->xexpose.count = 0;
+            break;
         default:
             if (sdlEvent->type >= SDL_USEREVENT && sdlEvent->type <= SDL_LASTEVENT) {
                 if (sdlEvent->user.code == INTERNAL_EVENT_CODE) {
@@ -670,7 +699,7 @@ void updateWindowRenderTargets(Display* display) {
             exposeRect.x = 0;
             exposeRect.y = 0;
             GET_WINDOW_DIMS(children[i], exposeRect.w, exposeRect.h);
-            postExposeEvent(display, children[i], exposeRect);
+            postExposeEvent(display, children[i], &exposeRect, 1);
         }
     }
 }
@@ -962,12 +991,12 @@ Bool postEvent(Display* display, Window eventWindow, unsigned int eventId, ...) 
             event->send_event = False;
             event->display = display;
             event->window = eventWindow;
-            SDL_Rect exposeRect = va_arg(args, SDL_Rect);
-            event->x = exposeRect.x;
-            event->y = exposeRect.y;
-            event->width = exposeRect.w;
-            event->height = exposeRect.h;
-            event->count = va_arg(args, int);
+            SDL_Rect* exposeRect = va_arg(args, SDL_Rect*);
+            event->x = exposeRect->x;
+            event->y = exposeRect->y;
+            event->width = exposeRect->w;
+            event->height = exposeRect->h;
+            event->count = va_arg(args, size_t);
             eventData = event;
             break;
         }

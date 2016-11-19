@@ -12,6 +12,6 @@
 int initEventPipe(Display* display);
 unsigned int convertModifierState(Uint16 mod);
 Bool postEvent(Display* display, Window eventWindow, unsigned int eventId, ...);
-void postExposeEvent(Display* display, Window window, SDL_Rect damagedArea);
+void postExposeEvent(Display* display, Window window, const SDL_Rect* damagedAreaList, size_t numAreas);
 
 #endif /* _EVENTS_H_ */

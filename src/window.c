@@ -237,7 +237,7 @@ void XUnmapWindow(Display* display, Window window) {
     windowStruct->mapState = UnMapped;
     postEvent(display, window, UnmapNotify, False);
     SDL_Rect exposeRect = {windowStruct->x, windowStruct->y, windowStruct->w, windowStruct->h};
-    postExposeEvent(display, GET_PARENT(window), exposeRect);
+    postExposeEvent(display, GET_PARENT(window), &exposeRect, 1);
 }
 
 Status XWithdrawWindow(Display* display, Window window, int screen_number) {

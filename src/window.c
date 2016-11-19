@@ -275,16 +275,10 @@ void XMoveWindow(Display* display, Window window, int x, int y) {
     // https://tronche.com/gui/x/xlib/window/XMoveWindow.html
     SET_X_SERVER_REQUEST(display, XCB_MOVE_WINDOW);
     TYPE_CHECK(window, WINDOW, display);
-    if (window != SCREEN_WINDOW) {
-        WindowStruct *windowStruct = GET_WINDOW_STRUCT(window);
-        if (IS_MAPPED_TOP_LEVEL_WINDOW(window)) {
-            SDL_SetWindowPosition(windowStruct->sdlWindow, x, y);
-            SDL_GetWindowPosition(windowStruct->sdlWindow, &windowStruct->x, &windowStruct->y);
-        } else {
-            windowStruct->x = x;
-            windowStruct->y = y;
-        }
-    }
+    XWindowChanges changes;
+    changes.x = x;
+    changes.y = y;
+    configureWindow(display, window, CWX | CWY, &changes);
 }
 
 void XResizeWindow(Display* display, Window window, unsigned int width, unsigned int height) {

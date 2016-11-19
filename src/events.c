@@ -574,7 +574,7 @@ int convertEvent(Display* display, SDL_Event* sdlEvent, XEvent* xEvent) {
                     type = allocEvent->type;
                     sendEvent = allocEvent->send_event;
                     allocEvent->serial = display->next_event_serial_num;
-                    switch(xEvent->type) {
+                    switch(type) {
                         case KeyRelease:
                         case KeyPress:
                             memcpy(&xEvent->xkey, allocEvent, sizeof(XKeyEvent)); break;
@@ -590,9 +590,9 @@ int convertEvent(Display* display, SDL_Event* sdlEvent, XEvent* xEvent) {
                         case FocusOut:
                             memcpy(&xEvent->xfocus, allocEvent, sizeof(XFocusChangeEvent)); break;
                         case Expose:
-                            memcpy(&xEvent->xkeymap, allocEvent, sizeof(XKeymapEvent)); break;
-                        case KeymapNotify:
                             memcpy(&xEvent->xexpose, allocEvent, sizeof(XExposeEvent)); break;
+                        case KeymapNotify:
+                            memcpy(&xEvent->xkeymap, allocEvent, sizeof(XKeymapEvent)); break;
                         case GraphicsExpose:
                             memcpy(&xEvent->xgraphicsexpose, allocEvent, sizeof(XGraphicsExposeEvent)); break;
                         case NoExpose:
@@ -622,7 +622,7 @@ int convertEvent(Display* display, SDL_Event* sdlEvent, XEvent* xEvent) {
                         case CirculateNotify:
                             memcpy(&xEvent->xcirculate, allocEvent, sizeof(XCirculateEvent)); break;
                         case CirculateRequest:
-                            memcpy(&xEvent->xconfigurerequest, allocEvent, sizeof(XConfigureRequestEvent)); break;
+                            memcpy(&xEvent->xcirculaterequest, allocEvent, sizeof(XCirculateRequestEvent)); break;
                         case PropertyNotify:
                             memcpy(&xEvent->xproperty, allocEvent, sizeof(XPropertyEvent)); break;
                         case SelectionClear:

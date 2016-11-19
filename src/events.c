@@ -677,47 +677,53 @@ void updateWindowRenderTargets(Display* display) {
 
 void printEventInfo(XEvent* event) {
     char* eventType;
-#define CASE_TYPE(type) case type: eventType = #type; break
+    char msg[100];
+#define CASE_TYPE(type, format, ...) case type: eventType = #type; snprintf(msg, 100, format, ##__VA_ARGS__); break
     switch (event->type) {
-        CASE_TYPE(KeyPress);
-        CASE_TYPE(KeyRelease);
-        CASE_TYPE(ButtonPress);
-        CASE_TYPE(ButtonRelease);
-        CASE_TYPE(MotionNotify);
-        CASE_TYPE(EnterNotify);
-        CASE_TYPE(LeaveNotify);
-        CASE_TYPE(FocusIn);
-        CASE_TYPE(FocusOut);
-        CASE_TYPE(KeymapNotify);
-        CASE_TYPE(Expose);
-        CASE_TYPE(GraphicsExpose);
-        CASE_TYPE(NoExpose);
-        CASE_TYPE(VisibilityNotify);
-        CASE_TYPE(CreateNotify);
-        CASE_TYPE(DestroyNotify);
-        CASE_TYPE(UnmapNotify);
-        CASE_TYPE(MapNotify);
-        CASE_TYPE(MapRequest);
-        CASE_TYPE(ReparentNotify);
-        CASE_TYPE(ConfigureNotify);
-        CASE_TYPE(ConfigureRequest);
-        CASE_TYPE(GravityNotify);
-        CASE_TYPE(ResizeRequest);
-        CASE_TYPE(CirculateNotify);
-        CASE_TYPE(CirculateRequest);
-        CASE_TYPE(PropertyNotify);
-        CASE_TYPE(SelectionClear);
-        CASE_TYPE(SelectionRequest);
-        CASE_TYPE(SelectionNotify);
-        CASE_TYPE(ColormapNotify);
-        CASE_TYPE(ClientMessage);
-        CASE_TYPE(MappingNotify);
+        CASE_TYPE(KeyPress, "");
+        CASE_TYPE(KeyRelease, "");
+        CASE_TYPE(ButtonPress, "");
+        CASE_TYPE(ButtonRelease, "");
+        CASE_TYPE(MotionNotify, "");
+        CASE_TYPE(EnterNotify, "");
+        CASE_TYPE(LeaveNotify, "");
+        CASE_TYPE(FocusIn, "");
+        CASE_TYPE(FocusOut, "");
+        CASE_TYPE(KeymapNotify, "");
+        CASE_TYPE(Expose, "window %p, rect (x = %d, y = %d, %dx%d), count = %d",
+                  event->xexpose.window, event->xexpose.x, event->xexpose.y,
+                  event->xexpose.width, event->xexpose.height, event->xexpose.count);
+        CASE_TYPE(GraphicsExpose, "");
+        CASE_TYPE(NoExpose, "");
+        CASE_TYPE(VisibilityNotify, "");
+        CASE_TYPE(CreateNotify, "");
+        CASE_TYPE(DestroyNotify, "");
+        CASE_TYPE(UnmapNotify, "");
+        CASE_TYPE(MapNotify, "");
+        CASE_TYPE(MapRequest, "");
+        CASE_TYPE(ReparentNotify, "");
+        CASE_TYPE(ConfigureNotify, "window %p (x = %d, y = %d, w = %d, h = %d), borderW = %d, above %p, overrideRedirect = %d",
+                  event->xconfigure.window, event->xconfigure.x, event->xconfigure.y, event->xconfigure.width,
+                  event->xconfigure.height, event->xconfigure.border_width, event->xconfigure.above,
+                  event->xconfigure.override_redirect);
+        CASE_TYPE(ConfigureRequest, "");
+        CASE_TYPE(GravityNotify, "");
+        CASE_TYPE(ResizeRequest, "");
+        CASE_TYPE(CirculateNotify, "");
+        CASE_TYPE(CirculateRequest, "");
+        CASE_TYPE(PropertyNotify, "");
+        CASE_TYPE(SelectionClear, "");
+        CASE_TYPE(SelectionRequest, "");
+        CASE_TYPE(SelectionNotify, "");
+        CASE_TYPE(ColormapNotify, "");
+        CASE_TYPE(ClientMessage, "");
+        CASE_TYPE(MappingNotify, "");
         default:
             eventType = "Unknown";
     }
 #undef CASE_TYPE
     fprintf(stderr, "Got %s event\n", eventType);
-//    sleep(1);
+    fprintf(stderr, "%s\n", msg);
 }
 
 void XNextEvent(Display* display, XEvent* event_return) {

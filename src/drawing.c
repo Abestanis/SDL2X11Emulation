@@ -100,7 +100,45 @@ GPU_Target* getWindowRenderTarget(Window window) {
 void XFillPolygon(Display* display, Drawable d, GC gc, XPoint *points, int npoints, int shape, int mode) {
     // https://tronche.com/gui/x/xlib/graphics/filling-areas/XFillPolygon.html
     SET_X_SERVER_REQUEST(display, XCB_FILL_POLY);
-    fprintf(stderr, "Hit unimplemented function %s.\n", __func__);
+    TYPE_CHECK(d, DRAWABLE, display);
+    if (npoints <= 1) {
+        fprintf(stderr, "Invalid number of points in %s: %d\n", __func__, npoints);
+        handleError(0, display, NULL, 0, BadValue, 0);
+        return;
+    }
+    GPU_Target* renderTarget;
+    GET_RENDER_TARGET(d, renderTarget);
+    if (renderTarget == NULL) {
+        fprintf(stderr, "Failed to get the render target of %p in %s\n", d, __func__);
+        handleError(0, display, d, 0, BadDrawable, 0);
+        return;
+    }
+    float* fPoints = malloc(sizeof(float) * npoints * 2);
+    if (fPoints == NULL) {
+        handleOutOfMemory(0, display, 0, 0);
+        return;
+    }
+    GPU_SetLineThickness(gc->line_width);
+    SDL_Color drawColor = {
+            GET_RED_FROM_COLOR(gc->foreground),
+            GET_GREEN_FROM_COLOR(gc->foreground),
+            GET_BLUE_FROM_COLOR(gc->foreground),
+            GET_ALPHA_FROM_COLOR(gc->foreground),
+    };
+    size_t i;
+    fPoints[0] = points[0].x;
+    fPoints[1] = points[0].y;
+    for (i = 2; i < npoints * 2; i += 2) {
+        if (mode == CoordModePrevious) {
+            fPoints[i]     = fPoints[i - 2] + points[i].x;
+            fPoints[i + 1] = fPoints[i - 1] + points[i].y;
+        } else {
+            fPoints[i]     = points[i].x;
+            fPoints[i + 1] = points[i].y;
+        }
+    }
+    GPU_PolygonFilled(renderTarget, (unsigned int) npoints, fPoints, drawColor);
+    free(fPoints);
 }
 
 void XFillArc(Display *display, Drawable d, GC gc, int x, int y, unsigned int width, unsigned int height, int angle1, int angle2) {

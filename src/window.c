@@ -423,6 +423,14 @@ void XChangeProperty(Display* display, Window window, Atom property, Atom type, 
     // https://tronche.com/gui/x/xlib/window-information/XChangeProperty.html
     SET_X_SERVER_REQUEST(display, XCB_CHANGE_PROPERTY);
     TYPE_CHECK(window, WINDOW, display);
+    if (numberOfElements < 0) {
+        handleError(0, display, NULL, 0, BadValue, 0);
+        return;
+    }
+    if (format != 8 && format != 16 && format != 32) {
+        handleError(0, display, NULL, 0, BadValue, 0);
+        return;
+    }
     fprintf(stderr, "Changing window property %lu (%s).\n", property, (char*) XGetAtomName(display, property));
     if (!isValidAtom(property)) {
         handleError(0, display, NULL, 0, BadAtom, 0);
@@ -432,23 +440,18 @@ void XChangeProperty(Display* display, Window window, Atom property, Atom type, 
     WindowProperty* windowProperty = findProperty(windowStruct->properties, windowStruct->propertyCount, property);
     unsigned char* combinedData = NULL;
     unsigned char* previousData = NULL;
-    int previousDataSize = 0;
-    int actualDataSize = numberOfElements * (format / 8);
+    unsigned int previousDataLength = 0;
+    Bool propertyHasExisted = True;
+    size_t dataTypeSize = format == 8 ? sizeof(char) : (format == 16 ? sizeof(short) : sizeof(long));
     if (windowProperty != NULL) {
-        previousDataSize = windowProperty->dataLength;
+        previousDataLength = windowProperty->dataLength;
         previousData = windowProperty->data;
         if (windowProperty->type != type) {
             handleError(0, display, NULL, 0, BadMatch, 0);
             return;
         }
     } else {
-        windowProperty = malloc(sizeof(WindowProperty));
-        if (windowProperty == NULL) {
-            fprintf(stderr, "Out of memory: Failed to allocate space for new "
-                    "windowProperty in XChangeProperty!\n");
-            handleOutOfMemory(0, display, 0, 0);
-            return;
-        }
+        propertyHasExisted = False;
         if (windowStruct->propertySize < windowStruct->propertyCount + 1) {
             unsigned int newSize;
             WindowProperty* newProperties = increasePropertySize(windowStruct->properties,
@@ -456,62 +459,72 @@ void XChangeProperty(Display* display, Window window, Atom property, Atom type, 
             if (newProperties == NULL) {
                 fprintf(stderr, "Out of memory: Failed to increase property list size in XChangeProperty!\n");
                 handleOutOfMemory(0, display, 0, 0);
-                free(windowProperty);
                 return;
             }
             windowStruct->properties = newProperties;
             windowStruct->propertySize = newSize;
         }
-        WindowProperty* propertyPointer = windowStruct->properties + windowStruct->propertyCount;
-        propertyPointer = windowProperty;
-        windowStruct->propertyCount++;
+        windowProperty = &windowStruct->properties[windowStruct->propertyCount];
+        windowStruct->propertyCount++; // TODO: Set default values
+        windowProperty->dataFormat = format;
+        windowProperty->data = NULL;
+        windowProperty->dataLength = 0;
+        windowProperty->property = property;
+        windowProperty->type = type;
     }
     switch (mode) {
         case PropModeAppend:
         case PropModePrepend:
-            combinedData = malloc(sizeof(unsigned char) * (previousDataSize + actualDataSize));
+            if (format != windowProperty->dataFormat || type != windowProperty->type) {
+                if (propertyHasExisted) windowStruct->propertyCount--;
+                handleError(0, display, NULL, 0, BadMatch, 0);
+                return;
+            }
+            combinedData = malloc(dataTypeSize * (previousDataLength + numberOfElements));
             if (combinedData == NULL) {
+                if (propertyHasExisted) windowStruct->propertyCount--;
                 fprintf(stderr, "Out of memory: Failed to allocate space for combined data "
                                 "in XChangeProperty!\n");
                 handleOutOfMemory(0, display, 0, 0);
-                if (previousData == NULL) { // We created the new property just above
-                    free(windowStruct);
-                    windowStruct->propertyCount--;
-                }
-                break;
+                return;
             }
             if (mode == PropModeAppend) {
                 if (previousData != NULL) {
-                    memcpy(combinedData, previousData, sizeof(unsigned char) * previousDataSize);
+                    memcpy(combinedData, previousData, dataTypeSize * previousDataLength);
                 }
-                memcpy(combinedData + previousDataSize, data,
-                       sizeof(unsigned char) * actualDataSize);
+                memcpy(combinedData + dataTypeSize * previousDataLength, data, dataTypeSize * numberOfElements);
             } else {
-                memcpy(combinedData, data, sizeof(unsigned char) * actualDataSize);
+                memcpy(combinedData, data, dataTypeSize * numberOfElements);
                 if (previousData != NULL) {
-                    memcpy(combinedData + actualDataSize, previousData,
-                           sizeof(unsigned char) * previousDataSize);
+                    memcpy(combinedData + dataTypeSize * numberOfElements, previousData, dataTypeSize * previousDataLength);
                 }
             }
             windowProperty->data = combinedData;
-            windowProperty->dataLength = actualDataSize + previousDataSize;
+            windowProperty->dataLength = numberOfElements + previousDataLength;
             break;
         case PropModeReplace:
-            windowProperty->data = data;
-            windowProperty->dataLength = actualDataSize;
+            windowProperty->data = malloc(dataTypeSize * numberOfElements);
+            if (windowProperty->data == NULL) {
+                if (propertyHasExisted) windowStruct->propertyCount--;
+                fprintf(stderr, "Out of memory: Failed to allocate space for data "
+                        "in XChangeProperty!\n");
+                handleOutOfMemory(0, display, 0, 0);
+                return;
+            }
+            memcpy(windowProperty->data, data, dataTypeSize * numberOfElements);
+            windowProperty->dataLength = (unsigned int) numberOfElements;
+            windowProperty->property = property;
+            windowProperty->type = type;
+            windowProperty->dataFormat = format;
             break;
         default:
+            if (propertyHasExisted) windowStruct->propertyCount--;
             fprintf(stderr, "Bad parameter: Got unknown mode %d in XChangeProperty!\n", mode);
             handleError(0, display, NULL, 0, BadMatch, 0);
             return;
     }
-    windowProperty->property = property;
-    windowProperty->type = type;
-    windowProperty->dataFormat = format;
     if (previousData != NULL) {
-        for (previousDataSize--; previousDataSize >= 0 ; previousDataSize--) {
-            free(&previousData[previousDataSize]);
-        }
+//        free(previousData); // TODO: Fix crash here
     }
     if (property == _NET_WM_ICON) {
         // Find the icon with the highest resolution
@@ -589,40 +602,40 @@ int XGetWindowProperty(Display* display, Window window, Atom property, long long
     }
     WindowProperty* windowProperty = findProperty(windowStruct->properties,
                                                   windowStruct->propertyCount, property);
-    unsigned char* pointer;
     if (windowProperty != NULL) {
         *actual_type_return = windowProperty->type;
         *actual_format_return = windowProperty->dataFormat;
+        size_t dataTypeSize = windowProperty->dataFormat == 8 ? sizeof(char) :
+                              (windowProperty->dataFormat == 16 ? sizeof(short) : sizeof(long));
         if (req_type == AnyPropertyType || req_type == windowProperty->type) {
-            if (long_offset < 0) {
-                fprintf(stderr, "Bad argument: long_offset is not positive "\
-                        "in XGetWindowProperty!\n");
-                handleError(0, display, NULL, 0, BadValue , 0);
+            if (long_offset < 0 || windowProperty->dataLength * dataTypeSize < 4 * long_offset) {
+                handleError(0, display, NULL, 0, BadValue, 0);
                 return BadValue;
             }
-            int length = long_offset * 4 + long_length * 4 < windowProperty->dataLength ?
-                         long_length * 4 : long_offset * 4 - windowProperty->dataLength;
-            *prop_return = malloc(sizeof(unsigned char) * (length + 1));
+            size_t dataReturnSize = MIN(windowProperty->dataLength * dataTypeSize - 4 * long_offset, 4 * (size_t) long_length);
+            *prop_return = malloc(sizeof(char) * (dataReturnSize + 1));
             if (*prop_return == NULL) {
-                fprintf(stderr, "Out of memory: Failed to allocate space for the retrun value "\
+                fprintf(stderr, "Out of memory: Failed to allocate space for the return value "\
                         "in XGetWindowProperty!\n");
                 handleOutOfMemory(0, display, 0, 0);
                 return BadAlloc;
             }
-            memcpy(*prop_return, windowProperty->data + long_offset * 4, length);
-            *(*prop_return + length) = 0;
-            *numberOfItems_return = length / windowProperty->dataFormat;
-            *bytes_after_return = windowProperty->dataLength - (long_offset * 4 + length);
+            memcpy(*prop_return, windowProperty->data + long_offset * 4, dataReturnSize);
+            (*prop_return)[dataReturnSize] = '\0';
+            *numberOfItems_return = dataReturnSize / dataTypeSize;
+            *bytes_after_return = windowProperty->dataLength * dataTypeSize - (long_offset * 4 + dataReturnSize);
             if (delete && *bytes_after_return == 0) {
                 XDeleteProperty(display, window, property);
             }
         } else {
-            *bytes_after_return = (unsigned long) windowProperty->dataLength;
+            *bytes_after_return = (unsigned long) windowProperty->dataLength * dataTypeSize;
+            *numberOfItems_return = 0;
         }
     } else {
         *actual_type_return = None;
         *actual_format_return = 0;
         *bytes_after_return = 0;
+        *numberOfItems_return = 0;
     }
     return Success;
 }

@@ -9,7 +9,7 @@
 typedef struct {
     Atom property;
     int dataFormat;
-    int dataLength;
+    unsigned int dataLength;
     Atom type;
     unsigned char* data;
 } WindowProperty;

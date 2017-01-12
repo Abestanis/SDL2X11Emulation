@@ -1004,7 +1004,7 @@ Bool postEvent(Display* display, Window eventWindow, unsigned int eventId, ...) 
         }
         case Expose: {
             if (!HAS_EVENT_MASK(eventWindow, ExposureMask) || IS_INPUT_ONLY(eventWindow)
-                || !GET_WINDOW_STRUCT(eventWindow)->mapState == Mapped) SKIP
+                || GET_WINDOW_STRUCT(eventWindow)->mapState != Mapped) SKIP
             XExposeEvent* event = malloc(sizeof(XExposeEvent));
             if (event == NULL) break;
             event->type = eventId;

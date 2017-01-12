@@ -56,7 +56,7 @@ Status _XInitImageFuncPtrs(XImage *image) {
     return XInitImage(image);
 }
 
-char* getImageDataPointer(XImage* image, int x, int y) {
+char* getImageDataPointer(XImage* image, unsigned int x, unsigned int y) {
     char* pointer = image->data;
     pointer += image->bytes_per_line * y;
     return pointer + (image->bits_per_pixel / 8) * x;
@@ -64,7 +64,7 @@ char* getImageDataPointer(XImage* image, int x, int y) {
 
 void XPutPixel(XImage* image, int x, int y, unsigned long pixel) {
     // https://tronche.com/gui/x/xlib/utilities/XPutPixel.html
-    fprintf(stderr, "%s on °%p: %lu (%ld, %ld, %ld)\n", __func__, image, pixel, (pixel >> 24) & 0xFF, (pixel >> 16) & 0xFF, (pixel >> 8) & 0xFF);
+    fprintf(stderr, "%s on %p: %lu (%ld, %ld, %ld)\n", __func__, image, pixel, (pixel >> 24) & 0xFF, (pixel >> 16) & 0xFF, (pixel >> 8) & 0xFF);
     if (image->data == NULL) {
         fprintf(stderr, "Invalid argument: Got image with NULL data in XPutPixel\n");
         return;

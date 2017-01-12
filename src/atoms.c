@@ -74,7 +74,7 @@ Atom internalInternAtom(char* atomName) {
         fprintf(stderr, "Atom already existed %lu.\n", atomStruct->atom);
         return atomStruct->atom;
     } else {
-        fprintf(stderr, "Creating new Atom %lu.\n", lastUsedAtom + 1);
+        fprintf(stderr, "Creating new Atom %s (%lu).\n", atomName, lastUsedAtom + 1);
         atomStruct = malloc(sizeof(AtomStruct));
         if (atomStruct == NULL) {
             return None;

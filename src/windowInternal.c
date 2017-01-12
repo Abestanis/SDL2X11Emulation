@@ -138,13 +138,13 @@ Window getWindowFromId(Uint32 sdlWindowId) {
 
 Window getContainingWindow(Window window, int x, int y) {
     int i, child_x, child_y, child_w, child_h;
-    Window* childern = GET_CHILDREN(window);
+    Window* children = GET_CHILDREN(window);
     for (i = GET_WINDOW_STRUCT(window)->childSpace - 1; i >= 0 ; i--) {
-        if (childern[i] == NULL) continue;
-        GET_WINDOW_POS(childern[i], child_x, child_y);
-        GET_WINDOW_DIMS(childern[i], child_w, child_h);
+        if (children[i] == NULL) continue;
+        GET_WINDOW_POS(children[i], child_x, child_y);
+        GET_WINDOW_DIMS(children[i], child_w, child_h);
         if (x >= child_x && x <= child_x + child_w && y >= child_y && y <= child_y + child_h) {
-            return getContainingWindow(childern[i], x - child_x, y - child_y);
+            return getContainingWindow(children[i], x - child_x, y - child_y);
         }
     }
     return window;
@@ -158,7 +158,6 @@ void removeChildFromParent(Window child) {
         Window* childPointer = GET_CHILDREN(parent);
         int i;
         for (i = 0; i < parentChildSpace; i++) {
-            fflush(stderr);
             if (childPointer[i] == child) {
                 childPointer[i] = NULL;
             }
@@ -448,8 +447,8 @@ Bool configureWindow(Display* display, Window window, unsigned long value_mask, 
     if (!postEvent(display, window, ConfigureNotify)) {
         return False;
     }
-    if (oldX != windowStruct->x || oldY != windowStruct->y
-        || oldWidth != windowStruct->w || oldHeight != windowStruct->h) {
+    if (windowStruct->mapState != UnMapped && (oldX != windowStruct->x || oldY != windowStruct->y
+        || oldWidth != windowStruct->w || oldHeight != windowStruct->h)) {
         SDL_Rect exposedRect;  // TODO: Handle whe window shrinks or moves, update parent
         if (oldX != windowStruct->x || oldY != windowStruct->y) {
             exposedRect.x = 0;

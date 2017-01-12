@@ -342,6 +342,9 @@ int convertEvent(Display* display, SDL_Event* sdlEvent, XEvent* xEvent) {
                     break;
                 case SDL_WINDOWEVENT_RESTORED:
                     fprintf(stderr, "Window %d restored\n", sdlEvent->window.windowID);
+                    SDL_Rect windowArea = {0, 0, 0, 0};
+                    GET_WINDOW_DIMS(eventWindow, windowArea.w, windowArea.h);
+                    postExposeEvent(display, eventWindow, &windowArea, 1);
                     return -1;
                     break;
                 case SDL_WINDOWEVENT_ENTER:

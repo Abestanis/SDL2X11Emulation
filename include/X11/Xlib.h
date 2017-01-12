@@ -777,10 +777,10 @@ typedef struct {
 } XColormapEvent;
 
 typedef struct {
-//    int type;
+    int type;
     unsigned long serial;	/* # of last request processed by server */
-//    Bool send_event;	/* true if this came from a SendEvent request */
-//    Display *display;	/* Display the event was read from */
+    Bool send_event;	/* true if this came from a SendEvent request */
+    Display *display;	/* Display the event was read from */
     Window window;
     Atom message_type;
     int format;

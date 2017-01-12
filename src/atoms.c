@@ -72,7 +72,6 @@ Atom internalInternAtom(char* atomName) {
     AtomStruct* atomStruct = getAtomStructByName(atomName);
     if (atomStruct != NULL) {
         fprintf(stderr, "Atom already existed %lu.\n", atomStruct->atom);
-        free(atomName);
         return atomStruct->atom;
     } else {
         fprintf(stderr, "Creating new Atom %lu.\n", lastUsedAtom + 1);
@@ -80,8 +79,12 @@ Atom internalInternAtom(char* atomName) {
         if (atomStruct == NULL) {
             return None;
         }
+        atomStruct->name = strdup(atomName);
+        if (atomStruct->name == NULL) {
+            free(atomStruct);
+            return None;
+        }
         atomStruct->atom = ++lastUsedAtom;
-        atomStruct->name = atomName;
         atomStruct->next = NULL;
         if (atomStorageLast == NULL) {
             atomStorageStart = atomStruct;
@@ -131,8 +134,13 @@ Atom XInternAtom(Display* display, _Xconst char* atom_name, Bool only_if_exists)
             handleError(0, display, NULL, 0, BadAlloc, 0);
             return None;
         }
+        atomStruct->name = strdup(atom_name);
+        if (atomStruct->name == NULL) {
+            free(atomStruct);
+            handleError(0, display, NULL, 0, BadAlloc, 0);
+            return None;
+        }
         atomStruct->atom = ++lastUsedAtom;
-        atomStruct->name = atom_name;
         atomStruct->next = NULL;
         if (atomStorageLast == NULL) {
             atomStorageStart = atomStruct;

@@ -224,20 +224,21 @@ void XUnmapWindow(Display* display, Window window) {
     SET_X_SERVER_REQUEST(display, XCB_UNMAP_WINDOW);
     TYPE_CHECK(window, WINDOW, display);
     WindowStruct* windowStruct = GET_WINDOW_STRUCT(window);
+    if (windowStruct->mapState == UnMapped) return;
     if (windowStruct->renderTarget != NULL) {
         GPU_FreeTarget(windowStruct->renderTarget);
         windowStruct->renderTarget = NULL;
     }
-    if (IS_MAPPED_TOP_LEVEL_WINDOW(window)) {
+    windowStruct->mapState = UnMapped;
+    if (windowStruct->sdlWindow != NULL) {
         SDL_DestroyWindow(windowStruct->sdlWindow);
         windowStruct->sdlWindow = NULL;
+    } else if (GET_WINDOW_STRUCT(GET_PARENT(window))->mapState != UnMapped) {
+        postEvent(display, window, UnmapNotify, False);
+        SDL_Rect exposeRect = {windowStruct->x, windowStruct->y, windowStruct->w, windowStruct->h};
+        postExposeEvent(display, GET_PARENT(window), &exposeRect, 1);
     }
-    // TODO: Expose events
     // TODO: Change subwindow state to MapRequested?
-    windowStruct->mapState = UnMapped;
-    postEvent(display, window, UnmapNotify, False);
-    SDL_Rect exposeRect = {windowStruct->x, windowStruct->y, windowStruct->w, windowStruct->h};
-    postExposeEvent(display, GET_PARENT(window), &exposeRect, 1);
 }
 
 Status XWithdrawWindow(Display* display, Window window, int screen_number) {

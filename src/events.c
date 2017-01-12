@@ -3,12 +3,10 @@
 #include <X11/Xlib.h>
 #include "events.h"
 #include "errors.h"
-#include "SDL.h"
 #include "window.h"
-#include "drawing.h"
 #include "inputMethod.h"
-#include "SDL_gpu.h"
 #include "display.h"
+#include "atoms.h"
 
 int eventFds[2];
 #define READ_EVENT_FD eventFds[0]
@@ -393,6 +391,25 @@ int convertEvent(Display* display, SDL_Event* sdlEvent, XEvent* xEvent) {
                     break;
                 case SDL_WINDOWEVENT_CLOSE:
                     fprintf(stderr, "Window %d closed\n", sdlEvent->window.windowID);
+                    static Atom WM_PROTOCOLS = NULL;
+                    static Atom WM_DELETE_WINDOW = NULL;
+                    if (WM_PROTOCOLS == NULL) {
+                        WM_PROTOCOLS = internalInternAtom("WM_PROTOCOLS");
+                        WM_DELETE_WINDOW = internalInternAtom("WM_DELETE_WINDOW");
+                    }
+                    WindowProperty *windowProperty = findProperty(GET_WINDOW_STRUCT(eventWindow)->properties,
+                                                                  GET_WINDOW_STRUCT(eventWindow)->propertyCount,
+                                                                  WM_PROTOCOLS);
+                    if (windowProperty != NULL && windowProperty->type == XA_ATOM) {
+                        size_t i;
+                        for (i = 0; i < windowProperty->dataLength; i++) {
+                            if (((Atom*) windowProperty->data)[i] == WM_DELETE_WINDOW) {
+                                postEvent(display, eventWindow, ClientMessage, 32,
+                                          WM_PROTOCOLS, WM_DELETE_WINDOW);
+                                break;
+                            }
+                        }
+                    } // TODO: If window has not the atom, destroy it and Close Display if it is the last
                     return -1;
                     break;
                 default:
@@ -1159,6 +1176,19 @@ Bool postEvent(Display* display, Window eventWindow, unsigned int eventId, ...) 
             eventData = event;
             break;
         }
+        case ClientMessage: {
+            XClientMessageEvent* event = malloc(sizeof(XClientMessageEvent));
+            if (event == NULL) break;
+            event->type = eventId;
+            event->send_event = False;
+            event->display = display;
+            event->window = eventWindow;
+            event->format = va_arg(args, int);
+            event->message_type = va_arg(args, Atom);
+            event->data.l[0] = va_arg(args, Atom);
+            eventData = event;
+            break;
+        }
         case KeyRelease:
         case KeyPress:
 //            memcpy(&xEvent->xkey, allocEvent, sizeof(XKeyEvent)); break;
@@ -1199,8 +1229,6 @@ Bool postEvent(Display* display, Window eventWindow, unsigned int eventId, ...) 
 //            memcpy(&xEvent->xselection, allocEvent, sizeof(XSelectionEvent)); break;
         case ColormapNotify:
             /*memcpy(&xEvent->xcolormap, allocEvent, sizeof(XColormapEvent)); */break; // TODO
-        case ClientMessage:
-//            memcpy(&xEvent->xclient, allocEvent, sizeof(XClientMessageEvent)); break;
         case MappingNotify:
 //            memcpy(&xEvent->xmapping, allocEvent, sizeof(XMappingEvent)); break;
         default:

@@ -4,6 +4,7 @@
 #include "windowInternal.h"
 #include "drawing.h"
 #include "events.h"
+#include "window.h"
 
 Window SCREEN_WINDOW = NULL;
 
@@ -96,7 +97,24 @@ WindowSdlIdMapper* getWindowSdlIdMapperStructFromId(Uint32 sdlWindowId) {
     return NULL;
 }
 
-//TODO: Unregister window mapping
+void deleteWindowMapping(Window window) {
+    WindowSdlIdMapper* mapper = mappingListStart;
+    if (mapper == NULL) {
+        return;
+    } else if (mapper->window == window) {
+        mappingListStart = mapper->next;
+        free(mapper);
+        return;
+    }
+    for (; mapper->next != NULL; mapper = mapper->next) {
+        if (mapper->next->window == window) {
+            WindowSdlIdMapper* nextMapper = mapper->next;
+            mapper->next = nextMapper->next;
+            free(nextMapper);
+            return;
+        }
+    }
+}
 
 void registerWindowMapping(Window window, Uint32 sdlWindowId) {
     WindowSdlIdMapper* mapper = getWindowSdlIdMapperStructFromId(sdlWindowId);
@@ -189,6 +207,7 @@ void destroyWindow(Display* display, Window window, Bool freeParentData) {
     if (windowStruct->sdlWindow != NULL) {
         SDL_DestroyWindow(windowStruct->sdlWindow);
     }
+    deleteWindowMapping(window);
     postEvent(display, window, DestroyNotify);
     if (freeParentData) {
         removeChildFromParent(window);

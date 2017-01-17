@@ -1,6 +1,60 @@
 #include "X11/Xlib.h"
 #include "X11/Xutil.h"
 #include "display.h"
+#include "util.h"
+
+Bool initArray(Array* a, size_t initialSize) {
+    if (initialSize != 0) {
+        a->array = malloc(initialSize * sizeof(void *));
+        if (a->array == NULL) return False;
+    } else {
+        a->array = NULL;
+    }
+    a->length = 0;
+    a->capacity = initialSize;
+    return True;
+}
+
+Bool insertArray(Array* a, void* element) {
+    if (a->length == a->capacity) {
+        size_t newCapacity = (size_t) MAX(8, a->capacity * 1.5);
+        void* temp = realloc(a->array, newCapacity * sizeof(void *));
+        if (temp == NULL) return False;
+        a->array = temp;
+        a->capacity = newCapacity;
+    }
+    a->array[a->length++] = element;
+    return True;
+}
+
+void* removeArray(Array* a, size_t index, Bool preserveOrder) {
+    if (index >= a->length) abort();
+    void* element = a->array[index];
+    if (index - 1 != a->length) {
+        if (preserveOrder) {
+            memmove(&a->array[index], &a->array[index + 1], sizeof(void *) * (a->length - (index + 1)));
+        } else {
+            a->array[index] = a->array[a->length];
+        }
+    }
+    a->length--;
+    return element;
+}
+
+ssize_t findInArray(Array *a, void* element) {
+    ssize_t i;
+    for (i = 0; i < a->length; i++) {
+        if (a->array[i] == element) return i;
+    }
+    return -1;
+}
+
+void freeArray(Array* a) {
+    free(a->array);
+    a->array = NULL;
+    a->length = a->capacity = 0;
+}
+
 
 void XFree(void *data) {
     // https://tronche.com/gui/x/xlib/display/XFree.html

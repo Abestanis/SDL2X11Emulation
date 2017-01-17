@@ -7,7 +7,6 @@
 #include "display.h"
 
 // TODO: Cover cases where top-level window is re-parented and window is converted to top-level window
-// TODO: Make child list ordered and with no NULL objects
 
 void XDestroyWindow(Display* display, Window window) {
     // https://tronche.com/gui/x/xlib/window/XDestroyWindow.html
@@ -400,19 +399,16 @@ Bool XTranslateCoordinates(Display* display, Window sourceWindow, Window destina
     if (childReturn != NULL) {
         *childReturn = None;
         // Get the first child which contains x and y
-        Window* childPointer = GET_CHILDREN(destinationWindow);
-        int counter = -1;
-        unsigned int childSpace = GET_WINDOW_STRUCT(destinationWindow)->childSpace;
-        while (++counter < childSpace) {
-            if (*childPointer != NULL) { continue; }
-            GET_WINDOW_POS(*childPointer, x, y);
-            GET_WINDOW_DIMS(*childPointer, width, height);
+        Window* children = GET_CHILDREN(destinationWindow);
+        size_t i;
+        for (i = 0; i < GET_WINDOW_STRUCT(destinationWindow)->children.length; i++) {
+            GET_WINDOW_POS(children[i], x, y);
+            GET_WINDOW_DIMS(children[i], width, height);
             if (x < currX && x + width > currX && y < currY && y + height > y) {
                 (*childReturn)->type = WINDOW;
-                (*childReturn)->dataPointer = *childPointer;
+                (*childReturn)->dataPointer = children[i];
                 break;
             }
-            childPointer++;
         }
     }
     return True;
@@ -437,13 +433,13 @@ void XChangeProperty(Display* display, Window window, Atom property, Atom type, 
         return;
     }
     WindowStruct* windowStruct = GET_WINDOW_STRUCT(window);
-    WindowProperty* windowProperty = findProperty(windowStruct->properties, windowStruct->propertyCount, property);
+    WindowProperty* windowProperty = findProperty(&windowStruct->properties, property, NULL);
     unsigned char* combinedData = NULL;
     unsigned char* previousData = NULL;
     unsigned int previousDataLength = 0;
-    Bool propertyHasExisted = True;
+    Bool propertyIsNew = windowProperty == NULL;
     size_t dataTypeSize = format == 8 ? sizeof(char) : (format == 16 ? sizeof(short) : sizeof(long));
-    if (windowProperty != NULL) {
+    if (!propertyIsNew) {
         previousDataLength = windowProperty->dataLength;
         previousData = windowProperty->data;
         if (windowProperty->type != type) {
@@ -451,21 +447,16 @@ void XChangeProperty(Display* display, Window window, Atom property, Atom type, 
             return;
         }
     } else {
-        propertyHasExisted = False;
-        if (windowStruct->propertySize < windowStruct->propertyCount + 1) {
-            unsigned int newSize;
-            WindowProperty* newProperties = increasePropertySize(windowStruct->properties,
-                                                                 windowStruct->propertySize, &newSize);
-            if (newProperties == NULL) {
-                fprintf(stderr, "Out of memory: Failed to increase property list size in XChangeProperty!\n");
-                handleOutOfMemory(0, display, 0, 0);
-                return;
-            }
-            windowStruct->properties = newProperties;
-            windowStruct->propertySize = newSize;
+        windowProperty = malloc(sizeof(WindowProperty));
+        if (windowProperty == NULL) {
+            handleOutOfMemory(0, display, 0, 0);
+            return;
         }
-        windowProperty = &windowStruct->properties[windowStruct->propertyCount];
-        windowStruct->propertyCount++; // TODO: Set default values
+        if (!insertArray(&windowStruct->properties, windowProperty)) {
+            free(windowProperty);
+            handleOutOfMemory(0, display, 0, 0);
+            return;
+        }
         windowProperty->dataFormat = format;
         windowProperty->data = NULL;
         windowProperty->dataLength = 0;
@@ -476,13 +467,19 @@ void XChangeProperty(Display* display, Window window, Atom property, Atom type, 
         case PropModeAppend:
         case PropModePrepend:
             if (format != windowProperty->dataFormat || type != windowProperty->type) {
-                if (propertyHasExisted) windowStruct->propertyCount--;
+                if (propertyIsNew) {
+                    removeArray(&windowStruct->properties, windowStruct->properties.length - 1, False);
+                    free(windowProperty);
+                }
                 handleError(0, display, NULL, 0, BadMatch, 0);
                 return;
             }
             combinedData = malloc(dataTypeSize * (previousDataLength + numberOfElements));
             if (combinedData == NULL) {
-                if (propertyHasExisted) windowStruct->propertyCount--;
+                if (propertyIsNew) {
+                    removeArray(&windowStruct->properties, windowStruct->properties.length - 1, False);
+                    free(windowProperty);
+                }
                 fprintf(stderr, "Out of memory: Failed to allocate space for combined data "
                                 "in XChangeProperty!\n");
                 handleOutOfMemory(0, display, 0, 0);
@@ -505,7 +502,10 @@ void XChangeProperty(Display* display, Window window, Atom property, Atom type, 
         case PropModeReplace:
             windowProperty->data = malloc(dataTypeSize * numberOfElements);
             if (windowProperty->data == NULL) {
-                if (propertyHasExisted) windowStruct->propertyCount--;
+                if (propertyIsNew) {
+                    removeArray(&windowStruct->properties, windowStruct->properties.length - 1, False);
+                    free(windowProperty);
+                }
                 fprintf(stderr, "Out of memory: Failed to allocate space for data "
                         "in XChangeProperty!\n");
                 handleOutOfMemory(0, display, 0, 0);
@@ -518,7 +518,10 @@ void XChangeProperty(Display* display, Window window, Atom property, Atom type, 
             windowProperty->dataFormat = format;
             break;
         default:
-            if (propertyHasExisted) windowStruct->propertyCount--;
+            if (propertyIsNew) {
+                removeArray(&windowStruct->properties, windowStruct->properties.length - 1, False);
+                free(windowProperty);
+            }
             fprintf(stderr, "Bad parameter: Got unknown mode %d in XChangeProperty!\n", mode);
             handleError(0, display, NULL, 0, BadMatch, 0);
             return;
@@ -574,16 +577,15 @@ void XDeleteProperty(Display* display, Window window, Atom property) {
             }
         }
     }
-    WindowProperty* windowProperty = findProperty(windowStruct->properties,
-                                                  windowStruct->propertyCount, property);
+    size_t index, i;
+    WindowProperty* windowProperty = findProperty(&windowStruct->properties, property, &index);
     if (windowProperty != NULL) {
         if (windowProperty->data != NULL) {
-            for (windowProperty->dataLength--; windowProperty->dataLength >= 0 ; windowProperty->dataLength--) {
-                free(&windowProperty->data[windowProperty->dataLength]);
+            for (i = 0; i < windowProperty->dataLength; i++) {
+                free(&windowProperty->data[i]);
             }
         }
-        free(windowProperty);
-        windowStruct->propertyCount--;
+        removeArray(&windowStruct->properties, index, False);
         // TODO: PropertyNotify event
     }
 }
@@ -600,8 +602,7 @@ int XGetWindowProperty(Display* display, Window window, Atom property, long long
         handleError(0, display, NULL, 0, BadAtom, 0);
         return BadAtom;
     }
-    WindowProperty* windowProperty = findProperty(windowStruct->properties,
-                                                  windowStruct->propertyCount, property);
+    WindowProperty* windowProperty = findProperty(&windowStruct->properties, property, NULL);
     if (windowProperty != NULL) {
         *actual_type_return = windowProperty->type;
         *actual_format_return = windowProperty->dataFormat;
@@ -807,19 +808,9 @@ Status XQueryTree(Display* display, Window window, Window* root_return, Window* 
     TYPE_CHECK(window, WINDOW, display, 0);
     *root_return = SCREEN_WINDOW;
     *parent_return = GET_PARENT(window);
-    *nchildren_return = 0;
-    Window* children = GET_CHILDREN(window);
-    int i, counter = 0;
-    for (i = 0; i < GET_WINDOW_STRUCT(window)->childSpace; i++) {
-        if (children[i] != NULL) {
-            (*nchildren_return)++;
-        }
-    }
+    *nchildren_return = GET_WINDOW_STRUCT(window)->children.length;
     *children_return = malloc(sizeof(Window) * (*nchildren_return));
-    for (i = 0; i < GET_WINDOW_STRUCT(window)->childSpace; i++) {
-        if (children[i] != NULL) {
-            *children_return[counter++] = children[i];
-        }
-    }
+    if (*children_return == NULL) return 0;
+    memcpy(children_return, GET_CHILDREN(window), sizeof(Window) * (*nchildren_return));
     return 1;
 }

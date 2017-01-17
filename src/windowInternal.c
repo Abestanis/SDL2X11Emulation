@@ -4,7 +4,6 @@
 #include "windowInternal.h"
 #include "drawing.h"
 #include "events.h"
-#include "window.h"
 
 Window SCREEN_WINDOW = NULL;
 
@@ -12,8 +11,7 @@ void initWindowStruct(WindowStruct* windowStruct, int x, int y, unsigned int wid
                       Visual* visual, Colormap colormap, Bool inputOnly,
                       unsigned long backgroundColor, Pixmap backgroundPixmap) {
     windowStruct->parent = NULL;
-    windowStruct->children = NULL;
-    windowStruct->childSpace = 0;
+    initArray(&windowStruct->children, 0);
     windowStruct->x = x;
     windowStruct->y = y;
     windowStruct->w = width;
@@ -28,9 +26,7 @@ void initWindowStruct(WindowStruct* windowStruct, int x, int y, unsigned int wid
     windowStruct->background = backgroundPixmap;
     windowStruct->colormapWindowsCount = -1;
     windowStruct->colormapWindows = NULL;
-    windowStruct->propertyCount = 0;
-    windowStruct->propertySize = 0;
-    windowStruct->properties = NULL;
+    initArray(&windowStruct->properties, 0);
     windowStruct->windowName = NULL;
     windowStruct->icon = NULL;
     windowStruct->borderWidth = 0;
@@ -72,13 +68,10 @@ void destroyScreenWindow(Display* display) {
     if (SCREEN_WINDOW != NULL) {
         size_t i;
         Window* children = GET_CHILDREN(SCREEN_WINDOW);
-        for (i = 0; i < GET_WINDOW_STRUCT(SCREEN_WINDOW)->childSpace; i++) {
-            if (children[i] != NULL) {
-                destroyWindow(display, children[i], False);
-                children[i] = NULL;
-            }
+        for (i = 0; i < GET_WINDOW_STRUCT(SCREEN_WINDOW)->children.length; i++) {
+            destroyWindow(display, children[i], False);
         }
-        free(children);
+        freeArray(&GET_WINDOW_STRUCT(SCREEN_WINDOW)->children);
         GPU_FreeTarget(GET_WINDOW_STRUCT(SCREEN_WINDOW)->renderTarget);
         SDL_DestroyWindow(GET_WINDOW_STRUCT(SCREEN_WINDOW)->sdlWindow);
         free(SCREEN_WINDOW->dataPointer);
@@ -139,8 +132,7 @@ Window getWindowFromId(Uint32 sdlWindowId) {
 Window getContainingWindow(Window window, int x, int y) {
     int i, child_x, child_y, child_w, child_h;
     Window* children = GET_CHILDREN(window);
-    for (i = GET_WINDOW_STRUCT(window)->childSpace - 1; i >= 0 ; i--) {
-        if (children[i] == NULL) continue;
+    for (i = GET_WINDOW_STRUCT(window)->children.length - 1; i >= 0 ; i--) {
         GET_WINDOW_POS(children[i], child_x, child_y);
         GET_WINDOW_DIMS(children[i], child_w, child_h);
         if (x >= child_x && x <= child_x + child_w && y >= child_y && y <= child_y + child_h) {
@@ -154,13 +146,9 @@ void removeChildFromParent(Window child) {
     if (child == SCREEN_WINDOW) { return; }
     Window parent = GET_PARENT(child);
     if (parent != NULL) {
-        unsigned int parentChildSpace = GET_WINDOW_STRUCT(parent)->childSpace;
-        Window* childPointer = GET_CHILDREN(parent);
-        int i;
-        for (i = 0; i < parentChildSpace; i++) {
-            if (childPointer[i] == child) {
-                childPointer[i] = NULL;
-            }
+        ssize_t childIndex = findInArray(&GET_WINDOW_STRUCT(parent)->children, child);
+        if (childIndex != -1) {
+            removeArray(&GET_WINDOW_STRUCT(parent)->children, (size_t) childIndex, True);
         }
     }
 }
@@ -171,23 +159,16 @@ void destroyWindow(Display* display, Window window, Bool freeParentData) {
     if (windowStruct->mapState == Mapped) {
         XUnmapWindow(display, window);
     }
-    if (windowStruct->childSpace > 0) {
-        Window* children = GET_CHILDREN(window);
-        for (i = 0; i < windowStruct->childSpace; i++) {
-            if (children[i] != NULL) {
-                destroyWindow(display, children[i], False);
-                children[i] = NULL;
-            }
-        }
-        free(children);
-        windowStruct->childSpace = 0;
-        windowStruct->children = NULL;
+    Window* children = GET_CHILDREN(window);
+    for (i = 0; i < windowStruct->children.length; i++) {
+        destroyWindow(display, children[i], False);
     }
+    freeArray(&windowStruct->children);
     XFreeColormap(display, GET_COLORMAP(window));
-    if (windowStruct->propertySize > 0) {
-        WindowProperty* propertyPointer = windowStruct->properties;
-        free(propertyPointer);
+    for (i = 0; i < windowStruct->properties.length; i++) {
+        free(windowStruct->properties.array[i]);
     }
+    freeArray(&windowStruct->properties);
     if (windowStruct->background != NULL && windowStruct->background != None) {
         XFreePixmap(display, windowStruct->background);
     }
@@ -215,67 +196,12 @@ void destroyWindow(Display* display, Window window, Bool freeParentData) {
     free(window);
 }
 
-
-void print_bytes(const void *object, size_t size)
-{
-    size_t i;
-
-    printf("[ ");
-    for(i = 0; i < size; i++)
-    {
-        printf("%02x ", ((const unsigned char *) object)[i] & 0xff);
+Bool addChildToWindow(Window parent, Window child) { // TODO: Check for duplicates?
+    if (insertArray(&GET_WINDOW_STRUCT(parent)->children, child)) {
+        GET_WINDOW_STRUCT(child)->parent = parent;
+        return True;
     }
-    printf("]\n");
-    fflush(stdout);
-}
-
-#include <unistd.h>
-
-Bool increaseChildList(Window window) {
-    int i;
-    int oldChildSpace = GET_WINDOW_STRUCT(window)->childSpace;
-    Window* children = GET_CHILDREN(window);
-    int newChildSpace = oldChildSpace == 0 ? 8 : oldChildSpace * 2;
-    Window* newSpace = malloc(sizeof(Window) * newChildSpace);
-    if (newSpace == NULL) {
-        return False;
-    }
-    memcpy(newSpace, children, sizeof(Window) * oldChildSpace);
-    memset(newSpace + oldChildSpace, (int) NULL, sizeof(Window) * (newChildSpace - oldChildSpace));
-    fprintf(stderr, "oldChildSpace: %d\n", oldChildSpace);
-    for (i = 0; i < oldChildSpace; i++) {
-        print_bytes(children + i, sizeof(Window));
-    }
-    free(children);
-    GET_WINDOW_STRUCT(window)->childSpace = newChildSpace;
-    GET_WINDOW_STRUCT(window)->children = newSpace;
-    return True;
-}
-
-// TODO: Improve
-Bool addChildToWindow(Window parent, Window child) {
-    int parentSpace = GET_WINDOW_STRUCT(parent)->childSpace;
-    Window* parentChildren = GET_CHILDREN(parent);
-    int startOffset = 0;
-    if (parentSpace == 0 || *(parentChildren + parentSpace - 1) != NULL) {
-        startOffset = parentSpace;
-        if (!increaseChildList(parent)) {
-            return False;
-        }
-        parentSpace = GET_WINDOW_STRUCT(parent)->childSpace;
-    }
-    parentChildren = GET_CHILDREN(parent);
-    parentChildren += startOffset;
-    while (*parentChildren != NULL) { parentChildren++; }
-    *parentChildren = child;
-    if (*(GET_CHILDREN(parent) + parentSpace - 1) != NULL) { // There must be at least one NULL entity at the end
-        if (!increaseChildList(parent)) {
-            *parentChildren = NULL;
-            return False;
-        }
-    }
-    GET_WINDOW_STRUCT(child)->parent = parent;
-    return True;
+    return False;
 }
 
 Bool isParent(Window window1, Window window2) {
@@ -289,29 +215,14 @@ Bool isParent(Window window1, Window window2) {
     return False;
 }
 
-WindowProperty* increasePropertySize(WindowProperty* properties, unsigned int currSize,
-                                     unsigned int* newSize) {
-    if (currSize == 0) {
-        *newSize = 8;
-    } else {
-        *newSize = currSize * 2;
-    }
-    WindowProperty* newProperties = malloc(sizeof(WindowProperty) * *newSize);
-    if (newProperties == NULL) { return NULL; }
-    if (currSize != 0) {
-        memcpy(newProperties, properties, sizeof(WindowProperty) * currSize);
-    }
-    // TODO: Free old properties?
-    return newProperties;
-}
-
-WindowProperty* findProperty(WindowProperty* properties, unsigned int numProperties, Atom property) {
-    int i;
-    for (i = 0; i < numProperties; i++) {
-        if (properties->property == property) {
-            return properties;
+WindowProperty* findProperty(Array* properties, Atom property, size_t* index) {
+    size_t i;
+    WindowProperty** windowProperties = (WindowProperty **) properties->array;
+    for (i = 0; i < properties->length; i++) {
+        if (windowProperties[i]->property == property) {
+            if (index != NULL) *index = i;
+            return windowProperties[i];
         }
-        properties++;
     }
     return NULL;
 }
@@ -367,7 +278,7 @@ Bool mergeWindowDrawables(Window parent, Window child) {
 void mapRequestedChildren(Display* display, Window window) {
     Window* children = GET_CHILDREN(window);
     size_t i;
-    for (i = 0; i < GET_WINDOW_STRUCT(window)->childSpace; i++) {
+    for (i = 0; i < GET_WINDOW_STRUCT(window)->children.length; i++) {
         if (children[i] != NULL && GET_WINDOW_STRUCT(children[i])->mapState == MapRequested) {
             if (!mergeWindowDrawables(window, children[i])) {
                 fprintf(stderr, "Failed to merge the window drawables in %s\n", __func__);

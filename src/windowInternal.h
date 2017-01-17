@@ -26,9 +26,7 @@ void removeChildFromParent(Window child);
 Bool resizeWindowSurface(Window window);
 void registerWindowMapping(Window window, Uint32 sdlWindowId);
 Bool isParent(Window window1, Window window2);
-WindowProperty* increasePropertySize(WindowProperty* properties, unsigned int currSize,
-                                     unsigned int* newSize);
-WindowProperty* findProperty(WindowProperty* properties, unsigned int numProperties, Atom property);
+WindowProperty* findProperty(Array* properties, Atom property, size_t* index);
 Bool mergeWindowDrawables(Window parent, Window child);
 void mapRequestedChildren(Display* display, Window window);
 Bool configureWindow(Display* display, Window window, unsigned long value_mask, XWindowChanges* values);

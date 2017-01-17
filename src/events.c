@@ -7,6 +7,7 @@
 #include "inputMethod.h"
 #include "display.h"
 #include "atoms.h"
+#include "util.h"
 
 int eventFds[2];
 #define READ_EVENT_FD eventFds[0]
@@ -45,8 +46,8 @@ void postExposeEvent(Display* display, Window window, const SDL_Rect* damagedAre
     SDL_Rect* childDamagedAreaList = malloc(sizeof(SDL_Rect) * numAreas);
     if (childDamagedAreaList == NULL) return;
     Window* children = GET_CHILDREN(window);
-    for (i = 0; i < GET_WINDOW_STRUCT(window)->childSpace; i++) {
-        if (children[i] != NULL && !IS_INPUT_ONLY(children[i])
+    for (i = 0; i < GET_WINDOW_STRUCT(window)->children.length; i++) {
+        if (!IS_INPUT_ONLY(children[i])
             && GET_WINDOW_STRUCT(children[i])->mapState == Mapped) {
             WindowStruct* childWindowStruct = GET_WINDOW_STRUCT(children[i]);
             SDL_Rect childWindowRect = {
@@ -400,9 +401,8 @@ int convertEvent(Display* display, SDL_Event* sdlEvent, XEvent* xEvent) {
                         WM_PROTOCOLS = internalInternAtom("WM_PROTOCOLS");
                         WM_DELETE_WINDOW = internalInternAtom("WM_DELETE_WINDOW");
                     }
-                    WindowProperty *windowProperty = findProperty(GET_WINDOW_STRUCT(eventWindow)->properties,
-                                                                  GET_WINDOW_STRUCT(eventWindow)->propertyCount,
-                                                                  WM_PROTOCOLS);
+                    WindowProperty *windowProperty = findProperty(&GET_WINDOW_STRUCT(eventWindow)->properties,
+                                                                  WM_PROTOCOLS, NULL);
                     if (windowProperty != NULL && windowProperty->type == XA_ATOM) {
                         size_t i;
                         for (i = 0; i < windowProperty->dataLength; i++) {
@@ -709,8 +709,8 @@ void updateWindowRenderTargets(Display* display) {
     size_t i;
     fprintf(stderr, "Resetting window render targets\n");
     Window* children = GET_CHILDREN(SCREEN_WINDOW);
-    for (i = 0; i < GET_WINDOW_STRUCT(SCREEN_WINDOW)->childSpace; i++) {
-        if (children[i] != NULL && GET_WINDOW_STRUCT(children[i])->sdlWindow != NULL) {
+    for (i = 0; i < GET_WINDOW_STRUCT(SCREEN_WINDOW)->children.length; i++) {
+        if (GET_WINDOW_STRUCT(children[i])->sdlWindow != NULL) {
             WindowStruct* windowStruct = GET_WINDOW_STRUCT(children[i]);
             fprintf(stderr, "Resetting render target of window %p\n", children[i]);
             GPU_FreeTarget(windowStruct->renderTarget);
@@ -940,14 +940,10 @@ void XFlush(Display *display) {
 Window getSiblingBelow(Window window) {
     Window parent = GET_PARENT(window);
     Window* children = GET_CHILDREN(parent);
-    Bool foundMe = False;
     size_t i;
-    for (i = 0; i < GET_WINDOW_STRUCT(parent)->childSpace; i++) {
-        if (children[i] != NULL) {
-            if (foundMe) {
-                return children[i];
-            }
-            foundMe = children[i] == window;
+    for (i = 0; i < GET_WINDOW_STRUCT(parent)->children.length; i++) {
+        if (children[i] == window && i + 1 < GET_WINDOW_STRUCT(parent)->children.length) {
+            return children[i + 1];
         }
     }
     return None;

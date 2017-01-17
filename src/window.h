@@ -5,6 +5,7 @@
 #include <SDL_gpu.h>
 #include "windowDebug.h"
 #include "resourceTypes.h"
+#include "util.h"
 
 typedef struct {
     Atom property;
@@ -19,10 +20,8 @@ typedef enum {UnMapped, Mapped, MapRequested} MapState;
 typedef struct {
     /* Parent window of this window, never NULL (except SCREEN_WINDOW). */
     Window parent;
-    /* List of children, must end with NULL, can contain NULL between values, can be NULL if no children exist. */
-    Window* children;
-    /* Number of Windows that can fit in the currently allocated children list. */
-    unsigned int childSpace;
+    /* List of children */
+    Array children;
     /* This is the drawing target of the window and its children while it is unmapped. Might be NULL.*/
     GPU_Image* unmappedContent;
     /* 
@@ -43,9 +42,7 @@ typedef struct {
     Pixmap background; // TODO: Is this even used anywhere?
     int colormapWindowsCount;
     Window* colormapWindows;
-    unsigned int propertyCount;
-    unsigned int propertySize;
-    WindowProperty* properties;
+    Array properties;
     /* The window name. Only used if this window has a corresponding sdlWindow. */
     char* windowName;
     /* The icon of this window. Only used if this window has a corresponding sdlWindow. */
@@ -72,7 +69,7 @@ extern Window SCREEN_WINDOW;
 #define GET_VISUAL(window) GET_WINDOW_STRUCT(window)->visual
 #define GET_COLORMAP(window) GET_WINDOW_STRUCT(window)->colormap
 #define GET_PARENT(window) GET_WINDOW_STRUCT(window)->parent
-#define GET_CHILDREN(window) GET_WINDOW_STRUCT(window)->children
+#define GET_CHILDREN(window) ((Window*) GET_WINDOW_STRUCT(window)->children.array)
 #define IS_TOP_LEVEL(window) (window != SCREEN_WINDOW && GET_PARENT(window) == SCREEN_WINDOW)
 #define IS_MAPPED_TOP_LEVEL_WINDOW(window) (IS_TOP_LEVEL(window) && GET_WINDOW_STRUCT(window)->sdlWindow != NULL)
 #define IS_INPUT_ONLY(window) GET_WINDOW_STRUCT(window)->inputOnly
@@ -87,7 +84,6 @@ out_y = GET_WINDOW_STRUCT(window)->y
 }\
 width = GET_WINDOW_STRUCT(window)->w;\
 height = GET_WINDOW_STRUCT(window)->h
-
 #define HAS_VALUE(valueMask, value) (value & valueMask)
 
 #endif /* _WINDOW_H_ */

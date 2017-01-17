@@ -9,6 +9,7 @@
 #include "colors.h"
 #include "drawing.h"
 #include "display.h"
+#include "atoms.h"
 #include <jni.h>
 #include <SDL_gpu.h>
 
@@ -30,6 +31,7 @@ Visual* trueColorVisual = NULL;
 void XCloseDisplay(Display* display) {
     // https://tronche.com/gui/x/xlib/display/XCloseDisplay.html
     if (numDisplaysOpen == 1) {
+        freeAtomStorage();
         destroyScreenWindow(display);
         TTF_Quit();
         GPU_Quit();

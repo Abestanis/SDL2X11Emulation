@@ -5,7 +5,6 @@
 #include "display.h"
 
 AtomStruct* atomStorageStart = NULL;
-AtomStruct* atomStorageLast = NULL;
 static Atom lastUsedAtom = _NET_LAST_PREDEFINED;
 AtomStruct preDefAtomStructResult;
 
@@ -56,6 +55,15 @@ char* getAtomName(Atom atom) {
     return (char *) atomStruct->name;
 }
 
+void freeAtomStorage() {
+    AtomStruct* atomStorage;
+    while ((atomStorage = atomStorageStart) != NULL) {
+        atomStorageStart = atomStorage->next;
+        free((char *) atomStorage->name);
+        free(atomStorage);
+    }
+}
+
 char* XGetAtomName(Display* display, Atom atom) {
     // https://tronche.com/gui/x/xlib/window-information/XGetAtomName.html
     SET_X_SERVER_REQUEST(display, XCB_GET_ATOM_NAME);
@@ -67,33 +75,36 @@ char* XGetAtomName(Display* display, Atom atom) {
     return atomName;
 }
 
-Atom internalInternAtom(char* atomName) {
+Atom _internAtom(const char* atomName, Bool only_if_exists, Bool* outOfMemory) {
     fprintf(stderr, "Intern Atom %s.\n", atomName);
+    if (outOfMemory != NULL) *outOfMemory = False;
     AtomStruct* atomStruct = getAtomStructByName(atomName);
     if (atomStruct != NULL) {
         fprintf(stderr, "Atom already existed %lu.\n", atomStruct->atom);
         return atomStruct->atom;
-    } else {
+    } else if (!only_if_exists) {
         fprintf(stderr, "Creating new Atom %s (%lu).\n", atomName, lastUsedAtom + 1);
         atomStruct = malloc(sizeof(AtomStruct));
         if (atomStruct == NULL) {
+            if (outOfMemory != NULL) *outOfMemory = True;
             return None;
         }
         atomStruct->name = strdup(atomName);
         if (atomStruct->name == NULL) {
             free(atomStruct);
+            if (outOfMemory != NULL) *outOfMemory = True;
             return None;
         }
         atomStruct->atom = ++lastUsedAtom;
-        atomStruct->next = NULL;
-        if (atomStorageLast == NULL) {
-            atomStorageStart = atomStruct;
-        } else {
-            atomStorageLast->next = atomStruct;
-        }
-        atomStorageLast = atomStruct;
+        atomStruct->next = atomStorageStart;
+        atomStorageStart = atomStruct;
         return atomStruct->atom;
     }
+    return None;
+}
+
+Atom internalInternAtom(const char* atomName) {
+    return _internAtom(atomName, False, NULL);
 }
 
 Atom XInternAtom(Display* display, _Xconst char* atom_name, Bool only_if_exists) {
@@ -123,32 +134,10 @@ Atom XInternAtom(Display* display, _Xconst char* atom_name, Bool only_if_exists)
         fprintf(stderr, "Atom already existed %lu.\n", lastUsedAtom);
         return PredefinedAtomList[preExistingIndex].atom;
     }
-    AtomStruct* atomStruct = getAtomStructByName(atom_name);
-    if (atomStruct != NULL) {
-        fprintf(stderr, "Atom already existed %lu.\n", atomStruct->atom);
-        return atomStruct->atom;
-    } else if (!only_if_exists) {
-        fprintf(stderr, "Creating new Atom %lu.\n", lastUsedAtom + 1);
-        atomStruct = malloc(sizeof(AtomStruct));
-        if (atomStruct == NULL) {
-            handleError(0, display, NULL, 0, BadAlloc, 0);
-            return None;
-        }
-        atomStruct->name = strdup(atom_name);
-        if (atomStruct->name == NULL) {
-            free(atomStruct);
-            handleError(0, display, NULL, 0, BadAlloc, 0);
-            return None;
-        }
-        atomStruct->atom = ++lastUsedAtom;
-        atomStruct->next = NULL;
-        if (atomStorageLast == NULL) {
-            atomStorageStart = atomStruct;
-        } else {
-            atomStorageLast->next = atomStruct;
-        }
-        atomStorageLast = atomStruct;
-        return atomStruct->atom;
+    Bool outOfMemory;
+    Atom result = _internAtom(atom_name, only_if_exists, &outOfMemory);
+    if (outOfMemory) {
+        handleOutOfMemory(0, display, 0, 0);
     }
-    return None;
+    return result;
 }

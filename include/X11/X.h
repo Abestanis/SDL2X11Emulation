@@ -48,14 +48,9 @@ typedef struct {
 	int hotspot_x, hotspot_y;
 } Cursor_;
 
-typedef enum {WINDOW = 1, DRAWABLE = 2, PIXMAP = 3} XResourceType;
+struct XID_Struct;
+typedef struct XID_Struct* XID;
 
-typedef struct {
-	XResourceType type;
-	void* dataPointer;
-} XID_Struct;
-
-typedef XID_Struct* XID;
 typedef XID Window;
 
 typedef XID Drawable;

@@ -906,7 +906,7 @@ void XSelectInput(Display* display, Window window, long event_mask) {
     // https://tronche.com/gui/x/xlib/event-handling/XSelectInput.html
 //    SET_X_SERVER_REQUEST(display, XCB_);
     fprintf(stderr, "Hit unimplemented function %s.\n", __func__);
-    fprintf(stderr, "%s: %d, %d\n", __func__, event_mask & KeyPressMask, event_mask & KeyReleaseMask);
+    fprintf(stderr, "%s: %ld, %ld\n", __func__, event_mask & KeyPressMask, event_mask & KeyReleaseMask);
     if (event_mask & KeyPressMask || event_mask & KeyReleaseMask) {
         // TODO: Implement real system here
         if (!SDL_IsTextInputActive()) {

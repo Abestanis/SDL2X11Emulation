@@ -12,6 +12,8 @@
 #include "atoms.h"
 #include <jni.h>
 #include <SDL_gpu.h>
+#include <X11/X.h>
+#include <X11/Xutil.h>
 
 jint JNI_OnLoad(JavaVM* vm, void* reserved) {
     setenv("DISPLAY", ":0", 0);
@@ -216,7 +218,12 @@ void XSync(Display *display, Bool discard) {
 
 GContext XGContextFromGC(GC gc) {
     // https://tronche.com/gui/x/xlib/GC/XGContextFromGC.html
-    fprintf(stderr, "Hit unimplemented function %s.\n", __func__);
+    XID context = malloc(sizeof(XID));
+    if (context != NULL) {
+        context->type = GRAPHICS_CONTEXT;
+        context->dataPointer = gc;
+    }
+    return context;
 }
 
 void XConvertSelection(Display* display, Atom selection, Atom target, Atom property,
@@ -235,6 +242,7 @@ void XSetSelectionOwner(Display *display, Atom selection, Window owner, Time tim
 int (*XSynchronize(Display *display, Bool onoff))() {
     // https://tronche.com/gui/x/xlib/event-handling/protocol-errors/XSynchronize.html
     fprintf(stderr, "Hit unimplemented function %s.\n", __func__);
+    return NULL;
 }
 
 void XNoOp(Display *display) {
@@ -253,12 +261,23 @@ void XUngrabServer(Display *display) {
     // https://tronche.com/gui/x/xlib/window-and-session-manager/XUngrabServer.html
     SET_X_SERVER_REQUEST(display, XCB_UNGRAB_SERVER);
     fprintf(stderr, "Hit unimplemented function %s.\n", __func__);
-}
+} 
 
-XHostAddress *XListHosts(Display *display, int *nhosts_return, Bool *state_return) {
+XHostAddress* XListHosts(Display *display, int *nhosts_return, Bool *state_return) {
     // https://tronche.com/gui/x/xlib/window-and-session-manager/controlling-host-access/XListHosts.html
     SET_X_SERVER_REQUEST(display, XCB_LIST_HOSTS);
-    fprintf(stderr, "Hit unimplemented function %s.\n", __func__);
+    const static char* LOCAL_HOST = "127.0.0.1";
+    *state_return = True;
+    XHostAddress* host = malloc(sizeof(XHostAddress));
+    if (host == NULL) {
+        *nhosts_return = 0;
+        return NULL;
+    }
+    *nhosts_return = 1;
+    host->address = (char *) LOCAL_HOST;
+    host->length = strlen(LOCAL_HOST);
+    host->family = FamilyInternet;
+    return host;
 }
 
 
@@ -288,7 +307,23 @@ void XSetClassHint(Display *display, Window w, XClassHint *class_hints) {
 
 Status XStringListToTextProperty(char **list, int count, XTextProperty *text_prop_return) {
     // https://tronche.com/gui/x/xlib/ICC/client-to-window-manager/XStringListToTextProperty.html
-    fprintf(stderr, "Hit unimplemented function %s.\n", __func__);
+    size_t i;
+    text_prop_return->format = 8; // STRING
+    text_prop_return->encoding = XA_STRING;
+    text_prop_return->nitems = 1;
+    for (i = 0; i < count; i++) {
+        text_prop_return->nitems += strlen(list[i]);
+    }
+    text_prop_return->value = malloc(sizeof(char) * text_prop_return->nitems);
+    if (text_prop_return->value == NULL) {
+        text_prop_return->nitems = 0;
+        return 0;
+    }
+    text_prop_return->value[0] = '\0';
+    for (i = 0; i < count; i++) {
+        strcat((char *) text_prop_return->value, list[i]);
+    }
+    return 1;
 }
 
 void XSetWMClientMachine(Display *display, Window w, XTextProperty *text_prop) {

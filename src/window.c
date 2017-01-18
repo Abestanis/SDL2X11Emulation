@@ -427,7 +427,7 @@ void XChangeProperty(Display* display, Window window, Atom property, Atom type, 
         handleError(0, display, NULL, 0, BadValue, 0);
         return;
     }
-    fprintf(stderr, "Changing window property %lu (%s).\n", property, (char*) XGetAtomName(display, property));
+    fprintf(stderr, "Changing window property %lu (%s).\n", property, getAtomName(property));
     if (!isValidAtom(property)) {
         handleError(0, display, NULL, 0, BadAtom, 0);
         return;

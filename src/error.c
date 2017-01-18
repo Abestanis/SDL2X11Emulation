@@ -77,6 +77,8 @@ unsigned char resourceTypeToErrorCode(XResourceType resourceType) {
             return BadDrawable;
         case PIXMAP:
             return BadPixmap;
+        case GRAPHICS_CONTEXT:
+            return BadGC;
         default:
             return BadMatch;
     }

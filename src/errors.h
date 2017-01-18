@@ -4,7 +4,7 @@
 #include "X11/Xlib.h"
 #include "X11/Xproto.h"
 #include "X11/Xutil.h"
-
+#include "resourceTypes.h"
 
 int default_error_handler(Display* display, XErrorEvent* event);
 void handleError(int type, Display* display, XID resourceId, unsigned long serial,

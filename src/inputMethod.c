@@ -141,7 +141,7 @@ Bool parsePreEditAttributes(XIC inputConnection, XVaNestedList attributes) {
             */
         } else if (strcmp(key, XNSpotLocation) == 0) {
             XPoint* point = attrs[i++];
-            if (XIMPreeditPosition & GET_XIC_STRUCT(inputConnection)->style != 0) {
+            if ((XIMPreeditPosition & GET_XIC_STRUCT(inputConnection)->style) != 0) {
                 SDL_Rect* inputRect;
                 if ((inputRect = GET_XIC_STRUCT(inputConnection)->inputRect) == NULL) {
                     inputRect = malloc(sizeof(SDL_Rect));

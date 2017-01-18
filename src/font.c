@@ -205,8 +205,8 @@ XFontStruct* XLoadQueryFont(Display* display, char* name) {
     return fontStruct;
 }
 
-__inline__ int hexCharToNum(char chr) {
-    return chr >= 'a' ? 10 + chr - 'a' : chr - '0';
+static __inline__ char hexCharToNum(char chr) {
+    return (char) (chr >= 'a' ? 10 + chr - 'a' : chr - '0');
 }
 
 /* Resolve all X11 controll characters */

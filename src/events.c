@@ -3,7 +3,7 @@
 #include <X11/Xlib.h>
 #include "events.h"
 #include "errors.h"
-#include "window.h"
+#include "input.h"
 #include "inputMethod.h"
 #include "display.h"
 #include "atoms.h"
@@ -16,11 +16,12 @@ SDL_Event waitingEvent;
 Bool eventWaiting = False;
 Bool tmpVar = False;
 Window keyboardFocus = NULL;
+unsigned long lastEventSerial = 1;
 
 void updateWindowRenderTargets(Display* display);
 
-#define ENQUEUE_EVENT_IN_PIPE(display) { char buffer = 'e'; write(WRITE_EVENT_FD, &buffer, sizeof(buffer)); (display)->qlen++; }
-#define READ_EVENT_IN_PIPE(display) if ((display)->qlen > 0) { char buffer; read(READ_EVENT_FD, &buffer, sizeof(buffer)); (display)->qlen--; }
+#define ENQUEUE_EVENT_IN_PIPE(display) { char buffer = 'e'; write(WRITE_EVENT_FD, &buffer, sizeof(buffer)); GET_DISPLAY(display)->qlen++; }
+#define READ_EVENT_IN_PIPE(display) if (GET_DISPLAY(display)->qlen > 0) { char buffer; read(READ_EVENT_FD, &buffer, sizeof(buffer)); GET_DISPLAY(display)->qlen--; }
 
 // TODO: Generate Enter & Leave events on MouseButton down and MouseMotion
 // TODO: prioritize events like RENDER_TARGETS_RESET
@@ -72,9 +73,7 @@ void postExposeEvent(Display* display, Window window, const SDL_Rect* damagedAre
 
 int onSdlEvent(void* userdata, SDL_Event* event) {
     switch (event->type) {
-//        case SDL_QUIT: // TODO: Returning 0 can prevent program exit here
-//            ENQUEUE_EVENT_IN_PIPE((Display *) userdata);
-//            break;
+//        case SDL_QUIT:
         case SDL_WINDOWEVENT:
             if (GET_WINDOW_STRUCT(SCREEN_WINDOW)->sdlWindow == NULL || 
                     event->window.windowID == SDL_GetWindowID(GET_WINDOW_STRUCT(SCREEN_WINDOW)->sdlWindow)) {
@@ -97,6 +96,7 @@ Bool getEventQueueLength(int* qlen) {
 }
 
 int initEventPipe(Display* display) {
+    lastEventSerial = 1;
     int flags;
     if (pipe(eventFds) == -1) {
         fprintf(stderr, "Could not create the event pipe: %s", strerror(errno));
@@ -146,7 +146,7 @@ int convertEvent(Display* display, SDL_Event* sdlEvent, XEvent* xEvent) {
     Window eventWindow = None;
     int type = -1;
 #define FILL_STANDARD_VALUES(eventStruct) xEvent->eventStruct.type = type;\
-    xEvent->eventStruct.serial = display->next_event_serial_num;\
+    xEvent->eventStruct.serial = lastEventSerial;\
     xEvent->eventStruct.send_event = sendEvent;\
     xEvent->eventStruct.display = display
     //TODO: this needs to update the window attributes
@@ -181,7 +181,7 @@ int convertEvent(Display* display, SDL_Event* sdlEvent, XEvent* xEvent) {
                 memcpy(&waitingEvent, sdlEvent, sizeof(SDL_Event));
                 type = EnterNotify;
                 xEvent->xcrossing.root = getWindowFromId(sdlEvent->button.windowID);
-                if (xEvent->xbutton.root == NULL) {
+                if (xEvent->xbutton.root == None) {
                     xEvent->xbutton.root = SCREEN_WINDOW;
                 }
                 eventWindow = getContainingWindow(xEvent->xcrossing.root, sdlEvent->button.x, sdlEvent->button.y);
@@ -213,7 +213,7 @@ int convertEvent(Display* display, SDL_Event* sdlEvent, XEvent* xEvent) {
             }
             FILL_STANDARD_VALUES(xbutton);
             xEvent->xbutton.root = getWindowFromId(sdlEvent->button.windowID);
-            if (xEvent->xbutton.root == NULL) {
+            if (xEvent->xbutton.root == None) {
                 xEvent->xbutton.root = SCREEN_WINDOW;
             }
             xEvent->xbutton.subwindow = getContainingWindow(xEvent->xbutton.root, sdlEvent->button.x, sdlEvent->button.y); // The event window is always the SDL Window.
@@ -246,12 +246,12 @@ int convertEvent(Display* display, SDL_Event* sdlEvent, XEvent* xEvent) {
             type = MotionNotify;
             FILL_STANDARD_VALUES(xmotion);
             xEvent->xmotion.root = getWindowFromId(sdlEvent->motion.windowID);
-            if (xEvent->xbutton.root == NULL) {
+            if (xEvent->xbutton.root == None) {
                 xEvent->xbutton.root = SCREEN_WINDOW;
             }
             eventWindow = getContainingWindow(xEvent->xbutton.root, sdlEvent->motion.x, sdlEvent->motion.y);
             xEvent->xmotion.window = eventWindow; // The event window is always the window the mouse is in.
-            if (xEvent->xmotion.window == NULL) {
+            if (xEvent->xmotion.window == None) {
                 xEvent->xmotion.window = SCREEN_WINDOW;
             }
             xEvent->xmotion.subwindow = None;
@@ -330,7 +330,7 @@ int convertEvent(Display* display, SDL_Event* sdlEvent, XEvent* xEvent) {
                                           &xEvent->xconfigure.width, &xEvent->xconfigure.height);
                     }
                     xEvent->xconfigure.border_width = GET_WINDOW_STRUCT(eventWindow)->borderWidth;
-                    xEvent->xconfigure.above = NULL;
+                    xEvent->xconfigure.above = None;
                     xEvent->xconfigure.override_redirect = GET_WINDOW_STRUCT(eventWindow)->overrideRedirect;
                     break;
                 case SDL_WINDOWEVENT_MINIMIZED:
@@ -395,9 +395,9 @@ int convertEvent(Display* display, SDL_Event* sdlEvent, XEvent* xEvent) {
                     break;
                 case SDL_WINDOWEVENT_CLOSE:
                     fprintf(stderr, "Window %d closed\n", sdlEvent->window.windowID);
-                    static Atom WM_PROTOCOLS = NULL;
-                    static Atom WM_DELETE_WINDOW = NULL;
-                    if (WM_PROTOCOLS == NULL) {
+                    static Atom WM_PROTOCOLS = None;
+                    static Atom WM_DELETE_WINDOW = None;
+                    if (WM_PROTOCOLS == None) {
                         WM_PROTOCOLS = internalInternAtom("WM_PROTOCOLS");
                         WM_DELETE_WINDOW = internalInternAtom("WM_DELETE_WINDOW");
                     }
@@ -619,10 +619,10 @@ int convertEvent(Display* display, SDL_Event* sdlEvent, XEvent* xEvent) {
             if (sdlEvent->type >= SDL_USEREVENT && sdlEvent->type <= SDL_LASTEVENT) {
                 if (sdlEvent->user.code == INTERNAL_EVENT_CODE) {
                     XAnyEvent* allocEvent = sdlEvent->user.data1;
-                    eventWindow = sdlEvent->user.data2;
+                    eventWindow = (Window) sdlEvent->user.data2;
                     type = allocEvent->type;
                     sendEvent = allocEvent->send_event;
-                    allocEvent->serial = display->next_event_serial_num;
+                    allocEvent->serial = lastEventSerial;
                     switch(type) {
                         case KeyRelease:
                         case KeyPress:
@@ -712,7 +712,7 @@ void updateWindowRenderTargets(Display* display) {
     for (i = 0; i < GET_WINDOW_STRUCT(SCREEN_WINDOW)->children.length; i++) {
         if (GET_WINDOW_STRUCT(children[i])->sdlWindow != NULL) {
             WindowStruct* windowStruct = GET_WINDOW_STRUCT(children[i]);
-            fprintf(stderr, "Resetting render target of window %p\n", children[i]);
+            fprintf(stderr, "Resetting render target of window %lu\n", children[i]);
             GPU_FreeTarget(windowStruct->renderTarget);
             windowStruct->renderTarget = GPU_CreateTargetFromWindow(SDL_GetWindowID(windowStruct->sdlWindow));
             SDL_Rect exposeRect;
@@ -739,7 +739,7 @@ void printEventInfo(XEvent* event) {
         CASE_TYPE(FocusIn, "");
         CASE_TYPE(FocusOut, "");
         CASE_TYPE(KeymapNotify, "");
-        CASE_TYPE(Expose, "window %p, rect (x = %d, y = %d, %dx%d), count = %d",
+        CASE_TYPE(Expose, "window %lu, rect (x = %d, y = %d, %dx%d), count = %d",
                   event->xexpose.window, event->xexpose.x, event->xexpose.y,
                   event->xexpose.width, event->xexpose.height, event->xexpose.count);
         CASE_TYPE(GraphicsExpose, "");
@@ -751,7 +751,7 @@ void printEventInfo(XEvent* event) {
         CASE_TYPE(MapNotify, "");
         CASE_TYPE(MapRequest, "");
         CASE_TYPE(ReparentNotify, "");
-        CASE_TYPE(ConfigureNotify, "window %p (x = %d, y = %d, w = %d, h = %d), borderW = %d, above %p, overrideRedirect = %d",
+        CASE_TYPE(ConfigureNotify, "window %lu (x = %d, y = %d, w = %d, h = %d), borderW = %d, above %lu, overrideRedirect = %d",
                   event->xconfigure.window, event->xconfigure.x, event->xconfigure.y, event->xconfigure.width,
                   event->xconfigure.height, event->xconfigure.border_width, event->xconfigure.above,
                   event->xconfigure.override_redirect);
@@ -775,24 +775,23 @@ void printEventInfo(XEvent* event) {
     fprintf(stderr, "%s\n", msg);
 }
 
-void XNextEvent(Display* display, XEvent* event_return) {
+int XNextEvent(Display* display, XEvent* event_return) {
     // https://tronche.com/gui/x/xlib/event-handling/manipulating-event-queue/XNextEvent.html
-//    SET_X_SERVER_REQUEST(display, XCB_);
     SDL_Event event;
     Bool done = False;
     while (!done) {
         int qlen;
         getEventQueueLength(&qlen);
-        fprintf(stderr, "Events in queue = %d, qlen = %d\n", qlen, display->qlen);
-        if (qlen == 0 && display->qlen > 0 && !eventWaiting) {
+        fprintf(stderr, "Events in queue = %d, qlen = %d\n", qlen, GET_DISPLAY(display)->qlen);
+        if (qlen == 0 && GET_DISPLAY(display)->qlen > 0 && !eventWaiting) {
             READ_EVENT_IN_PIPE(display);
             fprintf(stderr, "PREVENTING HANGING!!!\n");
             event_return->type = Expose;
-            event_return->xany.serial = display->next_event_serial_num;
+            event_return->xany.serial = lastEventSerial;
             event_return->xany.display = display;
             event_return->xany.send_event = False;
             event_return->xany.type = Expose;
-            event_return->xany.window = *GET_CHILDREN(display->screens[0].root);
+            event_return->xany.window = *GET_CHILDREN(GET_DISPLAY(display)->screens[0].root);
             event_return->xexpose.type = Expose;
             event_return->xexpose.serial = 0;
             event_return->xexpose.send_event = False;
@@ -818,16 +817,16 @@ void XNextEvent(Display* display, XEvent* event_return) {
                 printEventInfo(event_return);
                 done = True;
             } else {
-                #ifdef DEBUG_WINDOWS
-                printWindowsHierarchy();
-                #endif
+//                #ifdef DEBUG_WINDOWS
+//                printWindowsHierarchy();
+//                #endif
                 fprintf(stderr, "Got unknown SDL event %d!\n", event.type);
                 event_return->type = Expose;
-                event_return->xany.serial = display->next_event_serial_num;
+                event_return->xany.serial = lastEventSerial;
                 event_return->xany.display = display;
                 event_return->xany.send_event = False;
                 event_return->xany.type = Expose;
-                event_return->xany.window = *GET_CHILDREN(display->screens[0].root);
+                event_return->xany.window = *GET_CHILDREN(GET_DISPLAY(display)->screens[0].root);
                 event_return->xexpose.type = Expose;
                 event_return->xexpose.serial = 0;
                 event_return->xexpose.send_event = False;
@@ -840,7 +839,7 @@ void XNextEvent(Display* display, XEvent* event_return) {
                 event_return->xexpose.count = 0;
                 done = True;
             }
-            display->next_event_serial_num++;
+            lastEventSerial++;
             tmpVar = False;
         } else {
             fprintf(stderr, "SDL_WaitEvent failed: %s, retrying...\n", SDL_GetError());
@@ -848,6 +847,7 @@ void XNextEvent(Display* display, XEvent* event_return) {
         fflush(stderr);
     }
     fprintf(stderr, "Leaving XNextEvent\n");
+    return 0;
 }
 
 Bool enqueueEvent(Display* display, Window eventWindow, void* event) {
@@ -861,7 +861,7 @@ Bool enqueueEvent(Display* display, Window eventWindow, void* event) {
         sdlEvent.type = sendEventType;
         sdlEvent.user.code = INTERNAL_EVENT_CODE;
         sdlEvent.user.data1 = event;
-        sdlEvent.user.data2 = eventWindow;
+        sdlEvent.user.data2 = (void *) eventWindow;
         fprintf(stderr, "Enqueuing event\n");
         SDL_PushEvent(&sdlEvent);
         return True;
@@ -872,13 +872,13 @@ Bool enqueueEvent(Display* display, Window eventWindow, void* event) {
 
 Status XSendEvent(Display* display, Window window, Bool propagate, long event_mask, XEvent* event_send) {
     // https://tronche.com/gui/x/xlib/event-handling/XSendEvent.html
-    SET_X_SERVER_REQUEST(display, XCB_SEND_EVENT);
+    SET_X_SERVER_REQUEST(display, X_SendEvent);
     // TODO: propagate, event_mask
     //  We have to assume that window is our window
     TYPE_CHECK(window, WINDOW, display, 0);
     event_send->xany.send_event = True;
-    event_send->xany.serial = display->next_event_serial_num;
-    display->next_event_serial_num++;
+    event_send->xany.serial = lastEventSerial;
+    lastEventSerial++;
     static Uint32 sendEventType = (Uint32) -1;
     if (sendEventType == ((Uint32) -1)) {
         sendEventType = SDL_RegisterEvents(1);
@@ -925,16 +925,17 @@ Bool XFilterEvent(XEvent *event, Window w) {
 int XEventsQueued(Display *display, int mode) {
     // https://tronche.com/gui/x/xlib/event-handling/XEventsQueued.html
 //    SET_X_SERVER_REQUEST(display, XCB_);
-    if (display->qlen == 0 && mode != QueuedAlready) {
+    if (GET_DISPLAY(display)->qlen == 0 && mode != QueuedAlready) {
         SDL_PumpEvents();
     }
-    return display->qlen;
+    return GET_DISPLAY(display)->qlen;
 }
 
-void XFlush(Display *display) {
+int XFlush(Display *display) {
     // https://tronche.com/gui/x/xlib/event-handling/XFlush.html
 //    SET_X_SERVER_REQUEST(display, XCB_);
 //    SDL_PumpEvents(); // TODO: This locks up the main thread
+    return 1;
 }
 
 Window getSiblingBelow(Window window) {
@@ -1238,3 +1239,6 @@ Bool postEvent(Display* display, Window eventWindow, unsigned int eventId, ...) 
     return enqueueEvent(display, eventWindow, eventData);
 #undef SKIP
 }
+
+#undef ENQUEUE_EVENT_IN_PIPE
+#undef READ_EVENT_IN_PIPE

@@ -1,6 +1,7 @@
 #include <X11/Xlib.h>
 #include "X11/Xatom.h"
 #include <stdio.h>
+#include <wchar.h>
 #include "SDL.h"
 #include "SDL_ttf.h"
 #include "errors.h"
@@ -9,54 +10,65 @@
 #include "atoms.h"
 #include "drawing.h"
 #include "display.h"
+#include "gc.h"
 
 // TODO: Maybe implement character atlas
 // TODO: Convert text decoding to Utf-8
 // http://www.cprogramming.com/tutorial/unicode.html
 
+#define GET_FONT(fontXID) ((TTF_Font*) GET_XID_VALUE(fontXID))
 #define FONT_SIZE 8
 
-Font XLoadFont(Display* display, char* name) {
+Font XLoadFont(Display* display, _Xconst char* name) {
     // https://tronche.com/gui/x/xlib/graphics/font-metrics/XLoadFont.html
-    SET_X_SERVER_REQUEST(display, XCB_OPEN_FONT);
+    SET_X_SERVER_REQUEST(display, X_OpenFont);
+    XID font = ALLOC_XID();
+    if (font == None) {
+        handleOutOfMemory(0, display, 0, 0);
+        return None;
+    }
+    SET_XID_TYPE(font, FONT);
     int fontSize = FONT_SIZE;
     // TODO: Remove static font size
     // TODO: Implement pattern matching
     // TODO: This function is called with "fixed" and "cursor" as a name
-    char* fontName;
+    const char* fontName;
     if (strcmp(name, "fixed") == 0 || strcmp(name, "cursor") == 0) {
-        // This seems to be a common monospace font on most devices.
+        // This seems to be a common monospace font on most Android devices.
         fontName = "/system/fonts/DroidSansMono.ttf";
     } else {
         fontName = name;
     }
-    TTF_Font* font = TTF_OpenFont(fontName, fontSize);
-    if (font == NULL){
+    SET_XID_VALUE(font, TTF_OpenFont(fontName, fontSize));
+    if (GET_XID_VALUE(font) == NULL){
+        FREE_XID(font);
         fprintf(stderr, "Failed to load font %s!\n", name);
-        handleError(0, display, NULL, 0, BadName, 0);
+        handleError(0, display, None, 0, BadName, 0);
     }
     return font;
 }
 
-char** XListFonts(Display* display, char* pattern, int maxnames, int* actual_count_return) {
+char** XListFonts(Display* display, _Xconst char* pattern, int maxnames, int* actual_count_return) {
     // https://tronche.com/gui/x/xlib/graphics/font-metrics/XListFonts.html
-    SET_X_SERVER_REQUEST(display, XCB_LIST_FONTS);
+    SET_X_SERVER_REQUEST(display, X_ListFonts);
     // TODO: Maybe scan trough a default location
     fprintf(stderr, "Hit unimplemented function %s\n", __func__);
     *actual_count_return = 0;
     return NULL;
 }
 
-void XFreeFontNames(char* list[]) {
+int XFreeFontNames(char* list[]) {
     // https://tronche.com/gui/x/xlib/graphics/font-metrics/XFreeFontNames.html
     // TODO: This wont free the whole list
     free(list);
+    return 1;
 }
 
-void XFreeFont(Display* display, XFontStruct* font_struct) {
+int XFreeFont(Display* display, XFontStruct* font_struct) {
     // https://tronche.com/gui/x/xlib/graphics/font-metrics/XFreeFont.html
-//    SET_X_SERVER_REQUEST(display, XCB_);
-    TTF_CloseFont(font_struct->fid);
+    SET_X_SERVER_REQUEST(display, X_CloseFont);
+    TTF_CloseFont(GET_FONT(font_struct->fid));
+    FREE_XID(font_struct->fid);
     if (font_struct->per_char != NULL) {
         int numChars = font_struct->max_char_or_byte2 - font_struct->min_char_or_byte2;
         int i;
@@ -65,22 +77,23 @@ void XFreeFont(Display* display, XFontStruct* font_struct) {
         }
     }
     free(font_struct);
+    return 1;
 }
 
 char* getFontXLFDName(XFontStruct* font_struct) {
     /* FOUNDRY - FAMILY_NAME - WEIGHT_NAME - SLANT - SETWIDTH_NAME - ADD_STYLE - PIXEL_SIZE -
        POINT_SIZE - RESOLUTION_X - RESOLUTION_Y - SPACING - AVERAGE_WIDTH - CHARSET_REGISTRY -
        CHARSET_ENCODING */
-    int fontStyle = TTF_GetFontStyle(font_struct->fid);
+    int fontStyle = TTF_GetFontStyle(GET_FONT(font_struct->fid));
     static char* emptyValue = "";
     char* foundry = emptyValue;
-    char* familyName = TTF_FontFaceFamilyName(font_struct->fid);
+    char* familyName = TTF_FontFaceFamilyName(GET_FONT(font_struct->fid));
     if (familyName == NULL) familyName = emptyValue;
     char* weightName = fontStyle & TTF_STYLE_BOLD ? "bold" : "medium";
     char slant = (char) (fontStyle & TTF_STYLE_ITALIC ? 'i' : 'r');
     char* setWidth = "normal";
     int pointSize = FONT_SIZE * 10;
-    char spacing = (char) (TTF_FontFaceIsFixedWidth(font_struct->fid) ? 'm' : 'p');
+    char spacing = (char) (TTF_FontFaceIsFixedWidth(GET_FONT(font_struct->fid)) ? 'm' : 'p');
     short averageWidth = font_struct->max_bounds.width;
     char* charset = "Utf";
     int charsetEncoding = 8;
@@ -125,20 +138,21 @@ Bool fillXCharStruct(TTF_Font* font, unsigned int character, XCharStruct* charSt
     return True;
 }
 
-XFontStruct* XLoadQueryFont(Display* display, char* name) {
+XFontStruct* XLoadQueryFont(Display* display, _Xconst char* name) {
     // https://tronche.com/gui/x/xlib/graphics/font-metrics/XLoadQueryFont.html
-    TTF_Font* font = XLoadFont(display, name);
-    if (font == NULL) {
+    Font fontId = XLoadFont(display, name);
+    if (fontId == None) {
         return NULL;
     }
-    SET_X_SERVER_REQUEST(display, XCB_QUERY_FONT);
+    TTF_Font* font = GET_FONT(fontId);
+    SET_X_SERVER_REQUEST(display, X_QueryFont);
     XFontStruct* fontStruct = malloc(sizeof(XFontStruct));
     if (fontStruct == NULL) {
         handleOutOfMemory(0, display, 0, 0);
         TTF_CloseFont(font);
         return NULL;
     }
-    fontStruct->fid = font;
+    fontStruct->fid = fontId;
     fontStruct->ascent = TTF_FontAscent(font);
     fontStruct->descent = abs(TTF_FontDescent(font));
     fontStruct->per_char = NULL;
@@ -210,7 +224,7 @@ static __inline__ char hexCharToNum(char chr) {
 }
 
 /* Resolve all X11 controll characters */
-const char* decodeString(char* string, int count) {
+char* decodeString(const char* string, int count) {
     int i, counter = 0;
     char* text = malloc(sizeof(char) * (count + 1));
     if (text == NULL) { return NULL; }
@@ -259,19 +273,19 @@ const char* decodeString(char* string, int count) {
         counter++;
     }
     text[counter] = '\0';
-    return (const char*) text;
+    return text;
 }
 
 int getTextWidth(XFontStruct* font_struct, const char* string) {
     int width, height;
-    if (TTF_SizeUTF8(font_struct->fid, string, &width, &height) != 0) {
+    if (TTF_SizeUTF8(GET_FONT(font_struct->fid), string, &width, &height) != 0) {
         fprintf(stderr, "Failed to calculate the text with in XTextWidth[16]: %s! Returning max width of font.\n", TTF_GetError());
         return (int) (font_struct->max_bounds.rbearing * strlen(string));
     }
     return width;
 }
 
-int XTextWidth16(XFontStruct* font_struct, XChar2b* string, int count) {
+int XTextWidth16(XFontStruct* font_struct, _Xconst XChar2b* string, int count) {
     // https://tronche.com/gui/x/xlib/graphics/font-metrics/XTextWidth16.html
     // TODO: Rethink this
     fprintf(stderr, "Hit unimplemented function %s!\n", __func__);
@@ -283,28 +297,29 @@ int XTextWidth16(XFontStruct* font_struct, XChar2b* string, int count) {
 //    return getTextWidth(font_struct, text);
 }
 
-int XTextWidth(XFontStruct* font_struct, char* string, int count) {
+int XTextWidth(XFontStruct* font_struct, _Xconst char* string, int count) {
     // https://tronche.com/gui/x/xlib/graphics/font-metrics/XTextWidth.html
-    const char* text = decodeString(string, count);
+    char* text = decodeString(string, count);
     if (text == NULL) {
         fprintf(stderr, "Out of memory: Failed to allocate memory in XTextWidth! Returning max width of font.\n");
         return font_struct->max_bounds.rbearing * count;
     }
     int width = getTextWidth(font_struct, text);
-    free((char*) text);
+    free(text);
     return width;
 }
 
-Bool renderText(Display* display, GPU_Target* renderTarget, GC gc, int x, int y, const char* string) {
+Bool renderText(GPU_Target* renderTarget, GC gc, int x, int y, const char* string) {
     fprintf(stderr, "Rendering text: '%s'\n", string);
     if (string == NULL || string[0] == '\0') { return True; }
+    GraphicContext* gContext = GET_GC(gc);
     SDL_Color color = {
-            GET_RED_FROM_COLOR(gc->foreground),
-            GET_GREEN_FROM_COLOR(gc->foreground),
-            GET_BLUE_FROM_COLOR(gc->foreground),
-            GET_ALPHA_FROM_COLOR(gc->foreground),
+            GET_RED_FROM_COLOR(gContext->foreground),
+            GET_GREEN_FROM_COLOR(gContext->foreground),
+            GET_BLUE_FROM_COLOR(gContext->foreground),
+            GET_ALPHA_FROM_COLOR(gContext->foreground),
     };
-    SDL_Surface* fontSurface = TTF_RenderUTF8_Blended(gc->font, string, color);
+    SDL_Surface* fontSurface = TTF_RenderUTF8_Blended(GET_FONT(gContext->font), string, color);
     if (fontSurface == NULL) {
         return False;
     }
@@ -313,26 +328,21 @@ Bool renderText(Display* display, GPU_Target* renderTarget, GC gc, int x, int y,
     if (fontImage == NULL) {
         return False;
     }
-    y -= TTF_FontAscent(gc->font);
+    y -= TTF_FontAscent(GET_FONT(gContext->font));
     GPU_Blit(fontImage, NULL, renderTarget, x + fontImage->w / 2, y + fontImage->h / 2);
     GPU_FreeImage(fontImage);
     GPU_Flip(renderTarget);
     return True;
 }
 
-void XDrawString16(Display* display, Drawable drawable, GC gc, int x, int y, XChar2b* string, int length) {
+int XDrawString16(Display* display, Drawable drawable, GC gc, int x, int y, _Xconst XChar2b* string, int length) {
     // https://tronche.com/gui/x/xlib/graphics/drawing-text/XDrawString16.html
-    SET_X_SERVER_REQUEST(display, XCB_DRAW_STRING_16);
-    // TODO: Rethink this
-    fprintf(stderr, "%s: Drawing on %p\n", __func__, drawable);
-    if (drawable == NULL) {
-        handleError(0, display, 0, 0, BadDrawable, 0);
-        return;
-    }
-    TYPE_CHECK(drawable, DRAWABLE, display);
+    SET_X_SERVER_REQUEST(display, X_PolyText16);
+    fprintf(stderr, "%s: Drawing on %lu\n", __func__, drawable);
+    TYPE_CHECK(drawable, DRAWABLE, display, 0);
     if (gc == NULL) {
-        handleError(0, display, 0, 0, BadGC, 0);
-        return;
+        handleError(0, display, None, 0, BadGC, 0);
+        return 0;
     }
     if (length == 0 || ((Uint16*) string)[0] == 0) { return; }
     fprintf(stderr, "Hit unimplemented function %s!\n", __func__);
@@ -348,37 +358,35 @@ void XDrawString16(Display* display, Drawable drawable, GC gc, int x, int y, XCh
 //    }
 }
 
-void XDrawString(Display* display, Drawable drawable, GC gc, int x, int y, char* string, int length) {
+int XDrawString(Display* display, Drawable drawable, GC gc, int x, int y, _Xconst char* string, int length) {
     // https://tronche.com/gui/x/xlib/graphics/drawing-text/XDrawString.html
-    SET_X_SERVER_REQUEST(display, XCB_DRAW_STRING);
-    fprintf(stderr, "%s: Drawing on %p\n", __func__, drawable);
-    if (drawable == NULL) {
-        handleError(0, display, 0, 0, BadDrawable, 0);
-        return;
-    }
-    TYPE_CHECK(drawable, DRAWABLE, display);
+    SET_X_SERVER_REQUEST(display, X_PolyText8);
+    fprintf(stderr, "%s: Drawing on %lu\n", __func__, drawable);
+    TYPE_CHECK(drawable, DRAWABLE, display, 0);
     if (gc == NULL) {
-        handleError(0, display, 0, 0, BadGC, 0);
-        return;
+        handleError(0, display, None, 0, BadGC, 0);
+        return 0;
     }
-    if (length == 0 || string[0] == 0) { return; }
+    if (length == 0 || string[0] == 0) { return 1; }
     GPU_Target* renderTarget;
     GET_RENDER_TARGET(drawable, renderTarget);
     if (renderTarget == NULL) {
         fprintf(stderr, "Failed to get the render target in %s\n", __func__);
-        handleError(0, display, 0, 0, BadDrawable, 0);
-        return;
+        handleError(0, display, None, 0, BadDrawable, 0);
+        return 0;
     }
-    const char* text = decodeString(string, length);
+    char* text = decodeString(string, length);
     if (text == NULL) {
         fprintf(stderr, "Out of memory: Failed to allocate decoded string in XDrawString, raising BadMatch error.\n");
-        handleError(0, display, 0, 0, BadMatch, 0);
-        return;
+        handleError(0, display, None, 0, BadMatch, 0);
+        return 0;
     }
-    if (!renderText(display, renderTarget, gc, x, y, text)) {
-        free((char*) text);
+    int res = 1;
+    if (!renderText(renderTarget, gc, x, y, text)) {
         fprintf(stderr, "Rendering the text failed in %s: %s\n", __func__, SDL_GetError());
         handleError(0, display, drawable, 0, BadMatch, 0);
+        res = 0;
     }
-    free((char*) text);
+    free(text);
+    return res;
 }

@@ -77,7 +77,7 @@ Status XCloseIM(XIM inputMethod) {
     return 0;
 }
 
-char* XSetLocaleModifiers(char* modifier_list) {
+char* XSetLocaleModifiers(_Xconst char* modifier_list) {
     // http://www.x.org/archive/X11R7.6/doc/man/man3/XSetLocaleModifiers.3.xhtml
     Bool valid = False;
     if (modifier_list == NULL || modifier_list[0] == '\0') {
@@ -101,7 +101,7 @@ char* XSetLocaleModifiers(char* modifier_list) {
     return NULL;
 }
 
-XIM XOpenIM(Display* display, XrmDatabase db, char* res_name, char* res_class) {
+XIM XOpenIM(Display* display, struct _XrmHashBucketRec* db, char* res_name, char* res_class) {
     char* envXModifiers = getenv("XMODIFIERS");
     if (envXModifiers != NULL) {        
         XSetLocaleModifiers(envXModifiers);
@@ -266,7 +266,7 @@ char* setICValues(XIC inputConnection, va_list arguments, Bool allowSetReadOnly)
             while ((focusWindow = GET_PARENT(focusWindow)) != SCREEN_WINDOW) {}
             if (IS_MAPPED_TOP_LEVEL_WINDOW(focusWindow)) {
                 SDL_Window* sdlWindow = GET_WINDOW_STRUCT(focusWindow)->sdlWindow;
-                SDL_SetKeyboardFocus(sdlWindow);
+                SDL_RaiseWindow(sdlWindow);
                 if (GET_XIC_STRUCT(inputConnection)->inputRect != NULL) {
                     SDL_SetTextInputRect(GET_XIC_STRUCT(inputConnection)->inputRect);
                 }
@@ -416,7 +416,9 @@ void XFreeStringList(char **list) {
     fprintf(stderr, "Hit unimplemented function %s.\n", __func__);
 }
 
-XFontSet XCreateFontSet(Display *display, char *base_font_name_list, char ***missing_charset_list_return, int *missing_charset_count_return, char **def_string_return) {
+XFontSet XCreateFontSet(Display *display, _Xconst char *base_font_name_list,
+                        char ***missing_charset_list_return, int *missing_charset_count_return,
+                        char **def_string_return) {
     // http://www.x.org/archive/X11R7.6/doc/man/man3/XCreateFontSet.3.xhtml
 //    SET_X_SERVER_REQUEST(display, XCB_);
     fprintf(stderr, "Hit unimplemented function %s.\n", __func__);

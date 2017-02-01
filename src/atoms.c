@@ -66,10 +66,10 @@ void freeAtomStorage() {
 
 char* XGetAtomName(Display* display, Atom atom) {
     // https://tronche.com/gui/x/xlib/window-information/XGetAtomName.html
-    SET_X_SERVER_REQUEST(display, XCB_GET_ATOM_NAME);
+    SET_X_SERVER_REQUEST(display, X_GetAtomName);
     char* atomName = getAtomName(atom);
     if (atomName == NULL) {
-        handleError(0, display, NULL, 0, BadAtom, 0);
+        handleError(0, display, None, 0, BadAtom, 0);
         return NULL;
     }
     return atomName;
@@ -109,7 +109,7 @@ Atom internalInternAtom(const char* atomName) {
 
 Atom XInternAtom(Display* display, _Xconst char* atom_name, Bool only_if_exists) {
     // https://tronche.com/gui/x/xlib/window-information/XInternAtom.html
-    SET_X_SERVER_REQUEST(display, XCB_INTERN_ATOM);
+    SET_X_SERVER_REQUEST(display, X_InternAtom);
     fprintf(stderr, "Intern Atom %s.\n", atom_name);
     int preExistingIndex = -1;
     if (strncmp(atom_name, "XA_", 3) == 0) {

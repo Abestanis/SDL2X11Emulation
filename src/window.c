@@ -8,50 +8,51 @@
 
 // TODO: Cover cases where top-level window is re-parented and window is converted to top-level window
 
-void XDestroyWindow(Display* display, Window window) {
+int XDestroyWindow(Display* display, Window window) {
     // https://tronche.com/gui/x/xlib/window/XDestroyWindow.html
-    SET_X_SERVER_REQUEST(display, XCB_DESTROY_WINDOW);
-    TYPE_CHECK(window, WINDOW, display);
-    if (window == SCREEN_WINDOW) return;
+    SET_X_SERVER_REQUEST(display, X_DestroyWindow);
+    TYPE_CHECK(window, WINDOW, display, 0);
+    if (window == SCREEN_WINDOW) return 0;
     destroyWindow(display, window, True);
+    return 1;
 }
 
 Window XCreateWindow(Display* display, Window parent, int x, int y, unsigned int width,
                      unsigned int height, unsigned int border_width, int depth, unsigned int class,
                      Visual* visual, unsigned long valueMask, XSetWindowAttributes* attributes) {
     // https://tronche.com/gui/x/xlib/window/XCreateWindow.html
-    SET_X_SERVER_REQUEST(display, XCB_CREATE_WINDOW);
-    TYPE_CHECK(parent, WINDOW, display, NULL);
+    SET_X_SERVER_REQUEST(display, X_CreateWindow);
+    TYPE_CHECK(parent, WINDOW, display, None);
     Bool inputOnly = (class == InputOnly || (class == CopyFromParent && IS_INPUT_ONLY(parent)));
     if (inputOnly && border_width != 0) {
         fprintf(stderr, "Bad argument: Given class is InputOnly but border_with is not 0 in XCreateWindow!\n");
-        handleError(0, display, NULL, 0, BadMatch, 0);
-        return NULL;
+        handleError(0, display, None, 0, BadMatch, 0);
+        return None;
     }
-    Window windowID = malloc(sizeof(Window));
-    if (windowID == NULL) {
+    Window windowID = ALLOC_XID();
+    if (windowID == None) {
         fprintf(stderr, "Out of memory: Could not allocate the window id in XCreateWindow!\n");
         handleOutOfMemory(0, display, 0, 0);
-        return NULL;
+        return None;
     }
     WindowStruct* windowStruct = malloc(sizeof(WindowStruct));
     if (windowStruct == NULL) {
         fprintf(stderr, "Out of memory: Could not allocate the window struct in XCreateWindow!\n");
         handleOutOfMemory(0, display, 0, 0);
-        free(windowID);
-        return NULL;
+        FREE_XID(windowID);
+        return None;
     }
-    windowID->type = WINDOW;
-    windowID->dataPointer = windowStruct;
-    initWindowStruct(windowStruct, x, y, width, height, visual, NULL, inputOnly, 0, NULL);
+    SET_XID_TYPE(windowID, WINDOW);
+    SET_XID_VALUE(windowID, windowStruct);
+    initWindowStruct(windowStruct, x, y, width, height, visual, None, inputOnly, 0, None);
     windowStruct->depth = depth;
     windowStruct->borderWidth = border_width;
     if (!addChildToWindow(parent, windowID)) {
         fprintf(stderr, "Out of memory: Could not increase size of parent's child list in XCreateWindow!\n");
         handleOutOfMemory(0, display, 0, 0);
         free(windowStruct);
-        free(windowID);
-        return NULL;
+        FREE_XID(windowID);
+        return None;
     }
     int visualClass;
 #if defined(__cplusplus) || defined(c_plusplus)
@@ -64,13 +65,13 @@ Window XCreateWindow(Display* display, Window parent, int x, int y, unsigned int
                                                          visualClass == StaticColor ||
                                                          visualClass == TrueColor ?
                                                          AllocAll : AllocNone);
-    display->request = XCB_CREATE_WINDOW;
-    if (windowStruct->colormap == NULL) {
+    SET_X_SERVER_REQUEST(display, X_CreateWindow);
+    if (windowStruct->colormap == None) {
         fprintf(stderr, "Out of memory: Could not allocate the window colormap in XCreateWindow!\n");
         handleOutOfMemory(0, display, 0, 0);
         free(windowStruct);
-        free(windowID);
-        return NULL;
+        FREE_XID(windowID);
+        return None;
     }
     // FIXME: Warning: Colormap is not initialized!
     // Set up the window ahead of time for event processing, so we can send the CreateNotify event
@@ -82,12 +83,12 @@ Window XCreateWindow(Display* display, Window parent, int x, int y, unsigned int
     return windowID;
 }
 
-void XConfigureWindow(Display* display, Window window, unsigned int value_mask,
+int XConfigureWindow(Display* display, Window window, unsigned int value_mask,
                       XWindowChanges* values) {
     // https://tronche.com/gui/x/xlib/window/XConfigureWindow.html
-    SET_X_SERVER_REQUEST(display, XCB_CONFIGURE_WINDOW);
-    TYPE_CHECK(window, WINDOW, display);
-    configureWindow(display, window, value_mask, values);
+    SET_X_SERVER_REQUEST(display, X_ConfigureWindow);
+    TYPE_CHECK(window, WINDOW, display, 0);
+    return configureWindow(display, window, value_mask, values);
 }
 
 Status XReconfigureWMWindow(Display* display, Window window, int screen_number,
@@ -99,7 +100,6 @@ Status XReconfigureWMWindow(Display* display, Window window, int screen_number,
 
 Status XIconifyWindow(Display* display, Window window, int screen_number) {
     // https://tronche.com/gui/x/xlib/ICC/client-to-window-manager/XIconifyWindow.html
-    SET_X_SERVER_REQUEST(display, XCB_ICONIFY_WINDOW);
     TYPE_CHECK(window, WINDOW, display, 0);
     if (IS_MAPPED_TOP_LEVEL_WINDOW(window)) {
         SDL_MinimizeWindow(GET_WINDOW_STRUCT(window)->sdlWindow);
@@ -109,7 +109,6 @@ Status XIconifyWindow(Display* display, Window window, int screen_number) {
 
 Status XSetWMColormapWindows(Display* display, Window window, Window* colormap_windows, int count) {
     // https://tronche.com/gui/x/xlib/ICC/client-to-window-manager/XSetWMColormapWindows.html
-    SET_X_SERVER_REQUEST(display, XCB_SET_WM_COLOR_MAPS_WINDOWS);
     // TODO: Should we do sth. with the information?
     TYPE_CHECK(window, WINDOW, display, 0);
     WindowStruct* windowStruct = GET_WINDOW_STRUCT(window);
@@ -120,7 +119,6 @@ Status XSetWMColormapWindows(Display* display, Window window, Window* colormap_w
 
 Status XGetWMColormapWindows(Display* display, Window window, Window** colormap_windows_return, int* count_return) {
     // https://tronche.com/gui/x/xlib/ICC/client-to-window-manager/XGetWMColormapWindows.html
-    SET_X_SERVER_REQUEST(display, XCB_GET_WM_COLOR_MAPS_WINDOWS);
     TYPE_CHECK(window, WINDOW, display, 0);
     WindowStruct* windowStruct = GET_WINDOW_STRUCT(window);
     if (windowStruct->colormapWindowsCount > -1) {
@@ -131,24 +129,24 @@ Status XGetWMColormapWindows(Display* display, Window window, Window** colormap_
     return 0;
 }
 
-void XSetTransientForHint(Display* display, Window window, Window prop_window) {
+int XSetTransientForHint(Display* display, Window window, Window prop_window) {
     // https://tronche.com/gui/x/xlib/ICC/client-to-window-manager/XSetTransientForHint.html
-//    SET_X_SERVER_REQUEST(display, XCB_);
     // TODO: Ignored for now
+    return 1;
 }
 
-void XMapWindow(Display* display, Window window) {
+int XMapWindow(Display* display, Window window) {
     // https://tronche.com/gui/x/xlib/window/XMapWindow.html
-    SET_X_SERVER_REQUEST(display, XCB_MAP_WINDOW);
-    TYPE_CHECK(window, WINDOW, display);
-    if (GET_WINDOW_STRUCT(window)->mapState == Mapped || GET_WINDOW_STRUCT(window)->mapState == MapRequested) { return; }
+    SET_X_SERVER_REQUEST(display, X_MapWindow);
+    TYPE_CHECK(window, WINDOW, display, 0);
+    if (GET_WINDOW_STRUCT(window)->mapState == Mapped || GET_WINDOW_STRUCT(window)->mapState == MapRequested) { return 1; }
     if (!GET_WINDOW_STRUCT(window)->overrideRedirect && HAS_EVENT_MASK(GET_PARENT(window), SubstructureRedirectMask)) {
         postEvent(display, window, MapRequest);
-        return;
+        return 1;
     }
     if (IS_TOP_LEVEL(window)) {
-        if (IS_MAPPED_TOP_LEVEL_WINDOW(window)) { return; }
-        fprintf(stderr, "Mapping Window %p\n", window);
+        if (IS_MAPPED_TOP_LEVEL_WINDOW(window)) { return 1; }
+        fprintf(stderr, "Mapping Window %lu\n", window);
         WindowStruct* windowStruct = GET_WINDOW_STRUCT(window);
         Uint32 flags = SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN;
         if (windowStruct->borderWidth == 0) {
@@ -159,15 +157,15 @@ void XMapWindow(Display* display, Window window) {
                                                  windowStruct->w, windowStruct->h, flags);
         if (sdlWindow == NULL) {
             fprintf(stderr, "SDL_CreateWindow failed in XMapWindow: %s\n", SDL_GetError());
-            handleError(0, display, NULL, 0, BadMatch, 0);
-            return;
+            handleError(0, display, None, 0, BadMatch, 0);
+            return 0;
         }
         registerWindowMapping(window, SDL_GetWindowID(sdlWindow));
         GPU_Target* renderTarget = GPU_CreateTargetFromWindow(SDL_GetWindowID(sdlWindow));
         if (renderTarget == NULL) {
             fprintf(stderr, "GPU_CreateTargetFromWindow failed in XMapWindow: %s\n", GPU_PopErrorCode().details);
-            handleError(0, display, NULL, 0, BadMatch, 0);
-            return;
+            handleError(0, display, None, 0, BadMatch, 0);
+            return 0;
         }
         if (windowStruct->unmappedContent != NULL) {
             if (windowStruct->renderTarget != NULL) {
@@ -201,14 +199,14 @@ void XMapWindow(Display* display, Window window) {
         if (GET_WINDOW_STRUCT(parent)->mapState == Mapped) {
             if (!mergeWindowDrawables(parent, window)) {
                 fprintf(stderr, "Failed to merge the window drawables in %s\n", __func__);
-                return;
+                return 0;
             }
             GET_WINDOW_STRUCT(window)->mapState = Mapped;
         } else { /* Parent not mapped */
             // mapRequestedChildren will do all the work
             // TODO: Have a look at this: https://tronche.com/gui/x/xlib/window/map.html
             GET_WINDOW_STRUCT(window)->mapState = MapRequested;
-            return;
+            return 0;
         }
     }
     postEvent(display, window, MapNotify);
@@ -216,14 +214,15 @@ void XMapWindow(Display* display, Window window) {
     #ifdef DEBUG_WINDOWS
     printWindowsHierarchy();
     #endif
+    return 1;
 }
 
-void XUnmapWindow(Display* display, Window window) {
+int XUnmapWindow(Display* display, Window window) {
     // https://tronche.com/gui/x/xlib/window/XUnmapWindow.html
-    SET_X_SERVER_REQUEST(display, XCB_UNMAP_WINDOW);
-    TYPE_CHECK(window, WINDOW, display);
+    SET_X_SERVER_REQUEST(display, X_UnmapWindow);
+    TYPE_CHECK(window, WINDOW, display, 0);
     WindowStruct* windowStruct = GET_WINDOW_STRUCT(window);
-    if (windowStruct->mapState == UnMapped) return;
+    if (windowStruct->mapState == UnMapped) return 1;
     if (windowStruct->renderTarget != NULL) {
         GPU_FreeTarget(windowStruct->renderTarget);
         windowStruct->renderTarget = NULL;
@@ -238,76 +237,77 @@ void XUnmapWindow(Display* display, Window window) {
         postExposeEvent(display, GET_PARENT(window), &exposeRect, 1);
     }
     // TODO: Change subwindow state to MapRequested?
+    return 1;
 }
 
 Status XWithdrawWindow(Display* display, Window window, int screen_number) {
     // https://tronche.com/gui/x/xlib/ICC/client-to-window-manager/XWithdrawWindow.html
-    SET_X_SERVER_REQUEST(display, XCB_UNMAP_WINDOW);
-    TYPE_CHECK(window, WINDOW, display, 1);
-    XUnmapWindow(display, window);
+    TYPE_CHECK(window, WINDOW, display, 0);
+    XUnmapWindow(display, window); // TODO
     return 1;
 }
 
-void XStoreName(Display* display, Window window, char* window_name) {
+int XStoreName(Display* display, Window window, _Xconst char* window_name) {
     // https://tronche.com/gui/x/xlib/ICC/client-to-window-manager/XStoreName.html
-    SET_X_SERVER_REQUEST(display, XCB_STORE_NAME);
-    TYPE_CHECK(window, WINDOW, display);
+    TYPE_CHECK(window, WINDOW, display, 0);
     if (IS_MAPPED_TOP_LEVEL_WINDOW(window)) {
         SDL_SetWindowTitle(GET_WINDOW_STRUCT(window)->sdlWindow, window_name);
     } else {
         char* windowName = malloc(sizeof(char) * (strlen(window_name) + 1));
         if (windowName == NULL) {
             handleError(0, display, window, 0, BadAlloc, 0);
-            return;
+            return 0;
         }
         strcpy(windowName, window_name);
         GET_WINDOW_STRUCT(window)->windowName = windowName;
     }
+    return 1;
 }
 
-void XSetIconName(Display* display, Window window, char* icon_name) {
+int XSetIconName(Display* display, Window window, _Xconst char* icon_name) {
     // https://tronche.com/gui/x/xlib/ICC/client-to-window-manager/XSetIconName.html
 //    SET_X_SERVER_REQUEST(display, XCB_);
     // There is not really anything to do here // TODO: Check if this is true
+    return 1;
 }
 
-void XMoveWindow(Display* display, Window window, int x, int y) {
+int XMoveWindow(Display* display, Window window, int x, int y) {
     // https://tronche.com/gui/x/xlib/window/XMoveWindow.html
-    SET_X_SERVER_REQUEST(display, XCB_MOVE_WINDOW);
-    TYPE_CHECK(window, WINDOW, display);
+    SET_X_SERVER_REQUEST(display, X_ConfigureWindow);
+    TYPE_CHECK(window, WINDOW, display, 0);
     XWindowChanges changes;
     changes.x = x;
     changes.y = y;
-    configureWindow(display, window, CWX | CWY, &changes);
+    return configureWindow(display, window, CWX | CWY, &changes);
 }
 
-void XResizeWindow(Display* display, Window window, unsigned int width, unsigned int height) {
+int XResizeWindow(Display* display, Window window, unsigned int width, unsigned int height) {
     // https://tronche.com/gui/x/xlib/window/XResizeWindow.html
-    SET_X_SERVER_REQUEST(display, XCB_RESIZE_WINDOW);
-    TYPE_CHECK(window, WINDOW, display);
+    SET_X_SERVER_REQUEST(display, X_ConfigureWindow);
+    TYPE_CHECK(window, WINDOW, display, 0);
     XWindowChanges changes;
     changes.width = width;
     changes.height = height;
-    configureWindow(display, window, CWWidth | CWHeight, &changes);
+    return configureWindow(display, window, CWWidth | CWHeight, &changes);
 }
 
-void XReparentWindow(Display* display, Window window, Window parent, int x, int y) {
+int XReparentWindow(Display* display, Window window, Window parent, int x, int y) {
     // https://tronche.com/gui/x/xlib/window-and-session-manager/XReparentWindow.html
-    SET_X_SERVER_REQUEST(display, XCB_REPARENT_WINDOW);
-    TYPE_CHECK(window, WINDOW, display);
-    TYPE_CHECK(parent, WINDOW, display);
+    SET_X_SERVER_REQUEST(display, X_ReparentWindow);
+    TYPE_CHECK(window, WINDOW, display, 0);
+    TYPE_CHECK(parent, WINDOW, display, 0);
     if (window == parent) {
         fprintf(stderr, "Invalid parameter: Can not add window to itself in XReparentWindow!\n");
         handleError(0, display, window, 0, BadMatch, 0);
-        return;
+        return 0;
     } else if (IS_INPUT_ONLY(parent) && !IS_INPUT_ONLY(window)) {
         fprintf(stderr, "Invalid parameter: Can not add InputOutput window to InputOnly window in XReparentWindow!\n");
         handleError(0, display, window, 0, BadMatch, 0);
-        return;
+        return 0;
     } else if (isParent(window, parent)) {
         fprintf(stderr, "Invalid parameter: Can not add window to one of it's childs in XReparentWindow!\n");
         handleError(0, display, window, 0, BadMatch, 0);
-        return;
+        return 0;
     }
     MapState mapState = GET_WINDOW_STRUCT(window)->mapState;
     XUnmapWindow(display, window);
@@ -315,13 +315,14 @@ void XReparentWindow(Display* display, Window window, Window parent, int x, int 
     removeChildFromParent(window);
     if (!addChildToWindow(parent, window)) {
         fprintf(stderr, "Out of memory: Failed to reattach window in XReparentWindow!\n");
-        return;
+        return 0;
     }
     XMoveWindow(display, window, x, y); // TODO: Do this without generating events
     postEvent(display, window, ReparentNotify, oldParent);
     if (mapState != UnMapped) {
         XMapWindow(display, window);
     }
+    return 1;
 }
 
 int indexInWindowList(Window* windowList, int numWindows, Window window) {
@@ -339,7 +340,7 @@ Bool XTranslateCoordinates(Display* display, Window sourceWindow, Window destina
                            int sourceX, int sourceY, int* destinationXReturn,
                            int* destinationYReturn, Window* childReturn) {
     // https://tronche.com/gui/x/xlib/window-information/XTranslateCoordinates.html
-    SET_X_SERVER_REQUEST(display, XCB_TRANSLATE_COORDINATES);
+    SET_X_SERVER_REQUEST(display, X_TranslateCoords);
     TYPE_CHECK(sourceWindow, WINDOW, display, False);
     TYPE_CHECK(destinationWindow, WINDOW, display, False);
     int currX = sourceX;
@@ -352,7 +353,7 @@ Bool XTranslateCoordinates(Display* display, Window sourceWindow, Window destina
     *destinationYReturn = 0;
     // Get all parents of destinationWindow
     if (destinationWindow == SCREEN_WINDOW) {
-        destParents[0] = NULL;
+        destParents[0] = None;
         numDestParents = 0;
     } else {
         Window nextParent = GET_PARENT(destinationWindow);
@@ -369,7 +370,7 @@ Bool XTranslateCoordinates(Display* display, Window sourceWindow, Window destina
                 return False;
             }
         }
-        destParents[numDestParents] = NULL;
+        destParents[numDestParents] = None;
     }
     // Find the first common parent and translate sourceWindow's x and y to it's coordinate system
     while (sourceWindow != SCREEN_WINDOW) {
@@ -405,8 +406,7 @@ Bool XTranslateCoordinates(Display* display, Window sourceWindow, Window destina
             GET_WINDOW_POS(children[i], x, y);
             GET_WINDOW_DIMS(children[i], width, height);
             if (x < currX && x + width > currX && y < currY && y + height > y) {
-                (*childReturn)->type = WINDOW;
-                (*childReturn)->dataPointer = children[i];
+                *childReturn = children[i];
                 break;
             }
         }
@@ -414,23 +414,23 @@ Bool XTranslateCoordinates(Display* display, Window sourceWindow, Window destina
     return True;
 }
 
-void XChangeProperty(Display* display, Window window, Atom property, Atom type, int format,
-                     int mode, unsigned char* data, int numberOfElements) {
+int XChangeProperty(Display* display, Window window, Atom property, Atom type, int format,
+                     int mode, _Xconst unsigned char* data, int numberOfElements) {
     // https://tronche.com/gui/x/xlib/window-information/XChangeProperty.html
-    SET_X_SERVER_REQUEST(display, XCB_CHANGE_PROPERTY);
-    TYPE_CHECK(window, WINDOW, display);
+    SET_X_SERVER_REQUEST(display, X_ChangeProperty);
+    TYPE_CHECK(window, WINDOW, display, 0);
     if (numberOfElements < 0) {
-        handleError(0, display, NULL, 0, BadValue, 0);
-        return;
+        handleError(0, display, None, 0, BadValue, 0);
+        return 0;
     }
     if (format != 8 && format != 16 && format != 32) {
-        handleError(0, display, NULL, 0, BadValue, 0);
-        return;
+        handleError(0, display, None, 0, BadValue, 0);
+        return 0;
     }
     fprintf(stderr, "Changing window property %lu (%s).\n", property, getAtomName(property));
     if (!isValidAtom(property)) {
-        handleError(0, display, NULL, 0, BadAtom, 0);
-        return;
+        handleError(0, display, property, 0, BadAtom, 0);
+        return 0;
     }
     WindowStruct* windowStruct = GET_WINDOW_STRUCT(window);
     WindowProperty* windowProperty = findProperty(&windowStruct->properties, property, NULL);
@@ -443,19 +443,19 @@ void XChangeProperty(Display* display, Window window, Atom property, Atom type, 
         previousDataLength = windowProperty->dataLength;
         previousData = windowProperty->data;
         if (windowProperty->type != type) {
-            handleError(0, display, NULL, 0, BadMatch, 0);
-            return;
+            handleError(0, display, type, 0, BadMatch, 0);
+            return 0;
         }
     } else {
         windowProperty = malloc(sizeof(WindowProperty));
         if (windowProperty == NULL) {
             handleOutOfMemory(0, display, 0, 0);
-            return;
+            return 0;
         }
         if (!insertArray(&windowStruct->properties, windowProperty)) {
             free(windowProperty);
             handleOutOfMemory(0, display, 0, 0);
-            return;
+            return 0;
         }
         windowProperty->dataFormat = format;
         windowProperty->data = NULL;
@@ -471,8 +471,8 @@ void XChangeProperty(Display* display, Window window, Atom property, Atom type, 
                     removeArray(&windowStruct->properties, windowStruct->properties.length - 1, False);
                     free(windowProperty);
                 }
-                handleError(0, display, NULL, 0, BadMatch, 0);
-                return;
+                handleError(0, display, None, 0, BadMatch, 0);
+                return 0;
             }
             combinedData = malloc(dataTypeSize * (previousDataLength + numberOfElements));
             if (combinedData == NULL) {
@@ -483,7 +483,7 @@ void XChangeProperty(Display* display, Window window, Atom property, Atom type, 
                 fprintf(stderr, "Out of memory: Failed to allocate space for combined data "
                                 "in XChangeProperty!\n");
                 handleOutOfMemory(0, display, 0, 0);
-                return;
+                return 0;
             }
             if (mode == PropModeAppend) {
                 if (previousData != NULL) {
@@ -509,7 +509,7 @@ void XChangeProperty(Display* display, Window window, Atom property, Atom type, 
                 fprintf(stderr, "Out of memory: Failed to allocate space for data "
                         "in XChangeProperty!\n");
                 handleOutOfMemory(0, display, 0, 0);
-                return;
+                return 0;
             }
             memcpy(windowProperty->data, data, dataTypeSize * numberOfElements);
             windowProperty->dataLength = (unsigned int) numberOfElements;
@@ -523,8 +523,8 @@ void XChangeProperty(Display* display, Window window, Atom property, Atom type, 
                 free(windowProperty);
             }
             fprintf(stderr, "Bad parameter: Got unknown mode %d in XChangeProperty!\n", mode);
-            handleError(0, display, NULL, 0, BadMatch, 0);
-            return;
+            handleError(0, display, None, 0, BadMatch, 0);
+            return 0;
     }
     if (previousData != NULL) {
 //        free(previousData); // TODO: Fix crash here
@@ -557,16 +557,17 @@ void XChangeProperty(Display* display, Window window, Atom property, Atom type, 
             SDL_SetWindowIcon(windowStruct->sdlWindow, icon);
         }
     }
+    return 1;
 }
 
-void XDeleteProperty(Display* display, Window window, Atom property) {
+int XDeleteProperty(Display* display, Window window, Atom property) {
     // https://tronche.com/gui/x/xlib/window-information/XDeleteProperty.html
-    SET_X_SERVER_REQUEST(display, XCB_DELETE_PROPERTY);
-    TYPE_CHECK(window, WINDOW, display);
+    SET_X_SERVER_REQUEST(display, X_DeleteProperty);
+    TYPE_CHECK(window, WINDOW, display, 0);
     WindowStruct* windowStruct = GET_WINDOW_STRUCT(window);
     if (!isValidAtom(property)) {
-        handleError(0, display, NULL, 0, BadAtom, 0);
-        return;
+        handleError(0, display, property, 0, BadAtom, 0);
+        return 0;
     }
     if (property == _NET_WM_ICON) {
         if (windowStruct->icon != NULL) {
@@ -588,6 +589,7 @@ void XDeleteProperty(Display* display, Window window, Atom property) {
         removeArray(&windowStruct->properties, index, False);
         // TODO: PropertyNotify event
     }
+    return 1;
 }
 
 int XGetWindowProperty(Display* display, Window window, Atom property, long long_offset,
@@ -595,11 +597,11 @@ int XGetWindowProperty(Display* display, Window window, Atom property, long long
                        int* actual_format_return, unsigned long* numberOfItems_return,
                        unsigned long* bytes_after_return, unsigned char** prop_return) {
     // https://tronche.com/gui/x/xlib/window-information/XGetWindowProperty.html
-    SET_X_SERVER_REQUEST(display, XCB_GET_PROPERTY);
+    SET_X_SERVER_REQUEST(display, X_GetProperty);
     TYPE_CHECK(window, WINDOW, display, BadWindow);
     WindowStruct* windowStruct = GET_WINDOW_STRUCT(window);
     if (!isValidAtom(property)) {
-        handleError(0, display, NULL, 0, BadAtom, 0);
+        handleError(0, display, property, 0, BadAtom, 0);
         return BadAtom;
     }
     WindowProperty* windowProperty = findProperty(&windowStruct->properties, property, NULL);
@@ -610,7 +612,7 @@ int XGetWindowProperty(Display* display, Window window, Atom property, long long
                               (windowProperty->dataFormat == 16 ? sizeof(short) : sizeof(long));
         if (req_type == AnyPropertyType || req_type == windowProperty->type) {
             if (long_offset < 0 || windowProperty->dataLength * dataTypeSize < 4 * long_offset) {
-                handleError(0, display, NULL, 0, BadValue, 0);
+                handleError(0, display, None, 0, BadValue, 0);
                 return BadValue;
             }
             size_t dataReturnSize = MIN(windowProperty->dataLength * dataTypeSize - 4 * long_offset, 4 * (size_t) long_length);
@@ -641,20 +643,21 @@ int XGetWindowProperty(Display* display, Window window, Atom property, long long
     return Success;
 }
 
-void XRaiseWindow(Display* display, Window window) {
+int XRaiseWindow(Display* display, Window window) {
     // https://tronche.com/gui/x/xlib/window/XRaiseWindow.html
-    SET_X_SERVER_REQUEST(display, XCB_RAISE_WINDOW);
-    TYPE_CHECK(window, WINDOW, display);
+    SET_X_SERVER_REQUEST(display, X_ConfigureWindow);
+    TYPE_CHECK(window, WINDOW, display, 0);
     if (IS_MAPPED_TOP_LEVEL_WINDOW(window)) {
         SDL_RaiseWindow(GET_WINDOW_STRUCT(window)->sdlWindow);
     }
     // TODO: Rearrange child in child list of parent.
+    return 1;
 }
 
 Status XGetWindowAttributes(Display* display, Window window,
                             XWindowAttributes* window_attributes_return) {
     // https://tronche.com/gui/x/xlib/window-information/XGetWindowAttributes.html
-    SET_X_SERVER_REQUEST(display, XCB_GET_WINDOW_ATTRIBUTES);
+    SET_X_SERVER_REQUEST(display, X_GetWindowAttributes);
     TYPE_CHECK(window, WINDOW, display, 0);
     window_attributes_return->root = SCREEN_WINDOW;
     window_attributes_return->visual = GET_VISUAL(window);
@@ -679,7 +682,7 @@ Status XGetWindowAttributes(Display* display, Window window,
         window_attributes_return->width  = windowStruct->w;
         window_attributes_return->height = windowStruct->h;
         // TODO: IsUnviewable?
-        if (windowStruct->parent == NULL) {
+        if (windowStruct->parent == None) {
             window_attributes_return->map_state = IsUnmapped;
         } else {
             window_attributes_return->map_state = IsViewable;
@@ -690,70 +693,75 @@ Status XGetWindowAttributes(Display* display, Window window,
     return 1;
 }
 
-void XSetWindowBackground(Display* display, Window window, unsigned long background_pixel) {
+int XSetWindowBackground(Display* display, Window window, unsigned long background_pixel) {
     // https://tronche.com/gui/x/xlib/window/XSetWindowBackground.html
-    SET_X_SERVER_REQUEST(display, XCB_CHANGE_WINDOW_ATTRIBUTES);
+    SET_X_SERVER_REQUEST(display, X_ChangeWindowAttributes);
     if (window != SCREEN_WINDOW) {
         if (IS_INPUT_ONLY(window)) {
             fprintf(stderr, "Invalid parameter: Can not change the background of an InputOnly "
                     "window in XChangeWindowAttributes!\n");
             handleError(0, display, window, 0, BadMatch, 0);
-            return;
+            return 0;
         }
         GET_WINDOW_STRUCT(window)->backgroundColor = background_pixel;
     }
+    return 1;
 }
 
-void XSetWindowBackgroundPixmap(Display* display, Window window, Pixmap background_pixmap) {
+int XSetWindowBackgroundPixmap(Display* display, Window window, Pixmap background_pixmap) {
     // https://tronche.com/gui/x/xlib/window/XSetWindowBackgroundPixmap.html
-    SET_X_SERVER_REQUEST(display, XCB_CHANGE_WINDOW_ATTRIBUTES);
+    SET_X_SERVER_REQUEST(display, X_ChangeWindowAttributes);
     if (window != SCREEN_WINDOW) {
         WindowStruct* windowStruct = GET_WINDOW_STRUCT(window);
         if (IS_INPUT_ONLY(window)) {
             fprintf(stderr, "Invalid parameter: Can not change the background Pixmap of an "
                     "InputOnly window in XChangeWindowAttributes!\n");
             handleError(0, display, window, 0, BadMatch, 0);
-            return;
+            return 0;
         }
         Pixmap previous = windowStruct->background;
         if (background_pixmap == (Pixmap) ParentRelative) {
-            windowStruct->background = GET_PARENT(window) == NULL ? NULL :
+            windowStruct->background = GET_PARENT(window) == None ? None :
                                              GET_WINDOW_STRUCT(GET_PARENT(window))->background;
         } else {
-            TYPE_CHECK(background_pixmap, PIXMAP, display);
+            TYPE_CHECK(background_pixmap, PIXMAP, display, 0);
             windowStruct->background = background_pixmap;
         }
-        if (previous != NULL && previous != None) {
+        if (previous != None) {
             XFreePixmap(display, previous);
         }
     }
+    return 1;
 }
 
-void XSetWindowBorder(Display* display, Window window, unsigned long border_pixel) {
+int XSetWindowBorder(Display* display, Window window, unsigned long border_pixel) {
     // https://tronche.com/gui/x/xlib/window/XSetWindowBorder.html
-    SET_X_SERVER_REQUEST(display, XCB_CHANGE_WINDOW_ATTRIBUTES);
+    SET_X_SERVER_REQUEST(display, X_ChangeWindowAttributes);
     //TODO: has no effect
+    return 1;
 }
 
-void XSetWindowBorderPixmap(Display* display, Window window, Pixmap border_pixmap) {
+int XSetWindowBorderPixmap(Display* display, Window window, Pixmap border_pixmap) {
     // https://tronche.com/gui/x/xlib/window/XSetWindowBorderPixmap.html
-    SET_X_SERVER_REQUEST(display, XCB_CHANGE_WINDOW_ATTRIBUTES);
+    SET_X_SERVER_REQUEST(display, X_ChangeWindowAttributes);
     // TODO: has no effect
+    return 1;
 }
 
-void XSetWindowColormap(Display* display, Window window, Colormap colormap) {
+int XSetWindowColormap(Display* display, Window window, Colormap colormap) {
     // https://tronche.com/gui/x/xlib/window/XSetWindowColormap.html
-    SET_X_SERVER_REQUEST(display, XCB_CHANGE_WINDOW_ATTRIBUTES);
+    SET_X_SERVER_REQUEST(display, X_ChangeWindowAttributes);
     if (window != SCREEN_WINDOW) {
         GET_WINDOW_STRUCT(window)->colormap = colormap;
     }
+    return 1;
 }
 
-void XChangeWindowAttributes(Display* display, Window window, unsigned long valueMask,
+int XChangeWindowAttributes(Display* display, Window window, unsigned long valueMask,
                              XSetWindowAttributes *attributes) {
     // https://tronche.com/gui/x/xlib/window/XChangeWindowAttributes.html
-    SET_X_SERVER_REQUEST(display, XCB_CHANGE_WINDOW_ATTRIBUTES);
-    TYPE_CHECK(window, WINDOW, display);
+    SET_X_SERVER_REQUEST(display, X_ChangeWindowAttributes);
+    TYPE_CHECK(window, WINDOW, display, 0);
     if (IS_TOP_LEVEL(window) && HAS_VALUE(valueMask, CWCursor)) {
         XDefineCursor(display, window, attributes->cursor);
     }
@@ -779,6 +787,7 @@ void XChangeWindowAttributes(Display* display, Window window, unsigned long valu
         }
         // TODO: Interpret more values
     }
+    return 1;
 }
 
 Window XRootWindow(Display* display, int screen_number) {
@@ -789,22 +798,25 @@ Window XRootWindow(Display* display, int screen_number) {
     return SCREEN_WINDOW;
 }
 
-void XMoveResizeWindow(Display* display, Window window, int x, int y, unsigned int width, unsigned int height) {
+int XMoveResizeWindow(Display* display, Window window, int x, int y, unsigned int width, unsigned int height) {
     // https://tronche.com/gui/x/xlib/window/XMoveResizeWindow.html
-    XMoveWindow(display, window, x, y);
-    XResizeWindow(display, window, width, height);
+    if (XMoveWindow(display, window, x, y) && XResizeWindow(display, window, width, height)) {
+        return 1;
+    }
+    return 0;
 }
 
-void XSetWindowBorderWidth(Display* display, Window window, unsigned int width) {
+int XSetWindowBorderWidth(Display* display, Window window, unsigned int width) {
     // https://tronche.com/gui/x/xlib/window/XSetWindowBorderWidth.html
-    SET_X_SERVER_REQUEST(display, XCB_CHANGE_WINDOW_ATTRIBUTES);
+    SET_X_SERVER_REQUEST(display, X_ChangeWindowAttributes);
     // TODO: has no effect
+    return 1;
 }
 
 Status XQueryTree(Display* display, Window window, Window* root_return, Window* parent_return,
                   Window** children_return, unsigned int* nchildren_return) {
     // https://tronche.com/gui/x/xlib/window-information/XQueryTree.html
-    SET_X_SERVER_REQUEST(display, XCB_QUERY_TREE);
+    SET_X_SERVER_REQUEST(display, X_QueryTree);
     TYPE_CHECK(window, WINDOW, display, 0);
     *root_return = SCREEN_WINDOW;
     *parent_return = GET_PARENT(window);

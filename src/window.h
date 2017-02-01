@@ -61,9 +61,6 @@ typedef struct {
 
 #include "windowInternal.h"
 
-void XChangeWindowAttributes(Display* display, Window window, unsigned long valueMask,
-                             XSetWindowAttributes *attributes);
-
 extern Window SCREEN_WINDOW;
 
 #define GET_VISUAL(window) GET_WINDOW_STRUCT(window)->visual

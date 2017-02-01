@@ -56,9 +56,10 @@ void freeArray(Array* a) {
 }
 
 
-void XFree(void *data) {
+int XFree(void *data) {
     // https://tronche.com/gui/x/xlib/display/XFree.html
     fprintf(stderr, "Hit unimplemented function %s.\n", __func__);
+    return 1;
 }
 
 VisualID XVisualIDFromVisual(Visual* visual) {
@@ -68,14 +69,9 @@ VisualID XVisualIDFromVisual(Visual* visual) {
 
 Status XGetGeometry(Display *display, Drawable d, Window *root_return, int *x_return, int* y_return, unsigned int *width_return, unsigned int *height_return, unsigned int *border_width_return, unsigned int *depth_return) {
     // https://tronche.com/gui/x/xlib/window-information/XGetGeometry.html
-    SET_X_SERVER_REQUEST(display, XCB_GET_GEOMETRY);
+    SET_X_SERVER_REQUEST(display, X_GetGeometry);
     fprintf(stderr, "Hit unimplemented function %s.\n", __func__);
-}
-
-void XCopyGC(Display *display, GC src, GC dest, unsigned long valuemask) {
-    // https://tronche.com/gui/x/xlib/GC/XCopyGC.html
-    SET_X_SERVER_REQUEST(display, XCB_COPY_GC);
-    fprintf(stderr, "Hit unimplemented function %s.\n", __func__);
+    return 0;
 }
 
 XSizeHints* XAllocSizeHints() {
@@ -95,4 +91,10 @@ XClassHint* XAllocClassHint() {
         classHint->res_class = NULL;
     }
     return classHint;
+}
+
+XVisualInfo *XGetVisualInfo(Display* display, long vinfo_mask,
+                            XVisualInfo *vinfo_template, int *nitems_return) {
+    // https://tronche.com/gui/x/xlib/utilities/XGetVisualInfo.html
+    
 }

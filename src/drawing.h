@@ -7,10 +7,10 @@
 
 #define SDL_SURFACE_DEPTH 32
 
-#define GET_PIXMAP_IMAGE(pixmap) (IS_TYPE(pixmap, PIXMAP) ? ((GPU_Image*) (pixmap)->dataPointer) : NULL)
+#define GET_PIXMAP_IMAGE(pixmap) (IS_TYPE(pixmap, PIXMAP) ? ((GPU_Image*) GET_XID_VALUE(pixmap)) : NULL)
 #define GET_RENDER_TARGET(drawable, renderer) \
 if (IS_TYPE(drawable, WINDOW)) {\
-    fprintf(stderr, "getWindowRenderTarget of window %p in %s.\n", drawable, __func__);\
+    fprintf(stderr, "getWindowRenderTarget of window %lu in %s.\n", drawable, __func__);\
     renderer = getWindowRenderTarget(drawable);\
 } else if (IS_TYPE(drawable, PIXMAP)) {\
     renderer = GET_PIXMAP_IMAGE(drawable)->target;\

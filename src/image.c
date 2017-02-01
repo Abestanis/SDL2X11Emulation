@@ -11,7 +11,6 @@ XImage* XCreateImage(Display* display, Visual* visual, unsigned int depth, int f
                      char* data, unsigned int width, unsigned int height, int bitmap_pad,
                      int bytes_per_line) {
     // https://tronche.com/gui/x/xlib/utilities/XCreateImage.html
-    SET_X_SERVER_REQUEST(display, XCB_CREATE_IMAGE);
     XImage* image = malloc(sizeof(XImage));
     if (image == NULL) {
         handleOutOfMemory(0, display, 0, 0);
@@ -47,27 +46,18 @@ XImage* XCreateImage(Display* display, Visual* visual, unsigned int depth, int f
     return image;
 }
 
-Status XInitImage(XImage* image) {
-    // https://tronche.com/gui/x/xlib/graphics/XInitImage.html
-    return 1;
-}
-
-Status _XInitImageFuncPtrs(XImage *image) {
-    return XInitImage(image);
-}
-
 char* getImageDataPointer(XImage* image, unsigned int x, unsigned int y) {
     char* pointer = image->data;
     pointer += image->bytes_per_line * y;
     return pointer + (image->bits_per_pixel / 8) * x;
 }
 
-void XPutPixel(XImage* image, int x, int y, unsigned long pixel) {
+int putPixel(XImage* image, int x, int y, unsigned long pixel) {
     // https://tronche.com/gui/x/xlib/utilities/XPutPixel.html
     fprintf(stderr, "%s on %p: %lu (%ld, %ld, %ld)\n", __func__, image, pixel, (pixel >> 24) & 0xFF, (pixel >> 16) & 0xFF, (pixel >> 8) & 0xFF);
     if (image->data == NULL) {
         fprintf(stderr, "Invalid argument: Got image with NULL data in XPutPixel\n");
-        return;
+        return 0;
     }
     char* pointer;
     switch (image->format) {
@@ -83,10 +73,12 @@ void XPutPixel(XImage* image, int x, int y, unsigned long pixel) {
             break;
         default:
             fprintf(stderr, "Warn: Got invalid format %d\n", image->format);
+            return 0;
     }
+    return 1;
 }
 
-unsigned long XGetPixel(XImage* image, int x, int y) {
+unsigned long getPixel(XImage* image, int x, int y) {
     // https://tronche.com/gui/x/xlib/utilities/XGetPixel.html
     fprintf(stderr, "%s from %p: x = %d, y = %d\n", __func__, image, x, y);
     if (image->data == NULL) {
@@ -114,20 +106,21 @@ unsigned long XGetPixel(XImage* image, int x, int y) {
     return 0;
 }
 
-void XDestroyImage(XImage* image) {
+int destroyImage(XImage* image) {
     // https://tronche.com/gui/x/xlib/utilities/XDestroyImage.html
     if (image->data != NULL) {
         free(image->data);
     }
     free(image);
+    return 1;
 }
 
-void XPutImage(Display* display, Drawable drawable, GC gc, XImage* image, int src_x, int src_y,
+int XPutImage(Display* display, Drawable drawable, GC gc, XImage* image, int src_x, int src_y,
                int dest_x, int dest_y, unsigned int width, unsigned int height) {
     // https://tronche.com/gui/x/xlib/graphics/XPutImage.html
-    SET_X_SERVER_REQUEST(display, XCB_PUT_IMAGE);
-    TYPE_CHECK(drawable, DRAWABLE, display);
-    fprintf(stderr, "%s: Drawing %p on %p\n", __func__, image, drawable);
+    SET_X_SERVER_REQUEST(display, X_PutImage);
+    TYPE_CHECK(drawable, DRAWABLE, display, 0);
+    fprintf(stderr, "%s: Drawing %p on %lu\n", __func__, image, drawable);
     // TODO: Implement this: Create Uint32* data, Create Texture from data, rendercopy
 //    LOCK_SURFACE(surface);
 //    unsigned int x, y;
@@ -151,14 +144,15 @@ void XPutImage(Display* display, Drawable drawable, GC gc, XImage* image, int sr
 //        }
 //    }
 //    UNLOCK_SURFACE(surface);
+    return 1;
 }
 
 XImage* XGetImage(Display* display, Drawable drawable, int x, int y, unsigned int width,
                   unsigned int height, unsigned long plane_mask, int format) {
     // https://tronche.com/gui/x/xlib/graphics/XGetImage.html
-    SET_X_SERVER_REQUEST(display, XCB_GET_IMAGE);
-    fprintf(stderr, "%s: From %p\n", __func__, drawable);
-    if (IS_TYPE(drawable, WINDOW) && drawable->dataPointer == SCREEN_WINDOW) {
+    SET_X_SERVER_REQUEST(display, X_GetImage);
+    fprintf(stderr, "%s: From %lu\n", __func__, drawable);
+    if (IS_TYPE(drawable, WINDOW) && drawable == SCREEN_WINDOW) {
         fprintf(stderr, "XGetImage called with SCREEN_WINDOW as argument!\n");
         // TODO: Handle error and check INPUTONLY
         return NULL;
@@ -193,4 +187,19 @@ XImage* XGetImage(Display* display, Drawable drawable, int x, int y, unsigned in
 //        }
 //    }
     return image;
+}
+
+Status _XInitImageFuncPtrs(XImage *image) {
+    image->f.put_pixel = putPixel;
+    image->f.get_pixel = getPixel;
+    image->f.create_image = XCreateImage;
+    image->f.destroy_image = destroyImage;
+    image->f.add_pixel = NULL; // TODO
+    image->f.sub_image = NULL; // TODO
+    return 1;
+}
+
+Status XInitImage(XImage* image) {
+    // https://tronche.com/gui/x/xlib/graphics/XInitImage.html
+    return _XInitImageFuncPtrs(image);
 }

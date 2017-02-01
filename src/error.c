@@ -1,6 +1,6 @@
 #include "errors.h"
-#include <stddef.h>
 #include <stdio.h>
+#include "display.h"
 
 typedef int (*errorHandlerFunction)(Display*, XErrorEvent*);
 errorHandlerFunction error_handler = default_error_handler;
@@ -16,6 +16,7 @@ errorHandlerFunction XSetErrorHandler(errorHandlerFunction handler) {
 }
 
 int default_error_handler(Display* display, XErrorEvent* event) {
+    (void) display;
     switch (event->error_code) {
         case BadAlloc:
             fprintf(stderr, "Out of memory: Failed to allocate memory while processing request : %d\n", event->request_code);
@@ -54,7 +55,7 @@ int default_error_handler(Display* display, XErrorEvent* event) {
 }
 
 inline void handleOutOfMemory(int type, Display* display, unsigned long serial, unsigned char minor_code) {
-    handleError(type, display, NULL, serial, BadAlloc, minor_code);
+    handleError(type, display, None, serial, BadAlloc, minor_code);
 }
 void handleError(int type, Display* display, XID resourceId, unsigned long serial,
                  unsigned char error_code, unsigned char minor_code) {
@@ -64,7 +65,7 @@ void handleError(int type, Display* display, XID resourceId, unsigned long seria
     event.resourceid = resourceId;
     event.serial = serial;
     event.error_code = error_code;
-    event.request_code = (unsigned char) display->request;
+    event.request_code = (unsigned char) GET_DISPLAY(display)->request;
     event.minor_code = minor_code;
     error_handler(display, &event);
 }
@@ -79,6 +80,10 @@ unsigned char resourceTypeToErrorCode(XResourceType resourceType) {
             return BadPixmap;
         case GRAPHICS_CONTEXT:
             return BadGC;
+        case FONT:
+            return BadFont;
+        case CURSOR:
+            return BadCursor;
         default:
             return BadMatch;
     }

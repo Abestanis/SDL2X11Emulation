@@ -3,8 +3,8 @@
 
 #include "SDL.h"
 
-#define GREY_SCALE_COLORMAP (unsigned int*) 0
-#define REAL_COLOR_COLORMAP (unsigned int*) 1
+#define GREY_SCALE_COLORMAP ((XID) 1)
+#define REAL_COLOR_COLORMAP ((XID) 2)
 
 SDL_Color uLongToColor(SDL_PixelFormat* pixelFormat, unsigned long color);
 

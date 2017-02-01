@@ -285,16 +285,34 @@ int getTextWidth(XFontStruct* font_struct, const char* string) {
     return width;
 }
 
+char* decodeMbString(const wchar_t* string, size_t* length) {
+    *length = wcstombs(NULL, string, 0);
+    char* text = malloc(sizeof(char*) * (*length + 1));
+    if (text == NULL) {
+        return NULL;
+    }
+    if (wcstombs(text, string, (*length + 1)) == (size_t) -1) {
+        free(text);
+        return NULL;
+    }
+    char* decodedText = decodeString(text, *length );
+    free(text);
+    return decodedText;
+}
+
 int XTextWidth16(XFontStruct* font_struct, _Xconst XChar2b* string, int count) {
     // https://tronche.com/gui/x/xlib/graphics/font-metrics/XTextWidth16.html
     // TODO: Rethink this
-    fprintf(stderr, "Hit unimplemented function %s!\n", __func__);
-//    Uint16* text = (Uint16*) decodeString((char*) string, count, True);
-//    if (text == NULL) {
-//        fprintf(stderr, "Out of memory: Failed to allocate memory in XTextWidth16! Returning max width of font.\n");
-//        return font_struct->max_bounds.rbearing * count;
-//    }
-//    return getTextWidth(font_struct, text);
+    size_t length;
+    char* text = decodeMbString((const wchar_t *) string, &length);
+    if (text == NULL) {
+        fprintf(stderr, "Out of memory: Failed to allocate memory in %s! Returning max width of font.\n", __func__);
+        return font_struct->max_bounds.rbearing * count;
+    }
+    int width = getTextWidth(font_struct, text);
+    free(text);
+    return width;
+    
 }
 
 int XTextWidth(XFontStruct* font_struct, _Xconst char* string, int count) {
@@ -344,18 +362,30 @@ int XDrawString16(Display* display, Drawable drawable, GC gc, int x, int y, _Xco
         handleError(0, display, None, 0, BadGC, 0);
         return 0;
     }
-    if (length == 0 || ((Uint16*) string)[0] == 0) { return; }
-    fprintf(stderr, "Hit unimplemented function %s!\n", __func__);
-//    const XChar2b* text = decodeString((char*) string, length, True);
-//    if (text == NULL) {
-//        fprintf(stderr, "Out of memory: Failed to allocate memory in XDrawString16, raising BadMatch error.\n");
-//        handleError(0, display, drawable, 0, BadMatch, 0);
-//        return;
-//    }
-//    if (!renderText(display, renderer, gc, x, y, (Uint16*) text)) {
-//        fprintf(stderr, "Rendering the text failed in %s: %s\n", __func__, SDL_GetError());
-//        handleError(0, display, drawable, 0, BadMatch, 0);
-//    }
+    if (length == 0 || ((Uint16*) string)[0] == 0) { return 1; }
+    GPU_Target* renderTarget;
+    GET_RENDER_TARGET(drawable, renderTarget);
+    if (renderTarget == NULL) {
+        fprintf(stderr, "Failed to get the render target in %s\n", __func__);
+        handleError(0, display, None, 0, BadDrawable, 0);
+        return 0;
+    }
+    size_t size;
+    char * text = decodeMbString((const wchar_t *) string, &size);
+    if (text == NULL) {
+        fprintf(stderr, "Out of memory: Failed to allocate memory in XDrawString16, raising BadMatch error.\n");
+        handleError(0, display, drawable, 0, BadMatch, 0);
+        return 0;
+    }
+    int res = 1;
+    if (!renderText(renderTarget, gc, x, y, text)) {
+        fprintf(stderr, "Rendering the text failed in %s: %s\n", __func__, SDL_GetError());
+        handleError(0, display, drawable, 0, BadMatch, 0);
+        free(text);
+        res = 0;
+    }
+    free(text);
+    return res;
 }
 
 int XDrawString(Display* display, Drawable drawable, GC gc, int x, int y, _Xconst char* string, int length) {

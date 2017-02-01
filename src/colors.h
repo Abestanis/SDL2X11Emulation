@@ -3,6 +3,8 @@
 
 #include "SDL.h"
 
+// TODO: Make these to real XIDs
+
 #define GREY_SCALE_COLORMAP ((XID) 1)
 #define REAL_COLOR_COLORMAP ((XID) 2)
 

@@ -13,6 +13,20 @@ Window getKeyboardFocus() {
     return keyboardFocus;
 }
 
+int XSelectInput(Display* display, Window window, long event_mask) {
+    // https://tronche.com/gui/x/xlib/event-handling/XSelectInput.html
+    fprintf(stderr, "Hit unimplemented function %s.\n", __func__);
+    fprintf(stderr, "%s: %ld, %ld\n", __func__, event_mask & KeyPressMask, event_mask & KeyReleaseMask);
+    if (event_mask & KeyPressMask || event_mask & KeyReleaseMask) {
+        // TODO: Implement real system here
+        if (!SDL_IsTextInputActive()) {
+            SDL_StartTextInput();
+        }
+        keyboardFocus = window;
+    }
+    return 1;
+}
+
 KeyCode XKeysymToKeycode(Display *display, KeySym keysym) {
     // https://tronche.com/gui/x/xlib/utilities/keyboard/XKeysymToKeycode.html
 //    SET_X_SERVER_REQUEST(display, XCB_);

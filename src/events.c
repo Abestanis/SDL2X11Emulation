@@ -15,7 +15,6 @@ int eventFds[2];
 SDL_Event waitingEvent;
 Bool eventWaiting = False;
 Bool tmpVar = False;
-Window keyboardFocus = NULL;
 unsigned long lastEventSerial = 1;
 
 void updateWindowRenderTargets(Display* display);
@@ -161,7 +160,8 @@ int convertEvent(Display* display, SDL_Event* sdlEvent, XEvent* xEvent) {
             }
             FILL_STANDARD_VALUES(xkey);
             xEvent->xkey.root = getWindowFromId(sdlEvent->key.windowID);
-            eventWindow = keyboardFocus == NULL ? xEvent->xkey.root : keyboardFocus;
+            eventWindow = getKeyboardFocus();
+            eventWindow = eventWindow == None ? xEvent->xkey.root : eventWindow;
             xEvent->xkey.window = eventWindow;
             xEvent->xkey.subwindow = None;
             xEvent->xkey.time = sdlEvent->key.timestamp;
@@ -473,7 +473,8 @@ int convertEvent(Display* display, SDL_Event* sdlEvent, XEvent* xEvent) {
             type = KeyPress;
             FILL_STANDARD_VALUES(xkey);
             xEvent->xkey.root = getWindowFromId(sdlEvent->text.windowID);
-            eventWindow = keyboardFocus == NULL ? xEvent->xkey.root : keyboardFocus;
+            eventWindow = getKeyboardFocus();
+            eventWindow = eventWindow == None ? xEvent->xkey.root : eventWindow;
             xEvent->xkey.window = eventWindow;
             xEvent->xkey.subwindow = None;
             xEvent->xkey.time = sdlEvent->text.timestamp;
@@ -900,20 +901,6 @@ Status XSendEvent(Display* display, Window window, Bool propagate, long event_ma
         return 1;
     }
     return 0;
-}
-
-void XSelectInput(Display* display, Window window, long event_mask) {
-    // https://tronche.com/gui/x/xlib/event-handling/XSelectInput.html
-//    SET_X_SERVER_REQUEST(display, XCB_);
-    fprintf(stderr, "Hit unimplemented function %s.\n", __func__);
-    fprintf(stderr, "%s: %ld, %ld\n", __func__, event_mask & KeyPressMask, event_mask & KeyReleaseMask);
-    if (event_mask & KeyPressMask || event_mask & KeyReleaseMask) {
-        // TODO: Implement real system here
-        if (!SDL_IsTextInputActive()) {
-            SDL_StartTextInput();
-        }
-        keyboardFocus = window;
-    }
 }
 
 Bool XFilterEvent(XEvent *event, Window w) {

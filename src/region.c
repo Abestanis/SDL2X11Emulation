@@ -58,7 +58,6 @@ int XClipBox(Region region, XRectangle* rect_return) {
     rect_return->y      = extends->y1;
     rect_return->height = (unsigned short) abs(extends->y2 - extends->y1);
     rect_return->x      = extends->x1;
-    free(extends);
     return 1;
 }
 

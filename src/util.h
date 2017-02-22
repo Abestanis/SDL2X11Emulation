@@ -8,6 +8,8 @@
 #  define MIN(a, b) ((a) < (b) ? (a) : (b))
 #endif /* MIN */
 
+#define ARRAY_LENGTH(array) (sizeof(array) / sizeof(array[0]))
+
 #include "X11/Xlib.h"
 
 typedef struct {

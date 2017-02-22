@@ -2,6 +2,8 @@
 #include "X11/Xatom.h"
 #include <stdio.h>
 #include <wchar.h>
+#include <sys/stat.h>
+#include <errno.h>
 #include "SDL.h"
 #include "SDL_ttf.h"
 #include "errors.h"
@@ -11,6 +13,7 @@
 #include "drawing.h"
 #include "display.h"
 #include "gc.h"
+#include "util.h"
 
 // TODO: Maybe implement character atlas
 // TODO: Convert text decoding to Utf-8
@@ -18,6 +21,43 @@
 
 #define GET_FONT(fontXID) ((TTF_Font*) GET_XID_VALUE(fontXID))
 #define FONT_SIZE 8
+
+// This Array contains a list of default font search paths for the compiled arcitecture
+static const static const char* DEFAULT_FONT_SEARCH_PATHS[] = {
+#ifdef __ANDROID__
+        "/system/fonts"
+#endif /* __ANDROID__ */
+};
+
+// This are the custom search paths for fonts can be set via XSetFontPath.
+// Has to be initialized via XSetFontPath(display, NULL, 0);
+Array* customFontSearchPath = NULL;
+
+void freeFontSearchPath() {
+    if (customFontSearchPath != NULL) {
+        // Clear the array and free the data
+        while (customFontSearchPath->length > 0) {
+            free(removeArray(customFontSearchPath, 0, False));
+        }
+        freeArray(customFontSearchPath);
+        free(customFontSearchPath);
+        customFontSearchPath = NULL;
+    }
+}
+
+// Check if the given path points to an existing directory
+bool checkFontPath(const char* path) {
+    if (path == NULL) return False;
+    struct stat s;
+    int err;
+    while ((err = stat(path, &s)) == -1 && errno == EAGAIN);
+    if (err == 0) {
+        if(S_ISDIR(s.st_mode)) {
+            return True;
+        }
+    }
+    return False;
+}
 
 Font XLoadFont(Display* display, _Xconst char* name) {
     // https://tronche.com/gui/x/xlib/graphics/font-metrics/XLoadFont.html
@@ -29,6 +69,7 @@ Font XLoadFont(Display* display, _Xconst char* name) {
     }
     SET_XID_TYPE(font, FONT);
     int fontSize = FONT_SIZE;
+    // TODO: Use the font search path
     // TODO: Remove static font size
     // TODO: Implement pattern matching
     // TODO: This function is called with "fixed" and "cursor" as a name
@@ -46,6 +87,57 @@ Font XLoadFont(Display* display, _Xconst char* name) {
         handleError(0, display, None, 0, BadName, 0);
     }
     return font;
+}
+
+int XFreeFontPath(char** list) {
+    free(list);
+    return 1;
+}
+
+char** XGetFontPath(Display *display, int* npaths_return) {
+    SET_X_SERVER_REQUEST(display, X_GetFontPath);
+    *npaths_return = customFontSearchPath->length;
+    char** list = malloc(sizeof(char*) * customFontSearchPath->length);
+    if (list == NULL) {
+        handleOutOfMemory(0, display, 0, 0);
+        return NULL;
+    }
+    memcpy(list, customFontSearchPath->array, sizeof(char*) * customFontSearchPath->length);
+    return list;
+}
+
+int XSetFontPath(Display* display, char** directories, int ndirs) {
+    SET_X_SERVER_REQUEST(display, X_SetFontPath);
+    char* path;
+    size_t i;
+    if (directories == NULL && ndirs == 0 && customFontSearchPath == NULL) {
+        customFontSearchPath = malloc(sizeof(Array));
+        if (customFontSearchPath == NULL) {
+            handleOutOfMemory(0, display, 0, 0);
+            return 0;
+        }
+        initArray(customFontSearchPath, ARRAY_LENGTH(DEFAULT_FONT_SEARCH_PATHS));
+    }
+    while (customFontSearchPath->length > 0) {
+        // Clear the array and free the data
+        free(removeArray(customFontSearchPath, 0, False));
+    }
+    if (directories == NULL || ndirs == 0) {
+        // Reset the search path to the default for the compiled platform
+        ndirs = ARRAY_LENGTH(DEFAULT_FONT_SEARCH_PATHS);
+        directories = (char **) DEFAULT_FONT_SEARCH_PATHS;
+    }
+    for (i = 0; i < ndirs; i++) {
+        if (checkFontPath(directories[i])) {
+            path = strdup(directories[i]);
+            if (path == NULL) {
+                handleOutOfMemory(0, display, 0, 0);
+            } else {
+                insertArray(customFontSearchPath, path);
+            }
+        }
+    }
+    return 1;
 }
 
 char** XListFonts(Display* display, _Xconst char* pattern, int maxnames, int* actual_count_return) {

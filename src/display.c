@@ -16,6 +16,9 @@
 #include <X11/X.h>
 #include <X11/Xutil.h>
 
+// Forward declare, definition in font.c
+extern void freeFontSearchPath(void);
+
 jint JNI_OnLoad(JavaVM* vm, void* reserved) {
     setenv("DISPLAY", ":0", 0);
     return JNI_VERSION_1_4;
@@ -35,6 +38,7 @@ int XCloseDisplay(Display* display) {
     // https://tronche.com/gui/x/xlib/display/XCloseDisplay.html
     if (numDisplaysOpen == 1) {
         freeAtomStorage();
+        freeFontSearchPath();
         destroyScreenWindow(display);
         TTF_Quit();
         GPU_Quit();
@@ -195,6 +199,10 @@ Display* XOpenDisplay(_Xconst char* display_name) {
         fprintf(stderr, "XOpenDisplay: Initializing SDL_gpu failed!\n");
         XCloseDisplay(display);
         return NULL;
+    }
+    if (numDisplaysOpen == 1) {
+        // Init the font search path
+        XSetFontPath(display, NULL, 0);
     }
     return display;
 }

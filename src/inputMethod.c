@@ -340,7 +340,7 @@ XVaNestedList XVaCreateNestedList(int dummy, ...) {
     va_copy(argCount, argumentList);
     while (va_arg(argCount, void*) != NULL) { nArgs++; }
     va_end(argCount);
-    void** list = malloc(sizeof(void*) * nArgs);
+    void** list = malloc(sizeof(void*) * (nArgs + 1));
     if (list == NULL) {
         return NULL;
     }

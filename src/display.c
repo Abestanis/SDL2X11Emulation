@@ -1,4 +1,5 @@
 #include <math.h>
+#define XLIB_ILLEGAL_ACCESS
 #include <X11/Xlib.h>
 #include "X11/Xutil.h"
 #include "SDL.h"
@@ -74,12 +75,11 @@ Display* XOpenDisplay(_Xconst char* display_name) {
         trueColorVisual->map_entries = 16581375 /* (255 * 255 * 255) */ ;	/* color map entries */
     }
     
-    _XPrivDisplay display = malloc(sizeof(display));
+    Display* display = malloc(sizeof(Display));
     if (display == NULL) {
         fprintf(stderr, "Out of memory: Failed to allocate memory for Display struct in XOpenDisplay!");
         return NULL;
     }
-    Display* displayStruct = (Display*) (void*) display;
     if (!SDL_WasInit(SDL_INIT_VIDEO)) {
         SDL_SetMainReady();
         if (SDL_Init(SDL_INIT_VIDEO) == -1) {
@@ -100,10 +100,10 @@ Display* XOpenDisplay(_Xconst char* display_name) {
     numDisplaysOpen++;
     
     display->qlen = 0;
-    int eventFd = initEventPipe(displayStruct);
+    int eventFd = initEventPipe(display);
     if (eventFd < 0) {
         display->nscreens = 0;
-        XCloseDisplay(displayStruct);
+        XCloseDisplay(display);
         return NULL;
     }
     display->fd = eventFd;
@@ -122,13 +122,13 @@ Display* XOpenDisplay(_Xconst char* display_name) {
     display->nscreens = SDL_GetNumVideoDisplays();
     if (display->nscreens < 0) {
         fprintf(stderr, "Failed to get the number of screens: %s\n", SDL_GetError());
-        XCloseDisplay(displayStruct);
+        XCloseDisplay(display);
         return NULL;
     }
     display->screens = malloc(sizeof(Screen) * display->nscreens);
     if (display->screens == NULL) {
         fprintf(stderr, "Failed to get the number of screens: %s\n", SDL_GetError());
-        XCloseDisplay(displayStruct);
+        XCloseDisplay(display);
         return NULL;
     }
     int screenIndex;
@@ -142,12 +142,12 @@ Display* XOpenDisplay(_Xconst char* display_name) {
                 free(&display->screens[nAllocatedData]);
             }
             display->nscreens = screenIndex;
-            XCloseDisplay(displayStruct);
+            XCloseDisplay(display);
             fprintf(stderr, "Failed to get the display mode in XOpenDisplay: %s\n", SDL_GetError());
             return NULL;
         }
         screen->root_visual = trueColorVisual;
-        screen->display = displayStruct;
+        screen->display = display;
         screen->width   = displayMode.w;
         screen->height  = displayMode.h;
         #if SDL_VERSION_ATLEAST(2, 0, 4)
@@ -174,9 +174,9 @@ Display* XOpenDisplay(_Xconst char* display_name) {
         screen->cmap = REAL_COLOR_COLORMAP;
     }
     if (SCREEN_WINDOW == None) {
-        if (initScreenWindow(displayStruct) != True) {
+        if (initScreenWindow(display) != True) {
             fprintf(stderr, "XOpenDisplay: Initializing the screen window failed!\n");
-            XCloseDisplay(displayStruct);
+            XCloseDisplay(display);
             return NULL;
         }
         for (screenIndex = 0; screenIndex < display->nscreens; screenIndex++) {
@@ -186,17 +186,17 @@ Display* XOpenDisplay(_Xconst char* display_name) {
     GET_WINDOW_STRUCT(SCREEN_WINDOW)->sdlWindow = SDL_CreateWindow(NULL, 0, 0, 10, 10, SDL_WINDOW_HIDDEN | SDL_WINDOW_OPENGL);
     if (GET_WINDOW_STRUCT(SCREEN_WINDOW)->sdlWindow == NULL) {
         fprintf(stderr, "XOpenDisplay: Initializing the SDL screen window failed: %s!\n", SDL_GetError());
-        XCloseDisplay(displayStruct);
+        XCloseDisplay(display);
         return NULL;
     }
     GPU_SetInitWindow(SDL_GetWindowID(GET_WINDOW_STRUCT(SCREEN_WINDOW)->sdlWindow));
     GET_WINDOW_STRUCT(SCREEN_WINDOW)->renderTarget = GPU_Init(0, 0, 0);
     if (GET_WINDOW_STRUCT(SCREEN_WINDOW)->renderTarget == NULL) {
         fprintf(stderr, "XOpenDisplay: Initializing SDL_gpu failed!\n");
-        XCloseDisplay(displayStruct);
+        XCloseDisplay(display);
         return NULL;
     }
-    return displayStruct;
+    return display;
 }
 
 int XBell(Display* display, int percent) {

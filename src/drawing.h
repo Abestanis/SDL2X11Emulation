@@ -2,6 +2,7 @@
 #define _DRAWING_H_
 
 #include "SDL.h"
+#include "colors.h"
 #include "resourceTypes.h"
 #include "window.h"
 
@@ -18,17 +19,6 @@ if (IS_TYPE(drawable, WINDOW)) {\
     fprintf(stderr, "Got unknown drawable type while trying to get renderer in %s, %s, %d\n", __FILE__, __func__, __LINE__);\
     renderer = NULL;\
 }
-#if SDL_BYTEORDER != SDL_BIG_ENDIAN
-#  define GET_RED_FROM_COLOR(color)   ((Uint8) ((color >> 24) & 0xFF))
-#  define GET_GREEN_FROM_COLOR(color) ((Uint8) ((color >> 16) & 0xFF))
-#  define GET_BLUE_FROM_COLOR(color)  ((Uint8) ((color >> 8) & 0xFF))
-#  define GET_ALPHA_FROM_COLOR(color) ((Uint8) (color & 0xFF))
-#else
-#  define GET_RED_FROM_COLOR(color)   ((Uint8) (color & 0xFF))
-#  define GET_GREEN_FROM_COLOR(color) ((Uint8) ((color >> 8) & 0xFF))
-#  define GET_BLUE_FROM_COLOR(color)  ((Uint8) ((color >> 16) & 0xFF))
-#  define GET_ALPHA_FROM_COLOR(color) ((Uint8) ((color >> 24) & 0xFF))
-#endif
 
 GPU_Target* getWindowRenderTarget(Window window);
 void flipScreen(void);

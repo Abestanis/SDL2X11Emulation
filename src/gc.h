@@ -11,11 +11,29 @@ struct _XGC {
 
 typedef struct _GraphicContext {
     int lineWidth;
-    long foreground;
-    long background;
-    short fillStyle;
+    unsigned long foreground;
+    unsigned long background;
+    int fillStyle;
     Pixmap stipple;
     Font font;
+    int function;
+    unsigned long planeMask;
+    int lineStyle;
+    int capStyle;
+    int joinStyle;
+    int fillRule;
+    Pixmap tile;
+    int tileStipOriginX;
+    int tileStipOriginY;
+    int subWindowMode;
+    int graphicsExposures;
+    int clipOriginX;
+    int clipOriginY;
+    Pixmap clipMask;
+    int dashOffset;
+    char* dashes; // If numDashes is uneven, this has to be treated as concatenated with itself.
+    size_t numDashes;
+    int arcMode;
 } GraphicContext;
 
 #define GET_GC(gc) GET_GC_FROM_XID(((struct _XGC*) (gc))->gid)

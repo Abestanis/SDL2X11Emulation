@@ -45,6 +45,9 @@ int default_error_handler(Display* display, XErrorEvent* event) {
         case BadAtom:
             fprintf(stderr, "Parameter invalid: Got an invalid Atom for request %d!\n", event->request_code);
             break;
+        case BadColor:
+            fprintf(stderr, "Parameter invalid: A parameter did not name a defined color for request %d!\n", event->request_code);
+            break;
         default:
             fprintf(stderr, "An unknown error occurred: %u\n", event->error_code);
             break;

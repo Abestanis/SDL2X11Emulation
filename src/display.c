@@ -155,8 +155,8 @@ Display* XOpenDisplay(_Xconst char* display_name) {
             screen->mwidth  = displayMode.w;
             screen->mheight = displayMode.h;
         } else {
-            screen->mwidth  = (int) roundf((displayMode.w * v_dpi) / 25.4f);
-            screen->mheight = (int) roundf((displayMode.h * h_dpi) / 25.4f);
+            screen->mwidth  = (int) roundf((displayMode.w * 25.4f) / v_dpi);
+            screen->mheight = (int) roundf((displayMode.h * 25.4f) / h_dpi);
         }
         #else
         screen->mwidth  = displayMode.w;

@@ -110,7 +110,6 @@ Atom internalInternAtom(const char* atomName) {
 Atom XInternAtom(Display* display, _Xconst char* atom_name, Bool only_if_exists) {
     // https://tronche.com/gui/x/xlib/window-information/XInternAtom.html
     SET_X_SERVER_REQUEST(display, X_InternAtom);
-    fprintf(stderr, "Intern Atom %s.\n", atom_name);
     int preExistingIndex = -1;
     if (strncmp(atom_name, "XA_", 3) == 0) {
         int i = 0;

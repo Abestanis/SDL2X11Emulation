@@ -1,4 +1,5 @@
-#include "X11/Xlib.h"
+#include <X11/Xlib.h>
+#include <X11/Xutil.h>
 #include "colors.h"
 #include "stdColors.h"
 #include "errors.h"
@@ -93,7 +94,7 @@ Colormap XCreateColormap(Display* display, Window window, Visual* visual, int al
     return colormap;
 }
 
-int XQueryColors(Display *display, Colormap colormap, XColor defs_in_out[], int ncolors) {
+int XQueryColors(Display *display, Colormap colormap, XColor* defs_in_out, int ncolors) {
     // https://tronche.com/gui/x/xlib/color/XQueryColors.html
     SET_X_SERVER_REQUEST(display, X_QueryColors);
     int i;

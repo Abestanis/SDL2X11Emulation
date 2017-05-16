@@ -115,11 +115,7 @@ Display* XOpenDisplay(_Xconst char* display_name) {
     display->release = releaseVersion;
     display->request = X_NoOperation;
     display->display_name = (char*) display_name;
-#if SDL_BYTEORDER == SDL_BIG_ENDIAN
-    display->byte_order = MSBFirst;
-#else
-    display->byte_order = LSBFirst;
-#endif
+    display->byte_order = SDL_BYTEORDER == SDL_BIG_ENDIAN ? MSBFirst : LSBFirst;
     display->default_screen = 0; // TODO: Investigate here, see SDL_GetCurrentVideoDisplay();
     display->nscreens = SDL_GetNumVideoDisplays();
     if (display->nscreens < 0) {

@@ -905,7 +905,7 @@ Status XSendEvent(Display* display, Window window, Bool propagate, long event_ma
 
 Bool XFilterEvent(XEvent *event, Window w) {
     // http://www.x.org/archive/X11R7.6/doc/man/man3/XFilterEvent.3.xhtml
-    // We dont get an event from sdl, if an IM gets it before us.
+    // We don't get an event from sdl, if an IM gets it before us.
     return False;
 }
 

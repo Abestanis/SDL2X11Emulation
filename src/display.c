@@ -49,10 +49,7 @@ int XCloseDisplay(Display* display) {
         numDisplaysOpen--;
     }
     if (GET_DISPLAY(display)->nscreens > 0) {
-        int i;
-        for (i = 0; i < GET_DISPLAY(display)->nscreens; ++i) {
-            free(&GET_DISPLAY(display)->screens[i]);
-        }
+        free(&GET_DISPLAY(display)->screens);
     }
     free(display);
     return 0;

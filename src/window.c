@@ -18,12 +18,12 @@ int XDestroyWindow(Display* display, Window window) {
 }
 
 Window XCreateWindow(Display* display, Window parent, int x, int y, unsigned int width,
-                     unsigned int height, unsigned int border_width, int depth, unsigned int class,
+                     unsigned int height, unsigned int border_width, int depth, unsigned int clazz,
                      Visual* visual, unsigned long valueMask, XSetWindowAttributes* attributes) {
     // https://tronche.com/gui/x/xlib/window/XCreateWindow.html
     SET_X_SERVER_REQUEST(display, X_CreateWindow);
     TYPE_CHECK(parent, WINDOW, display, None);
-    Bool inputOnly = (class == InputOnly || (class == CopyFromParent && IS_INPUT_ONLY(parent)));
+    Bool inputOnly = (clazz == InputOnly || (clazz == CopyFromParent && IS_INPUT_ONLY(parent)));
     if (inputOnly && border_width != 0) {
         fprintf(stderr, "Bad argument: Given class is InputOnly but border_with is not 0 in XCreateWindow!\n");
         handleError(0, display, None, 0, BadMatch, 0);
@@ -54,12 +54,7 @@ Window XCreateWindow(Display* display, Window parent, int x, int y, unsigned int
         FREE_XID(windowID);
         return None;
     }
-    int visualClass;
-#if defined(__cplusplus) || defined(c_plusplus)
-    visualClass = visual->c_class;
-#else
-    visualClass = visual->class;
-#endif
+    int visualClass = visual->CLASS_ATTRIBUTE;
     windowStruct->colormap = (Colormap) XCreateColormap(display, windowID, visual,
                                                          visualClass == StaticGray ||
                                                          visualClass == StaticColor ||

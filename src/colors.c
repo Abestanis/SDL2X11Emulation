@@ -3,6 +3,7 @@
 #include "stdColors.h"
 #include "errors.h"
 #include "display.h"
+#include "util.h"
 
 SDL_Color uLongToColor(SDL_PixelFormat* pixelFormat, unsigned long color) {
     SDL_Color res;
@@ -35,11 +36,7 @@ Colormap XCreateColormap(Display* display, Window window, Visual* visual, int al
     // depth is assumed to be sizeof(SDL_Color)
 //    Uint32 i;
     int visualClass;
-    #if defined(__cplusplus) || defined(c_plusplus)
-    visualClass = visual->c_class;
-    #else
-    visualClass = visual->class;
-    #endif
+    visualClass = visual->CLASS_ATTRIBUTE;
 //    SDL_Palette* colormap = SDL_AllocPalette(allocate ? visual->map_entries : 0);
 //    if (colormap == NULL) {
 //        fprintf(stderr, "SDL_AllocPalette failed in XCreateColormap: %s\n", SDL_GetError());

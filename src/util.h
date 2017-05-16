@@ -10,6 +10,15 @@
 
 #define ARRAY_LENGTH(array) (sizeof(array) / sizeof(array[0]))
 
+#if defined(__cplusplus) || defined(c_plusplus)
+#  define CLASS_ATTRIBUTE c_class
+#else
+#  define CLASS_ATTRIBUTE class
+#endif
+
+#define TO_STRING_HELPER(x) #x
+#define TO_STRING(x) TO_STRING_HELPER(x)
+
 #include "X11/Xlib.h"
 
 typedef struct {

@@ -30,7 +30,8 @@ void __attribute__((constructor)) _init() {
 
 int numDisplaysOpen = 0;
 // TODO: or SDL_GetCurrentVideoDriver
-static char* vendor = "Vendor";
+static char* vendor = "SDL " TO_STRING(SDL_MAJOR_VERSION) "." TO_STRING(SDL_MINOR_VERSION)
+                      "."  TO_STRING(SDL_PATCHLEVEL);
 static const int releaseVersion = 1;
 Visual* trueColorVisual = NULL;
 

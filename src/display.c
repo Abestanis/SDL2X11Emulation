@@ -138,12 +138,6 @@ Display* XOpenDisplay(_Xconst char* display_name) {
         Screen* screen = &display->screens[screenIndex];
         SDL_DisplayMode displayMode;
         if (SDL_GetDesktopDisplayMode(screenIndex, &displayMode) != 0) {
-            int nAllocatedData = display->nscreens;
-            int i;
-            for (i = screenIndex; i < nAllocatedData; i++) {
-                free(&display->screens[nAllocatedData]);
-            }
-            display->nscreens = screenIndex;
             XCloseDisplay(display);
             fprintf(stderr, "Failed to get the display mode in XOpenDisplay: %s\n", SDL_GetError());
             return NULL;

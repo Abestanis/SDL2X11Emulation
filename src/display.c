@@ -206,7 +206,8 @@ int XBell(Display* display, int percent) {
         handleError(0, display, None, 0, BadValue, 0);
     } else {
         // TODO: Should it be implemented with audio or haptic feedback?
-        printf("BLING!\n");
+        printf("\a");
+        fflush(stdout);
     }
     return 1;
 }

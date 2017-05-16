@@ -101,7 +101,7 @@ GC XCreateGC(Display* display, Drawable d, unsigned long valuemask, XGCValues* v
         return NULL;
     }
     if (gc->tile == None) {
-        gc->tile = XCreatePixmap(display, d, 2, 2, 64);
+        gc->tile = XCreatePixmap(display, d, 2, 2, 32);
         if (gc->tile == None) {
             XFreeGC(display, graphicContextStruct);
             return NULL;

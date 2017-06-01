@@ -22,8 +22,8 @@
 #define GET_FONT(fontXID) ((TTF_Font*) GET_XID_VALUE(fontXID))
 #define FONT_SIZE 8
 
-// This Array contains a list of default font search paths for the compiled arcitecture
-static const static const char* DEFAULT_FONT_SEARCH_PATHS[] = {
+// This Array contains a list of default font search paths for the compiled architecture
+static const char* DEFAULT_FONT_SEARCH_PATHS[] = {
 #ifdef __ANDROID__
         "/system/fonts"
 #endif /* __ANDROID__ */

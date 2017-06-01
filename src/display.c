@@ -11,6 +11,7 @@
 #include "drawing.h"
 #include "display.h"
 #include "atoms.h"
+#include "visual.h"
 #include <jni.h>
 #include <SDL_gpu.h>
 #include <X11/X.h>
@@ -33,7 +34,6 @@ int numDisplaysOpen = 0;
 static char* vendor = "SDL " TO_STRING(SDL_MAJOR_VERSION) "." TO_STRING(SDL_MINOR_VERSION)
                       "."  TO_STRING(SDL_PATCHLEVEL);
 static const int releaseVersion = 1;
-Visual* trueColorVisual = NULL;
 
 int XCloseDisplay(Display* display) {
     // https://tronche.com/gui/x/xlib/display/XCloseDisplay.html
@@ -44,6 +44,7 @@ int XCloseDisplay(Display* display) {
         TTF_Quit();
         GPU_Quit();
         SDL_Quit();
+        freeVisuals();
     }
     if (numDisplaysOpen > 0) {
         numDisplaysOpen--;
@@ -57,26 +58,6 @@ int XCloseDisplay(Display* display) {
 
 Display* XOpenDisplay(_Xconst char* display_name) {
     // https://tronche.com/gui/x/xlib/display/opening.html
-    if (trueColorVisual == NULL) {
-        trueColorVisual = malloc(sizeof(Visual));
-        if (trueColorVisual == NULL) {
-            fprintf(stderr, "Out of memory: Failed to allocate memory for the trueColorVisual in XOpenDisplay!\n");
-            return NULL;
-        }
-        trueColorVisual->visualid = 0;	/* visual id of this visual | TODO: Is this important? */
-        #if defined(__cplusplus) || defined(c_plusplus)
-            trueColorVisual->c_class = TrueColor;
-        #else
-            trueColorVisual->class = TrueColor;
-        #endif
-        trueColorVisual->red_mask = 0xFF000000;
-        trueColorVisual->green_mask = 0x00FF0000;
-        trueColorVisual->blue_mask = 0x0000FF00;
-        trueColorVisual->bits_per_rgb = sizeof(SDL_Color);
-        // TODO: This might be wrong
-        trueColorVisual->map_entries = 16581375 /* (255 * 255 * 255) */ ;	/* color map entries */
-    }
-    
     Display* display = malloc(sizeof(Display));
     if (display == NULL) {
         fprintf(stderr, "Out of memory: Failed to allocate memory for Display struct in XOpenDisplay!");
@@ -99,6 +80,12 @@ Display* XOpenDisplay(_Xconst char* display_name) {
         }
     }
     GPU_SetDebugLevel(GPU_DEBUG_LEVEL_MAX);
+    if (numDisplaysOpen == 0) {
+        if (!initVisuals()) {
+            free(display);
+            return NULL;
+        }
+    }
     numDisplaysOpen++;
     
     display->qlen = 0;
@@ -138,7 +125,6 @@ Display* XOpenDisplay(_Xconst char* display_name) {
             fprintf(stderr, "Failed to get the display mode in XOpenDisplay: %s\n", SDL_GetError());
             return NULL;
         }
-        screen->root_visual = trueColorVisual;
         screen->display = display;
         screen->width   = displayMode.w;
         screen->height  = displayMode.h;
@@ -159,8 +145,9 @@ Display* XOpenDisplay(_Xconst char* display_name) {
         screen->mheight = displayMode.h;
         #endif
         screen->root = SCREEN_WINDOW;
-        // TODO: Need real values here
-        screen->root_depth = sizeof(SDL_Color); /* bits per pixel */
+        screen->root_visual = getDefaultVisual(screenIndex);
+        // TODO: Need real values here (use from visual)
+        screen->root_depth = 64;
         screen->white_pixel = 0xFFFFFFFF;
         screen->black_pixel = 0x000000FF;
         screen->cmap = REAL_COLOR_COLORMAP;

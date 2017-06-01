@@ -62,11 +62,6 @@ int XFree(void *data) {
     return 1;
 }
 
-VisualID XVisualIDFromVisual(Visual* visual) {
-    // https://tronche.com/gui/x/xlib/window/XVisualIDFromVisual.html
-    return visual->visualid;
-}
-
 Status XGetGeometry(Display *display, Drawable d, Window *root_return, int *x_return, int* y_return, unsigned int *width_return, unsigned int *height_return, unsigned int *border_width_return, unsigned int *depth_return) {
     // https://tronche.com/gui/x/xlib/window-information/XGetGeometry.html
     SET_X_SERVER_REQUEST(display, X_GetGeometry);
@@ -91,10 +86,4 @@ XClassHint* XAllocClassHint() {
         classHint->res_class = NULL;
     }
     return classHint;
-}
-
-XVisualInfo *XGetVisualInfo(Display* display, long vinfo_mask,
-                            XVisualInfo *vinfo_template, int *nitems_return) {
-    // https://tronche.com/gui/x/xlib/utilities/XGetVisualInfo.html
-    
 }

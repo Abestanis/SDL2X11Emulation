@@ -158,7 +158,7 @@ int XChangeGC(Display* display, GC gc, unsigned long valuemask, XGCValues* value
     // https://tronche.com/gui/x/xlib/GC/XChangeGC.html
     SET_X_SERVER_REQUEST(display, X_ChangeGC);
     if (valuemask != 0 && values == NULL) {
-        handleError(0, display, NULL, 0, BadValue, 0);
+        handleError(0, display, None, 0, BadValue, 0);
         return 0;
     }
     GraphicContext* graphicContext = GET_GC(gc);

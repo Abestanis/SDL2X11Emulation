@@ -73,7 +73,8 @@ Pixmap XCreateBitmapFromData(Display* display, Drawable d, _Xconst char* data,
         handleOutOfMemory(0, display, 0, 0);
         return None;
     }
-    SDL_Surface* surface = SDL_CreateRGBSurfaceFrom((void *) data, width, height, 1, (int) ceilf(width / 8.0f), 0, 0, 0, 1);
+    SDL_Surface* surface = SDL_CreateRGBSurfaceFrom((void *) data, width, height, 1,
+                                                    (int) ceilf(width / 8.0f), 0, 0, 0, 1);
     if (surface == NULL) {
         FREE_XID(pixmap);
         fprintf(stderr, "SDL_CreateRGBSurfaceFrom failed in %s: %s\n", __func__, SDL_GetError());

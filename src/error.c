@@ -3,19 +3,19 @@
 #include "display.h"
 
 typedef int (*errorHandlerFunction)(Display*, XErrorEvent*);
-errorHandlerFunction error_handler = default_error_handler;
+errorHandlerFunction error_handler = defaultErrorHandler;
 
 errorHandlerFunction XSetErrorHandler(errorHandlerFunction handler) {
     // https://tronche.com/gui/x/xlib/event-handling/protocol-errors/XSetErrorHandler.html
     errorHandlerFunction prev_error_handler = error_handler;
     if (handler == NULL) {
-        handler = default_error_handler;
+        handler = defaultErrorHandler;
     }
     error_handler = handler;
     return prev_error_handler;
 }
 
-int default_error_handler(Display* display, XErrorEvent* event) {
+int defaultErrorHandler(Display* display, XErrorEvent* event) {
     (void) display;
     switch (event->error_code) {
         case BadAlloc:
@@ -49,7 +49,7 @@ int default_error_handler(Display* display, XErrorEvent* event) {
             fprintf(stderr, "Parameter invalid: A parameter did not name a defined color for request %d!\n", event->request_code);
             break;
         default:
-            fprintf(stderr, "An unknown error occurred: %u\n", event->error_code);
+            fprintf(stderr, "An unknown error occurred for request %d: %u\n", event->request_code, event->error_code);
             break;
     }
     fflush(stdout);

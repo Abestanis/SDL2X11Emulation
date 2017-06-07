@@ -76,14 +76,11 @@ char* XGetAtomName(Display* display, Atom atom) {
 }
 
 Atom _internAtom(const char* atomName, Bool only_if_exists, Bool* outOfMemory) {
-    fprintf(stderr, "Intern Atom %s.\n", atomName);
     if (outOfMemory != NULL) *outOfMemory = False;
     AtomStruct* atomStruct = getAtomStructByName(atomName);
     if (atomStruct != NULL) {
-        fprintf(stderr, "Atom already existed %lu.\n", atomStruct->atom);
         return atomStruct->atom;
     } else if (!only_if_exists) {
-        fprintf(stderr, "Creating new Atom %s (%lu).\n", atomName, lastUsedAtom + 1);
         atomStruct = malloc(sizeof(AtomStruct));
         if (atomStruct == NULL) {
             if (outOfMemory != NULL) *outOfMemory = True;
@@ -130,7 +127,6 @@ Atom XInternAtom(Display* display, _Xconst char* atom_name, Bool only_if_exists)
         } while (PredefinedAtomList[i++].atom != _NET_FRAME_EXTENTS);
     }
     if (preExistingIndex >= 0) {
-        fprintf(stderr, "Atom already existed %lu.\n", lastUsedAtom);
         return PredefinedAtomList[preExistingIndex].atom;
     }
     Bool outOfMemory;

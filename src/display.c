@@ -132,8 +132,8 @@ Display* XOpenDisplay(_Xconst char* display_name) {
         // Calculate the values in millimeters
         float h_dpi, v_dpi;
         if (SDL_GetDisplayDPI(screenIndex, NULL, &h_dpi, &v_dpi) != 0) {
-            fprintf(stderr, "Warning: SDL_GetDisplayDPI failed, using pixel values for mm values: %s",
-                    SDL_GetError());
+            fprintf(stderr, "Warning: SDL_GetDisplayDPI failed, "
+                            "using pixel values for mm values: %s\n", SDL_GetError());
             screen->mwidth  = displayMode.w;
             screen->mheight = displayMode.h;
         } else {

@@ -1,9 +1,10 @@
-#include <X11/Xlib.h>
 #include "X11/Xatom.h"
 #include <stdio.h>
 #include <wchar.h>
 #include <sys/stat.h>
 #include <errno.h>
+#include <dirent.h>
+#include <X11/Xlib.h>
 #include "SDL.h"
 #include "SDL_ttf.h"
 #include "errors.h"
@@ -14,10 +15,16 @@
 #include "display.h"
 #include "gc.h"
 #include "util.h"
+#include "font.h"
 
 // TODO: Maybe implement character atlas
 // TODO: Convert text decoding to Utf-8
 // http://www.cprogramming.com/tutorial/unicode.html
+
+typedef struct {
+    char* fileName;
+    char* XLFName;
+} FontCacheEntry;
 
 #define GET_FONT(fontXID) ((TTF_Font*) GET_XID_VALUE(fontXID))
 #define FONT_SIZE 8
@@ -31,19 +38,8 @@ static const char* DEFAULT_FONT_SEARCH_PATHS[] = {
 
 // This are the custom search paths for fonts can be set via XSetFontPath.
 // Has to be initialized via XSetFontPath(display, NULL, 0);
-Array* customFontSearchPath = NULL;
-
-void freeFontSearchPath() {
-    if (customFontSearchPath != NULL) {
-        // Clear the array and free the data
-        while (customFontSearchPath->length > 0) {
-            free(removeArray(customFontSearchPath, 0, False));
-        }
-        freeArray(customFontSearchPath);
-        free(customFontSearchPath);
-        customFontSearchPath = NULL;
-    }
-}
+Array* fontSearchPaths = NULL;
+Array* fontCache = NULL;
 
 // Check if the given path points to an existing directory
 bool checkFontPath(const char* path) {
@@ -57,6 +53,173 @@ bool checkFontPath(const char* path) {
         }
     }
     return False;
+}
+
+char* getFontXLFDName(TTF_Font* font) {
+    /* FOUNDRY - FAMILY_NAME - WEIGHT_NAME - SLANT - SETWIDTH_NAME - ADD_STYLE - PIXEL_SIZE -
+       POINT_SIZE - RESOLUTION_X - RESOLUTION_Y - SPACING - AVERAGE_WIDTH - CHARSET_REGISTRY -
+       CHARSET_ENCODING */
+    int fontStyle = TTF_GetFontStyle(font);
+    static char* emptyValue = "";
+    char* foundry = emptyValue;
+    char* familyName = TTF_FontFaceFamilyName(font);
+    if (familyName == NULL) familyName = emptyValue;
+    char* weightName = fontStyle & TTF_STYLE_BOLD ? "bold" : "medium";
+    char slant = (char) (fontStyle & TTF_STYLE_ITALIC ? 'i' : 'r');
+    char* setWidth = "normal";
+    int pointSize = 0;
+    char spacing = (char) (TTF_FontFaceIsFixedWidth(font) ? 'm' : 'p');
+    short averageWidth = 0;
+    char* charset = "iso10646"; // Unicode
+    int charsetEncoding = 1;
+    size_t nameLength = 14 + strlen(foundry) + strlen(familyName) + strlen(weightName)
+                        + 1 + strlen(setWidth) + 1 + 6 + 1 + 1 + 1 + 5 + strlen(charset) + 1;
+    
+    char* name = malloc(sizeof(char) * nameLength);
+    if (name != NULL) {
+        // TODO: Should this not be "-%s-%s-%s-%c-%s--0-%d-0-0-%c-%hd-%s-%d"? Tk does not want the extra dash.
+        snprintf(name, nameLength, "-%s-%s-%s-%c-%s-0-%d-0-0-%c-%hd-%s-%d",
+                 foundry, familyName, weightName, slant, setWidth, pointSize,
+                 spacing, averageWidth, charset, charsetEncoding);
+    }
+    fprintf(stderr, "Font name = '%s'\n", name);
+    return name;
+}
+
+Bool fontCacheEntryFileNameCmp(void* entry, void* name) {
+    return strcmp(((FontCacheEntry*) entry)->fileName, name) == 0;
+}
+
+Bool updateFontCache() {
+    size_t i, entryNameLen;
+    size_t fontCacheIndex = 0;
+    DIR* fontDirectory;
+    struct dirent* entry;
+    char buffer[512];
+    for (i = 0; i < fontSearchPaths->length; i++) {
+        char* fontDirPath = fontSearchPaths->array[i];
+        fontDirectory = opendir(fontDirPath);
+        if (fontDirectory == NULL) {
+            free(removeArray(fontSearchPaths, i, False));
+            i--;
+            continue;
+        }
+        while ((entry = readdir(fontDirectory)) != NULL) {
+            // We add all missing fonts to the cache, swapping their position to the front.
+            // We can be sure, that the fonts with an index lower than fontCacheIndex are valid.
+            entryNameLen = strlen(entry->d_name);
+            if (entryNameLen > 4 && strncmp(&entry->d_name[entryNameLen - 4], ".ttf", 4) == 0) {
+                ssize_t index = findInArrayNCmp(fontCache, entry->d_name,
+                                                fontCacheIndex, &fontCacheEntryFileNameCmp);
+                
+                if (index == -1) {
+                    snprintf(buffer, 512, "%s/%s", fontDirPath, entry->d_name);
+                    TTF_Font* font = TTF_OpenFont(buffer, FONT_SIZE);
+                    if (font == NULL) continue;
+                    FontCacheEntry* fontCacheEntry = malloc(sizeof(FontCacheEntry));
+                    if (fontCacheEntry == NULL) {
+                        TTF_CloseFont(font);
+                        closedir(fontDirectory);
+                        return False;
+                    }
+                    fontCacheEntry->fileName = strdup(entry->d_name);
+                    fontCacheEntry->XLFName = getFontXLFDName(font);
+                    if (fontCacheEntry->fileName == NULL ||  fontCacheEntry->XLFName == NULL) {
+                        if (fontCacheEntry->fileName != NULL) free(fontCacheEntry->fileName);
+                        if (fontCacheEntry->XLFName != NULL) free(fontCacheEntry->XLFName);
+                        free(fontCacheEntry);
+                        TTF_CloseFont(font);
+                        closedir(fontDirectory);
+                        return False;
+                    }
+                    if (!insertArray(fontCache, fontCacheEntry)) {
+                        free(fontCacheEntry->fileName);
+                        free(fontCacheEntry->XLFName);
+                        free(fontCacheEntry);
+                        TTF_CloseFont(font);
+                        closedir(fontDirectory);
+                        return False;
+                    }
+                    index = fontCache->length - 1;
+                }
+                if (index != fontCacheIndex) {
+                    swapArray(fontCache, (size_t) index, fontCacheIndex);
+                }
+                fontCacheIndex++;
+            }
+        }
+        closedir(fontDirectory);
+    }
+    while (fontCache->length > fontCacheIndex) {
+        // Remove all invalid cache entries
+        FontCacheEntry* cacheEntry = removeArray(fontCache, fontCache->length - 1, True);
+        free(cacheEntry->fileName);
+        free(cacheEntry->XLFName);
+        free(cacheEntry);
+    }
+    return True;
+}
+
+Bool initFontStorage() {
+    size_t fontCount = 0;
+    DIR* fontDirectory;
+    struct dirent* entry;
+    fontSearchPaths = malloc(sizeof(Array));
+    if (fontSearchPaths == NULL) {
+        return False;
+    }
+    if (!initArray(fontSearchPaths, ARRAY_LENGTH(DEFAULT_FONT_SEARCH_PATHS))) {
+        return False;
+    }
+    for (size_t i = 0; i < ARRAY_LENGTH(DEFAULT_FONT_SEARCH_PATHS); i++) {
+        const char *path = DEFAULT_FONT_SEARCH_PATHS[i];
+        if (checkFontPath(path)) {
+            fontDirectory = opendir(path);
+            if (fontDirectory == NULL) continue;
+            path = strdup(path);
+            if (path == NULL) return False;
+            insertArray(fontSearchPaths, (char*) path);
+            // Count the font files in the directory
+            while ((entry = readdir(fontDirectory)) != NULL) {
+                if (strncmp(&entry->d_name[strlen(entry->d_name) - 4], ".ttf", 4) == 0) {
+                    fontCount++;
+                }
+            }
+            closedir(fontDirectory);
+        }
+    }
+    fontCache = malloc(sizeof(Array));
+    if (fontCache == NULL) {
+        return False;
+    }
+    if (!initArray(fontCache, fontCount)) {
+        return False;
+    }
+    return updateFontCache();
+}
+
+void freeFontStorage() {
+    if (fontSearchPaths != NULL) {
+        // Clear the array and free the data
+        while (fontSearchPaths->length > 0) {
+            free(removeArray(fontSearchPaths, 0, False));
+        }
+        freeArray(fontSearchPaths);
+        free(fontSearchPaths);
+        fontSearchPaths = NULL;
+    }
+    if (fontCache != NULL) {
+        // Clear the array and free the data
+        while (fontCache->length > 0) {
+            FontCacheEntry* entry = removeArray(fontSearchPaths, 0, False);
+            free(entry->fileName);
+            free(entry->XLFName);
+            free(entry);
+        }
+        freeArray(fontCache);
+        free(fontCache);
+        fontSearchPaths = NULL;
+    }
 }
 
 Font XLoadFont(Display* display, _Xconst char* name) {
@@ -96,13 +259,13 @@ int XFreeFontPath(char** list) {
 
 char** XGetFontPath(Display *display, int* npaths_return) {
     SET_X_SERVER_REQUEST(display, X_GetFontPath);
-    *npaths_return = customFontSearchPath->length;
-    char** list = malloc(sizeof(char*) * customFontSearchPath->length);
+    *npaths_return = fontSearchPaths->length;
+    char** list = malloc(sizeof(char*) * fontSearchPaths->length);
     if (list == NULL) {
         handleOutOfMemory(0, display, 0, 0);
         return NULL;
     }
-    memcpy(list, customFontSearchPath->array, sizeof(char*) * customFontSearchPath->length);
+    memcpy(list, fontSearchPaths->array, sizeof(char*) * fontSearchPaths->length);
     return list;
 }
 
@@ -110,17 +273,9 @@ int XSetFontPath(Display* display, char** directories, int ndirs) {
     SET_X_SERVER_REQUEST(display, X_SetFontPath);
     char* path;
     size_t i;
-    if (directories == NULL && ndirs == 0 && customFontSearchPath == NULL) {
-        customFontSearchPath = malloc(sizeof(Array));
-        if (customFontSearchPath == NULL) {
-            handleOutOfMemory(0, display, 0, 0);
-            return 0;
-        }
-        initArray(customFontSearchPath, ARRAY_LENGTH(DEFAULT_FONT_SEARCH_PATHS));
-    }
-    while (customFontSearchPath->length > 0) {
+    while (fontSearchPaths->length > 0) {
         // Clear the array and free the data
-        free(removeArray(customFontSearchPath, 0, False));
+        free(removeArray(fontSearchPaths, 0, False));
     }
     if (directories == NULL || ndirs == 0) {
         // Reset the search path to the default for the compiled platform
@@ -133,25 +288,39 @@ int XSetFontPath(Display* display, char** directories, int ndirs) {
             if (path == NULL) {
                 handleOutOfMemory(0, display, 0, 0);
             } else {
-                insertArray(customFontSearchPath, path);
+                insertArray(fontSearchPaths, path);
             }
         }
     }
-    return 1;
+    return updateFontCache() ? 1 : 0;
 }
 
 char** XListFonts(Display* display, _Xconst char* pattern, int maxnames, int* actual_count_return) {
     // https://tronche.com/gui/x/xlib/graphics/font-metrics/XListFonts.html
     SET_X_SERVER_REQUEST(display, X_ListFonts);
-    // TODO: Maybe scan trough a default location
-    fprintf(stderr, "Hit unimplemented function %s\n", __func__);
-    *actual_count_return = 0;
-    return NULL;
+    Array names;
+    initArray(&names, 0);
+    size_t i;
+    for (i = 0; i < fontCache->length; i++) {
+        char* name = fontCache->array[i];
+        if (matchWildcard(pattern, name)) {
+            insertArray(&names, name);
+            if (names.length >= maxnames) break;
+        }
+    }
+    *actual_count_return = (int) names.length;
+    if (names.length == 0) return NULL;
+    char** list = malloc(sizeof(char*) * names.length);
+    if (list == NULL) {
+        *actual_count_return = 0;
+        return NULL;
+    }
+    memcpy(list, names.array, names.length);
+    return list;
 }
 
-int XFreeFontNames(char* list[]) {
+int XFreeFontNames(char** list) {
     // https://tronche.com/gui/x/xlib/graphics/font-metrics/XFreeFontNames.html
-    // TODO: This wont free the whole list
     free(list);
     return 1;
 }
@@ -172,41 +341,13 @@ int XFreeFont(Display* display, XFontStruct* font_struct) {
     return 1;
 }
 
-char* getFontXLFDName(XFontStruct* font_struct) {
-    /* FOUNDRY - FAMILY_NAME - WEIGHT_NAME - SLANT - SETWIDTH_NAME - ADD_STYLE - PIXEL_SIZE -
-       POINT_SIZE - RESOLUTION_X - RESOLUTION_Y - SPACING - AVERAGE_WIDTH - CHARSET_REGISTRY -
-       CHARSET_ENCODING */
-    int fontStyle = TTF_GetFontStyle(GET_FONT(font_struct->fid));
-    static char* emptyValue = "";
-    char* foundry = emptyValue;
-    char* familyName = TTF_FontFaceFamilyName(GET_FONT(font_struct->fid));
-    if (familyName == NULL) familyName = emptyValue;
-    char* weightName = fontStyle & TTF_STYLE_BOLD ? "bold" : "medium";
-    char slant = (char) (fontStyle & TTF_STYLE_ITALIC ? 'i' : 'r');
-    char* setWidth = "normal";
-    int pointSize = FONT_SIZE * 10;
-    char spacing = (char) (TTF_FontFaceIsFixedWidth(GET_FONT(font_struct->fid)) ? 'm' : 'p');
-    short averageWidth = font_struct->max_bounds.width;
-    char* charset = "Utf";
-    int charsetEncoding = 8;
-
-    char* name = malloc(sizeof(char) * (14 + strlen(foundry) + strlen(familyName) +
-            strlen(weightName) + 1 + strlen(setWidth) + 1 + 6 + 1 + 1 + 1 + 5 + strlen(charset) + 1));
-    if (name != NULL) {
-        sprintf(name, "-%s-%s-%s-%c-%s-0-%d-0-0-%c-%hd-%s-%d", foundry, familyName, weightName,
-                slant, setWidth, pointSize, spacing, averageWidth, charset, charsetEncoding);
-    }
-    fprintf(stderr, "Font name = '%s'\n", name);
-    return name;
-}
-
 Bool XGetFontProperty(XFontStruct* font_struct, Atom atom, unsigned long* value_return) {
     // https://tronche.com/gui/x/xlib/graphics/font-metrics/XGetFontProperty.html
     Bool res = False;
     char* name;
     switch (atom) {
         case XA_FONT:
-            name = getFontXLFDName(font_struct);
+            name = getFontXLFDName(GET_FONT(font_struct->fid));
             if (name != NULL) {
                 *value_return = (unsigned long) internalInternAtom(name);
                 res = True;

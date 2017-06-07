@@ -12,13 +12,12 @@
 #include "display.h"
 #include "atoms.h"
 #include "visual.h"
+#include "font.h"
 #include <jni.h>
 #include <SDL_gpu.h>
 #include <X11/X.h>
 #include <X11/Xutil.h>
 
-// Forward declare, definition in font.c
-extern void freeFontSearchPath(void);
 
 jint JNI_OnLoad(JavaVM* vm, void* reserved) {
     setenv("DISPLAY", ":0", 0);
@@ -39,7 +38,7 @@ int XCloseDisplay(Display* display) {
     // https://tronche.com/gui/x/xlib/display/XCloseDisplay.html
     if (numDisplaysOpen == 1) {
         freeAtomStorage();
-        freeFontSearchPath();
+        freeFontStorage();
         destroyScreenWindow(display);
         TTF_Quit();
         GPU_Quit();
@@ -81,7 +80,7 @@ Display* XOpenDisplay(_Xconst char* display_name) {
     }
     GPU_SetDebugLevel(GPU_DEBUG_LEVEL_MAX);
     if (numDisplaysOpen == 0) {
-        if (!initVisuals()) {
+        if (!(initVisuals() && initFontStorage())) {
             free(display);
             return NULL;
         }

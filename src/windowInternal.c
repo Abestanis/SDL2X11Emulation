@@ -69,13 +69,15 @@ void destroyScreenWindow(Display* display) {
     if (SCREEN_WINDOW != None) {
         size_t i;
         Window* children = GET_CHILDREN(SCREEN_WINDOW);
-        for (i = 0; i < GET_WINDOW_STRUCT(SCREEN_WINDOW)->children.length; i++) {
+        WindowStruct* windowStruct = GET_WINDOW_STRUCT(SCREEN_WINDOW);
+        for (i = 0; i < windowStruct->children.length; i++) {
             destroyWindow(display, children[i], False);
         }
-        freeArray(&GET_WINDOW_STRUCT(SCREEN_WINDOW)->children);
-        GPU_FreeTarget(GET_WINDOW_STRUCT(SCREEN_WINDOW)->renderTarget);
-        SDL_DestroyWindow(GET_WINDOW_STRUCT(SCREEN_WINDOW)->sdlWindow);
-        free(GET_WINDOW_STRUCT(SCREEN_WINDOW));
+        GPU_FreeTarget(windowStruct->renderTarget);
+        windowStruct->renderTarget = NULL;
+        SDL_DestroyWindow(windowStruct->sdlWindow);
+        freeArray(&windowStruct->children);
+        free(windowStruct);
         FREE_XID(SCREEN_WINDOW);
         SCREEN_WINDOW = None;
     }

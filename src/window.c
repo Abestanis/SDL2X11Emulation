@@ -216,6 +216,10 @@ int XUnmapWindow(Display* display, Window window) {
     // https://tronche.com/gui/x/xlib/window/XUnmapWindow.html
     SET_X_SERVER_REQUEST(display, X_UnmapWindow);
     TYPE_CHECK(window, WINDOW, display, 0);
+    if (window == SCREEN_WINDOW) {
+        handleError(0, display, window, 0, BadWindow, 0);
+        return 0;
+    }
     WindowStruct* windowStruct = GET_WINDOW_STRUCT(window);
     if (windowStruct->mapState == UnMapped) return 1;
     if (windowStruct->renderTarget != NULL) {
@@ -224,8 +228,9 @@ int XUnmapWindow(Display* display, Window window) {
     }
     windowStruct->mapState = UnMapped;
     if (windowStruct->sdlWindow != NULL) {
-        SDL_DestroyWindow(windowStruct->sdlWindow);
+        SDL_Window* sdlWindow = windowStruct->sdlWindow;
         windowStruct->sdlWindow = NULL;
+        SDL_DestroyWindow(sdlWindow);
     } else if (GET_WINDOW_STRUCT(GET_PARENT(window))->mapState != UnMapped) {
         postEvent(display, window, UnmapNotify, False);
         SDL_Rect exposeRect = {windowStruct->x, windowStruct->y, windowStruct->w, windowStruct->h};

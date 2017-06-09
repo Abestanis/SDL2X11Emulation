@@ -22,7 +22,7 @@
 // http://www.cprogramming.com/tutorial/unicode.html
 
 typedef struct {
-    char* fileName;
+    char* filePath;
     char* XLFName;
 } FontCacheEntry;
 
@@ -87,7 +87,14 @@ char* getFontXLFDName(TTF_Font* font) {
 }
 
 Bool fontCacheEntryFileNameCmp(void* entry, void* name) {
-    return strcmp(((FontCacheEntry*) entry)->fileName, name) == 0;
+    size_t nameLen = strlen(name);
+    size_t pathLen = strlen(((FontCacheEntry*) entry)->filePath);
+    if (nameLen > pathLen) return False;
+    return strcmp(&((FontCacheEntry*) entry)->filePath[pathLen - nameLen], name) == 0;
+}
+
+Bool fontCmp(void* entry, void* fontWildCard) {
+    return matchWildcard(fontWildCard, ((FontCacheEntry*) entry)->XLFName);
 }
 
 Bool updateFontCache() {
@@ -95,7 +102,7 @@ Bool updateFontCache() {
     size_t fontCacheIndex = 0;
     DIR* fontDirectory;
     struct dirent* entry;
-    char buffer[512];
+    char pathBuffer[512];
     for (i = 0; i < fontSearchPaths->length; i++) {
         char* fontDirPath = fontSearchPaths->array[i];
         fontDirectory = opendir(fontDirPath);
@@ -113,8 +120,8 @@ Bool updateFontCache() {
                                                 fontCacheIndex, &fontCacheEntryFileNameCmp);
                 
                 if (index == -1) {
-                    snprintf(buffer, 512, "%s/%s", fontDirPath, entry->d_name);
-                    TTF_Font* font = TTF_OpenFont(buffer, FONT_SIZE);
+                    snprintf(pathBuffer, 512, "%s/%s", fontDirPath, entry->d_name);
+                    TTF_Font* font = TTF_OpenFont(pathBuffer, FONT_SIZE);
                     if (font == NULL) continue;
                     FontCacheEntry* fontCacheEntry = malloc(sizeof(FontCacheEntry));
                     if (fontCacheEntry == NULL) {
@@ -122,10 +129,10 @@ Bool updateFontCache() {
                         closedir(fontDirectory);
                         return False;
                     }
-                    fontCacheEntry->fileName = strdup(entry->d_name);
+                    fontCacheEntry->filePath = strdup(pathBuffer);
                     fontCacheEntry->XLFName = getFontXLFDName(font);
-                    if (fontCacheEntry->fileName == NULL ||  fontCacheEntry->XLFName == NULL) {
-                        if (fontCacheEntry->fileName != NULL) free(fontCacheEntry->fileName);
+                    if (fontCacheEntry->filePath == NULL ||  fontCacheEntry->XLFName == NULL) {
+                        if (fontCacheEntry->filePath != NULL) free(fontCacheEntry->filePath);
                         if (fontCacheEntry->XLFName != NULL) free(fontCacheEntry->XLFName);
                         free(fontCacheEntry);
                         TTF_CloseFont(font);
@@ -133,7 +140,7 @@ Bool updateFontCache() {
                         return False;
                     }
                     if (!insertArray(fontCache, fontCacheEntry)) {
-                        free(fontCacheEntry->fileName);
+                        free(fontCacheEntry->filePath);
                         free(fontCacheEntry->XLFName);
                         free(fontCacheEntry);
                         TTF_CloseFont(font);
@@ -153,7 +160,7 @@ Bool updateFontCache() {
     while (fontCache->length > fontCacheIndex) {
         // Remove all invalid cache entries
         FontCacheEntry* cacheEntry = removeArray(fontCache, fontCache->length - 1, True);
-        free(cacheEntry->fileName);
+        free(cacheEntry->filePath);
         free(cacheEntry->XLFName);
         free(cacheEntry);
     }
@@ -212,7 +219,7 @@ void freeFontStorage() {
         // Clear the array and free the data
         while (fontCache->length > 0) {
             FontCacheEntry* entry = removeArray(fontSearchPaths, 0, False);
-            free(entry->fileName);
+            free(entry->filePath);
             free(entry->XLFName);
             free(entry);
         }
@@ -232,22 +239,30 @@ Font XLoadFont(Display* display, _Xconst char* name) {
     }
     SET_XID_TYPE(font, FONT);
     int fontSize = FONT_SIZE;
-    // TODO: Use the font search path
     // TODO: Remove static font size
-    // TODO: Implement pattern matching
-    // TODO: This function is called with "fixed" and "cursor" as a name
-    const char* fontName;
+    // TODO: Handle "fixed" and "cursor" and others alike right.
+    const char* fontPath = NULL;
     if (strcmp(name, "fixed") == 0 || strcmp(name, "cursor") == 0) {
         // This seems to be a common monospace font on most Android devices.
-        fontName = "/system/fonts/DroidSansMono.ttf";
+        fontPath = "/system/fonts/DroidSansMono.ttf";
     } else {
-        fontName = name;
+        ssize_t index = findInArrayCmp(fontCache, (void *) name, &fontCmp);
+        if (index != -1) {
+            fontPath = ((FontCacheEntry*) fontCache->array[index])->filePath;
+        }
     }
-    SET_XID_VALUE(font, TTF_OpenFont(fontName, fontSize));
+    if (fontPath == NULL) {
+        FREE_XID(font);
+        fprintf(stderr, "Font %s not found in cache!\n", name);
+        handleError(0, display, None, 0, BadName, 0);
+        return None;
+    }
+    SET_XID_VALUE(font, TTF_OpenFont(fontPath, fontSize));
     if (GET_XID_VALUE(font) == NULL){
         FREE_XID(font);
         fprintf(stderr, "Failed to load font %s!\n", name);
         handleError(0, display, None, 0, BadName, 0);
+        return None;
     }
     return font;
 }

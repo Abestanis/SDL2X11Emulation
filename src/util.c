@@ -41,18 +41,91 @@ void* removeArray(Array* a, size_t index, Bool preserveOrder) {
     return element;
 }
 
+Bool equalCmp(void* element, void* arg) {
+    return element == arg;
+}
+
 ssize_t findInArray(Array *a, void* element) {
+    return findInArrayNCmp(a, element, 0, &equalCmp);
+}
+
+ssize_t findInArrayN(Array *a, void* element, size_t startIndex) {
+    return findInArrayNCmp(a, element, startIndex, &equalCmp);
+}
+
+ssize_t findInArrayCmp(Array *a, void *element, Bool (*cmpFunc)(void *, void *)) {
+    return findInArrayNCmp(a, element, 0, cmpFunc);
+}
+
+ssize_t findInArrayNCmp(Array *a, void *element, size_t startIndex,
+                        Bool (*cmpFunc)(void *, void *)) {
     ssize_t i;
-    for (i = 0; i < a->length; i++) {
-        if (a->array[i] == element) return i;
+    for (i = startIndex; i < a->length; i++) {
+        if (cmpFunc(a->array[i], element)) return i;
     }
     return -1;
+}
+
+void swapArray(Array *a, size_t index1, size_t index2) {
+    if (index1 >= a->length || index2 >= a->length) abort();
+    void* tmp = a->array[index1];
+    a->array[index1] = a->array[index2];
+    a->array[index2] = tmp;
 }
 
 void freeArray(Array* a) {
     free(a->array);
     a->array = NULL;
     a->length = a->capacity = 0;
+}
+
+Bool matchWildcard(const char* wildcard, const char* string) {
+    if (wildcard == NULL || string == NULL) return False;
+    ssize_t lastStar = -1;
+    size_t stringIndex = 0;
+    size_t wildcardIndex = 0;
+    int numCharsNeeded;
+    for (; wildcard[wildcardIndex] != '\0'; wildcardIndex++) {
+        switch (wildcard[wildcardIndex]) {
+            case '*': // TODO: Tis fails for "*ab??" -> "bla-abab--", don't reinvent the wheel and use some code from SO.
+                // Find next character to match
+                lastStar = wildcardIndex;
+                numCharsNeeded = 0;
+                while (True) {
+                    wildcardIndex++;
+                    if (wildcard[wildcardIndex] == '?') {
+                        numCharsNeeded++;
+                    } else if (wildcard[wildcardIndex] == '\0') {
+                        // We have a wildcard with a '*' at the end
+                        return strlen(&string[stringIndex]) >= numCharsNeeded;
+                    } else if (wildcard[wildcardIndex] == '*') {
+                        continue;
+                    } else {
+                        break;
+                    }
+                }
+                while (numCharsNeeded-- > 0 || wildcard[wildcardIndex] != string[stringIndex]) {
+                    if (string[stringIndex] == '\0') return False;
+                    stringIndex++;
+                }
+                break;
+            case '?':
+                if (string[stringIndex] == '\0') {
+                    return False;
+                }
+                break;
+            default:
+                if (wildcard[wildcardIndex] != string[stringIndex]) {
+                    if (string[stringIndex] != '\0' && lastStar != -1) {
+                        wildcardIndex = (size_t) lastStar;
+                    } else {
+                        return False;
+                    }
+                }
+        }
+        stringIndex++;
+    }
+    return True;
 }
 
 

@@ -31,6 +31,12 @@ Bool initArray(Array* a, size_t initialSize);
 Bool insertArray(Array* a, void* element);
 void* removeArray(Array* a, size_t index, Bool preserveOrder);
 ssize_t findInArray(Array *a, void* element);
+ssize_t findInArrayN(Array *a, void* element, size_t startIndex);
+ssize_t findInArrayCmp(Array *a, void *element, Bool (*cmpFunc)(void *, void *));
+ssize_t findInArrayNCmp(Array *a, void *element, size_t startIndex,
+                        Bool (*cmpFunc)(void *, void *));
+void swapArray(Array *a, size_t index1, size_t index2);
 void freeArray(Array* a);
+Bool matchWildcard(const char* wildcard, const char* string);
 
 #endif /* UTIL_H */

@@ -50,7 +50,7 @@ GPU_Target* getWindowRenderTarget(Window window) {
         targetWindow = GET_PARENT(targetWindow);
     }
     if (targetWindow == SCREEN_WINDOW) {
-        fprintf(stderr, "Failed to find a render target in %s for window %lu!\n", __func__, window);
+        LOG("Failed to find a render target in %s for window %lu!\n", __func__, window);
 #ifdef DEBUG_WINDOWS
         printWindowsHierarchy();
 #endif
@@ -63,30 +63,30 @@ GPU_Target* getWindowRenderTarget(Window window) {
                                                             (Uint16) windowStruct->h,
                                                             GPU_FORMAT_RGBA);
             if (windowStruct->unmappedContent == NULL) {
-                fprintf(stderr, "GPU_CreateImage failed in %s for window %lu: %s\n", __func__,
-                        window, GPU_PopErrorCode().details);
+                LOG("GPU_CreateImage failed in %s for window %lu: %s\n",
+                    __func__, window, GPU_PopErrorCode().details);
                 return NULL;
             }
         }
         if (windowStruct->renderTarget == NULL) {
             windowStruct->renderTarget = GPU_LoadTarget(windowStruct->unmappedContent);
             if (windowStruct->renderTarget == NULL) {
-                fprintf(stderr, "GPU_LoadTarget failed in %s for window %lu: %s\n", __func__,
-                        window, GPU_PopErrorCode().details);
+                LOG("GPU_LoadTarget failed in %s for window %lu: %s\n",
+                    __func__, window, GPU_PopErrorCode().details);
                 return NULL;
             }
         }
     } else if (IS_MAPPED_TOP_LEVEL_WINDOW(targetWindow)) {
         if (windowStruct->renderTarget == NULL) {
-            fprintf(stderr, "Got window (%lu) with sdl window (%d) but no target in %s\n",
-                    window, SDL_GetWindowID(windowStruct->sdlWindow), __func__);
+            LOG("Got window (%lu) with sdl window (%d) but no target in %s\n",
+                window, SDL_GetWindowID(windowStruct->sdlWindow), __func__);
             return NULL;
         }
         if (GPU_GetContextTarget() == NULL) {
             GPU_MakeCurrent(windowStruct->renderTarget, SDL_GetWindowID(windowStruct->sdlWindow));
         }
     } else {
-        fprintf(stderr, "Failed to find a render target in %s for window %lu!\n", __func__, window);
+        LOG("Failed to find a render target in %s for window %lu!\n", __func__, window);
         return NULL;
     }
     GPU_SetClipRect(windowStruct->renderTarget, clipRect);
@@ -95,7 +95,8 @@ GPU_Target* getWindowRenderTarget(Window window) {
     viewPort.y = clipRect.y;
     GET_WINDOW_DIMS(SCREEN_WINDOW, viewPort.w, viewPort.h);
     GPU_SetViewport(windowStruct->renderTarget, viewPort);
-    fprintf(stderr, "Render viewport is {x = %d, y = %d, w = %d, h = %d}\n", (int) viewPort.x, (int) viewPort.y, (int) viewPort.w, (int) viewPort.h);
+    LOG("Render viewport is {x = %d, y = %d, w = %d, h = %d}\n",
+        (int) viewPort.x, (int) viewPort.y, (int) viewPort.w, (int) viewPort.h);
     return windowStruct->renderTarget;
 }
 
@@ -104,14 +105,14 @@ int XFillPolygon(Display* display, Drawable d, GC gc, XPoint *points, int npoint
     SET_X_SERVER_REQUEST(display, X_FillPoly);
     TYPE_CHECK(d, DRAWABLE, display, 0);
     if (npoints <= 1) {
-        fprintf(stderr, "Invalid number of points in %s: %d\n", __func__, npoints);
+        LOG("Invalid number of points in %s: %d\n", __func__, npoints);
         handleError(0, display, None, 0, BadValue, 0);
         return 0;
     }
     GPU_Target* renderTarget;
     GET_RENDER_TARGET(d, renderTarget);
     if (renderTarget == NULL) {
-        fprintf(stderr, "Failed to get the render target of %lu in %s\n", d, __func__);
+        LOG("Failed to get the render target of %lu in %s\n", d, __func__);
         handleError(0, display, d, 0, BadDrawable, 0);
         return 0;
     }
@@ -148,27 +149,27 @@ int XFillPolygon(Display* display, Drawable d, GC gc, XPoint *points, int npoint
 int XFillArc(Display *display, Drawable d, GC gc, int x, int y, unsigned int width, unsigned int height, int angle1, int angle2) {
     // https://tronche.com/gui/x/xlib/graphics/filling-areas/XFillArc.html
     SET_X_SERVER_REQUEST(display, X_PolyFillArc);
-    fprintf(stderr, "Hit unimplemented function %s.\n", __func__);
+    WARN_UNIMPLEMENTED;
     return 1;
 }
 
 int XDrawArc(Display *display, Drawable d, GC gc, int x, int y, unsigned int width, unsigned int height, int angle1, int angle2) {
     // https://tronche.com/gui/x/xlib/graphics/drawing/XDrawArc.html
     SET_X_SERVER_REQUEST(display, X_PolyArc);
-    fprintf(stderr, "Hit unimplemented function %s.\n", __func__);
+    WARN_UNIMPLEMENTED;
     return 1;
 }
 
 int XCopyPlane(Display *display, Drawable src, Drawable dest, GC gc, int src_x, int src_y, unsigned int width, unsigned int height, int dest_x, int dest_y, unsigned long plane) {
     // https://tronche.com/gui/x/xlib/graphics/XCopyPlane.html
     SET_X_SERVER_REQUEST(display, X_CopyPlane);
-    fprintf(stderr, "Hit unimplemented function %s.\n", __func__);
+    WARN_UNIMPLEMENTED;
     return 1;
 }
 
 int XDrawLine(Display* display, Drawable d, GC gc, int x1, int y1, int x2, int y2) {
     // https://tronche.com/gui/x/xlib/graphics/drawing/XDrawLine.html
-    fprintf(stderr, "Hit unimplemented function %s.\n", __func__);
+    WARN_UNIMPLEMENTED;
     return 1;
 }
 
@@ -176,25 +177,25 @@ int XDrawLines(Display *display, Drawable d, GC gc, XPoint *points, int npoints,
     // https://tronche.com/gui/x/xlib/graphics/drawing/XDrawLines.html
     SET_X_SERVER_REQUEST(display, X_PolyLine);
     TYPE_CHECK(d, DRAWABLE, display, 0);
-    fprintf(stderr, "%s: Drawing on %lu\n", __func__, d);
+    LOG("%s: Drawing on %lu\n", __func__, d);
     if (npoints <= 1) {
-        fprintf(stderr, "Invalid number of points in %s: %d\n", __func__, npoints);
+        LOG("Invalid number of points in %s: %d\n", __func__, npoints);
         handleError(0, display, None, 0, BadValue, 0);
         return 0;
     }
     if (mode != CoordModeOrigin && mode != CoordModePrevious) {
-        fprintf(stderr, "Bad mode give to %s: %d\n", __func__, mode);
+        LOG("Bad mode give to %s: %d\n", __func__, mode);
         handleError(0, display, None, 0, BadValue, 0);
         return 0;
     }
     GPU_Target* renderTarget;
     GET_RENDER_TARGET(d, renderTarget);
     if (renderTarget == NULL) {
-        fprintf(stderr, "Failed to get the render target of %lu in %s\n", d, __func__);
+        LOG("Failed to get the render target of %lu in %s\n", d, __func__);
         handleError(0, display, d, 0, BadDrawable, 0);
         return 0;
     }
-    fprintf(stderr, "%s: Drawing on render target %p\n", __func__, renderTarget);
+    LOG("%s: Drawing on render target %p\n", __func__, renderTarget);
     GraphicContext* gContext = GET_GC(gc);
     GPU_SetLineThickness(gContext->lineWidth);
     SDL_Color drawColor = {
@@ -212,7 +213,8 @@ int XDrawLines(Display *display, Drawable d, GC gc, XPoint *points, int npoints,
             current.x += last.x;
             current.y += last.y;
         }
-        fprintf(stderr, "Drawing line {x1 = %d, y1 = %d, x2 = %d, y2 = %d}\n", last.x, last.y, current.x, current.y);
+        LOG("Drawing line {x1 = %d, y1 = %d, x2 = %d, y2 = %d}\n",
+            last.x, last.y, current.x, current.y);
         GPU_Line(renderTarget, last.x, last.y, current.x, current.y, drawColor);
         last = current;
     }
@@ -226,10 +228,10 @@ int XCopyArea(Display* display, Drawable src, Drawable dest, GC gc, int src_x, i
     SET_X_SERVER_REQUEST(display, X_CopyArea);
     TYPE_CHECK(src, DRAWABLE, display, 0);
     TYPE_CHECK(dest, DRAWABLE, display, 0);
-    fprintf(stderr, "%s: Copy area from %lu to %lu\n", __func__, src, dest);
+    LOG("%s: Copy area from %lu to %lu\n", __func__, src, dest);
     if (IS_TYPE(src, WINDOW)) {
         if (IS_INPUT_ONLY(src)) {
-            fprintf(stderr, "BadMatch: Got input only window as the source in %s!\n", __func__);
+            LOG("BadMatch: Got input only window as the source in %s!\n", __func__);
             handleError(0, display, src, 0, BadMatch, 0);
             return 0;
         } else if (GET_WINDOW_STRUCT(src)->mapState == UnMapped && GET_WINDOW_STRUCT(src)->unmappedContent == NULL) {
@@ -237,37 +239,37 @@ int XCopyArea(Display* display, Drawable src, Drawable dest, GC gc, int src_x, i
         }
     }
     if (IS_TYPE(dest, WINDOW) && IS_INPUT_ONLY(dest)) {
-        fprintf(stderr, "BadMatch: Got input only window as the destination in %s!\n", __func__);
+        LOG("BadMatch: Got input only window as the destination in %s!\n", __func__);
         handleError(0, display, dest, 0, BadMatch, 0);
         return 0;
     }
     GPU_Target* sourceTarget;
     GET_RENDER_TARGET(src, sourceTarget);
     if (sourceTarget == NULL) {
-        fprintf(stderr, "BadMatch: Failed to get render target of source drawable %lu in %s!\n",
-                src, __func__);
+        LOG("BadMatch: Failed to get render target of source drawable %lu in %s!\n", src, __func__);
         handleError(0, display, src, 0, BadMatch, 0);
         return 0;
     }
     GPU_Image* sourceImage = GPU_CopyImageFromTarget(sourceTarget);
     if (sourceImage == NULL) {
-        fprintf(stderr, "BadMatch: Failed to get the source image from the source target of the "
-                "source drawable %lu in %s!\n", src, __func__);
+        LOG("BadMatch: Failed to get the image from the target "
+                    "of the source drawable %lu in %s!\n", src, __func__);
         handleError(0, display, src, 0, BadMatch, 0);
         return 0;
     }
     GPU_Target* renderDest;
     GET_RENDER_TARGET(dest, renderDest);
     if (renderDest == NULL) {
-        fprintf(stderr, "BadMatch: Failed to get render target of destination drawable %lu in %s!\n",
-                dest, __func__);
+        LOG("BadMatch: Failed to get render target of destination drawable %lu in %s!\n",
+            dest, __func__);
         handleError(0, display, dest, 0, BadMatch, 0);
         return 0;
     }
-    fprintf(stderr, "%s: Copy area from target %p to target %p\n", __func__, sourceTarget, renderDest);
+    LOG("%s: Copy area from target %p to target %p\n", __func__, sourceTarget, renderDest);
     GPU_Rect sourceRect = { src_x, src_y, width, height };
 
-    fprintf(stderr, "Copy area {x = %f, y = %f, w = %f, h = %f}\n", sourceRect.x, sourceRect.y, sourceRect.w, sourceRect.h);
+    LOG("Copy area {x = %f, y = %f, w = %f, h = %f}\n",
+        sourceRect.x, sourceRect.y, sourceRect.w, sourceRect.h);
     GPU_Blit(sourceImage, &sourceRect, renderDest, dest_x + sourceRect.w / 2, dest_y + sourceRect.h / 2);
     GPU_FreeImage(sourceImage);
     GPU_Flip(renderDest);
@@ -280,11 +282,11 @@ int XDrawRectangle(Display *display, Drawable d, GC gc, int x, int y, unsigned i
     // https://tronche.com/gui/x/xlib/graphics/drawing/XDrawRectangle.html
     SET_X_SERVER_REQUEST(display, X_PolyRectangle);
     TYPE_CHECK(d, DRAWABLE, display, 0);
-    fprintf(stderr, "%s: Drawing on %lu\n", __func__, d);
+    LOG("%s: Drawing on %lu\n", __func__, d);
     GPU_Target* renderTarget;
     GET_RENDER_TARGET(d, renderTarget);
     if (renderTarget == NULL) {
-        fprintf(stderr, "Failed to get the render target of %lu in %s\n", d, __func__);
+        LOG("Failed to get the render target of %lu in %s\n", d, __func__);
         handleError(0, display, d, 0, BadDrawable, 0);
         return 0;
     }
@@ -296,9 +298,10 @@ int XDrawRectangle(Display *display, Drawable d, GC gc, int x, int y, unsigned i
             GET_BLUE_FROM_COLOR(gContext->foreground),
             GET_ALPHA_FROM_COLOR(gContext->foreground),
     };
-    fprintf(stderr, "{x = %d, y = %d, w = %d, h = %d}\n", x, y, width, height);
+    LOG("{x = %d, y = %d, w = %d, h = %d}\n", x, y, width, height);
     GPU_Rect rectangle = {x, y, width, height};
-    fprintf(stderr, "Drawing rectangle {x = %f, y = %f, w = %f, h = %f}\n", rectangle.x, rectangle.y, rectangle.w, rectangle.h);
+    LOG("Drawing rectangle {x = %f, y = %f, w = %f, h = %f}\n",
+        rectangle.x, rectangle.y, rectangle.w, rectangle.h);
     GPU_Rectangle2(renderTarget, rectangle, drawColor);
     GPU_Flip(renderTarget);
     return 1;
@@ -318,26 +321,26 @@ int XFillRectangles(Display *display, Drawable d, GC gc, XRectangle *rectangles,
     // https://tronche.com/gui/x/xlib/graphics/filling-areas/XFillRectangles.html
     SET_X_SERVER_REQUEST(display, X_PolyFillRectangle);
     TYPE_CHECK(d, DRAWABLE, display, 0);
-    fprintf(stderr, "%s: Drawing on %lu\n", __func__, d);
+    LOG("%s: Drawing on %lu\n", __func__, d);
     if (nrectangles < 1) {
-        fprintf(stderr, "Invalid number of rectangles in %s: %d\n", __func__, nrectangles);
+        LOG("Invalid number of rectangles in %s: %d\n", __func__, nrectangles);
         handleError(0, display, None, 0, BadValue, 0);
         return 0;
     }
     GPU_Target* renderTarget;
     GET_RENDER_TARGET(d, renderTarget);
     if (renderTarget == NULL) {
-        fprintf(stderr, "Failed to get the render target of %lu in %s\n", d, __func__);
+        LOG("Failed to get the render target of %lu in %s\n", d, __func__);
         handleError(0, display, d, 0, BadDrawable, 0);
         return 0;
     }
     if (renderTarget->context != NULL) {
-        fprintf(stderr, "%s: Render target: %p, render target context = %p\n", __func__,
+        LOG("%s: Render target: %p, render target context = %p\n", __func__,
                 renderTarget, (SDL_GLContext) renderTarget->context->context);
     }
     GraphicContext* gContext = GET_GC(gc);
     GPU_SetLineThickness(gContext->lineWidth);
-    fprintf(stderr, "bgColor: 0x%08lx, fgColor: 0x%08lx\n", gContext->background, gContext->foreground);
+    LOG("bgColor: 0x%08lx, fgColor: 0x%08lx\n", gContext->background, gContext->foreground);
     if (gContext->fillStyle == FillSolid) {
         size_t i;
         SDL_Color drawColor = {
@@ -346,32 +349,35 @@ int XFillRectangles(Display *display, Drawable d, GC gc, XRectangle *rectangles,
                 GET_BLUE_FROM_COLOR(gContext->foreground),
                 GET_ALPHA_FROM_COLOR(gContext->foreground),
         };
-        fprintf(stderr, "%s: Color {r = %d, g = %d, b = %d, a = %d}\n", __func__, drawColor.r, drawColor.g, drawColor.b, drawColor.a);
-        fprintf(stderr, "Render viewport is {x = %f, y = %f, w = %f, h = %f}\n", renderTarget->viewport.x, renderTarget->viewport.y, renderTarget->viewport.w, renderTarget->viewport.h);
+        LOG("%s: Color {r = %d, g = %d, b = %d, a = %d}\n",
+            __func__, drawColor.r, drawColor.g, drawColor.b, drawColor.a);
+        LOG("Render viewport is {x = %f, y = %f, w = %f, h = %f}\n",
+            renderTarget->viewport.x, renderTarget->viewport.y,
+            renderTarget->viewport.w, renderTarget->viewport.h);
+        GPU_Rect rectangle;
         for (i = 0; i < nrectangles; i++) {
-            GPU_Rect rectangle = {
-                rectangles[i].x,
-                rectangles[i].y,
-                rectangles[i].width,
-                rectangles[i].height
-            };
-            fprintf(stderr, "Drawing filled rectangle {x = %f, y = %f, w = %f, h = %f}\n", rectangle.x, rectangle.y, rectangle.w, rectangle.h);
+            rectangle.x = rectangles[i].x;
+            rectangle.y = rectangles[i].y;
+            rectangle.w = rectangles[i].width;
+            rectangle.h = rectangles[i].height;
+            LOG("Drawing filled rectangle {x = %f, y = %f, w = %f, h = %f}\n",
+                rectangle.x, rectangle.y, rectangle.w, rectangle.h);
             GPU_RectangleFilled2(renderTarget, rectangle, drawColor);
         }
     } else if (gContext->fillStyle == FillTiled) {
-        fprintf(stderr, "Fill_style is %s\n", "FillTiled");
+        LOG("Fill_style is %s\n", "FillTiled");
     } else if (gContext->fillStyle == FillOpaqueStippled) {
-        fprintf(stderr, "Fill_style is %s\n", "FillOpaqueStippled");
+        LOG("Fill_style is %s\n", "FillOpaqueStippled");
         GPU_Image* stipple = GET_PIXMAP_IMAGE(gContext->stipple);
         GPU_Image* tile = GPU_CopyImage(stipple);
         if (tile == NULL) {
-            fprintf(stderr, "Failed to copy image from gc->stipple: %s\n", GPU_PopErrorCode().details);
+            LOG("Failed to copy image from gc->stipple: %s\n", GPU_PopErrorCode().details);
             handleError(0, display, gContext->stipple, 0 , BadMatch, 0);
             return 0;
         }
         GPU_Target* tileTarget = GPU_LoadTarget(tile);
         if (tileTarget == NULL) {
-            fprintf(stderr, "Failed to create image target from gc->stipple: %s\n", GPU_PopErrorCode().details);
+            LOG("Failed to create image target from gc->stipple: %s\n", GPU_PopErrorCode().details);
             handleError(0, display, gContext->stipple, 0 , BadMatch, 0);
             return 0;
         }
@@ -385,14 +391,20 @@ int XFillRectangles(Display *display, Drawable d, GC gc, XRectangle *rectangles,
         GPU_SetWrapMode(tile, GPU_WRAP_REPEAT, GPU_WRAP_REPEAT);
         
         size_t i;
+        GPU_Rect rectangle;
+        rectangle.x = 0;
+        rectangle.y = 0;
         for (i = 0; i < nrectangles; i++) {
-            GPU_Rect rectangle = { 0, 0, rectangles[i].width, rectangles[i].height };
-            fprintf(stderr, "Drawing filled rectangle using FillOpaqueStippled {x = %f, y = %f, w = %f, h = %f}\n", rectangle.x, rectangle.y, rectangle.w, rectangle.h);
+            rectangle.w = rectangles[i].width;
+            rectangle.h = rectangles[i].height;
+            LOG("Drawing filled rectangle using FillOpaqueStippled "
+                        "{x = %f, y = %f, w = %f, h = %f}\n",
+                rectangle.x, rectangle.y, rectangle.w, rectangle.h);
             GPU_Blit(tile, &rectangle, renderTarget, rectangles[i].x, rectangles[i].y);
         }
         GPU_FreeImage(tile);
     } else if (gContext->fillStyle == FillStippled) {
-        fprintf(stderr, "Fill_style is %s\n", "FillStippled");
+        LOG("Fill_style is %s\n", "FillStippled");
     }
     GPU_Flip(renderTarget);
     return 1;

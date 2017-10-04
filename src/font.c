@@ -82,7 +82,7 @@ char* getFontXLFDName(TTF_Font* font) {
                  foundry, familyName, weightName, slant, setWidth, pointSize,
                  spacing, averageWidth, charset, charsetEncoding);
     }
-    fprintf(stderr, "Font name = '%s'\n", name);
+    LOG("Font name = '%s'\n", name);
     return name;
 }
 
@@ -253,14 +253,14 @@ Font XLoadFont(Display* display, _Xconst char* name) {
     }
     if (fontPath == NULL) {
         FREE_XID(font);
-        fprintf(stderr, "Font %s not found in cache!\n", name);
+        LOG("Font %s not found in cache!\n", name);
         handleError(0, display, None, 0, BadName, 0);
         return None;
     }
     SET_XID_VALUE(font, TTF_OpenFont(fontPath, fontSize));
     if (GET_XID_VALUE(font) == NULL){
         FREE_XID(font);
-        fprintf(stderr, "Failed to load font %s!\n", name);
+        LOG("Failed to load font %s!\n", name);
         handleError(0, display, None, 0, BadName, 0);
         return None;
     }
@@ -369,7 +369,7 @@ Bool XGetFontProperty(XFontStruct* font_struct, Atom atom, unsigned long* value_
             }
             break;
         default:
-            fprintf(stderr, "%s: Got unknown atom %lu!\n", __func__, atom);
+            LOG("%s: Got unknown atom %lu!\n", __func__, atom);
     }
     // Can't provide values for XA_UNDERLINE_POSITION and XA_UNDERLINE_THICKNESS
     return res;
@@ -378,7 +378,7 @@ Bool XGetFontProperty(XFontStruct* font_struct, Atom atom, unsigned long* value_
 Bool fillXCharStruct(TTF_Font* font, unsigned int character, XCharStruct* charStruct) {
     int minX, maxX, minY, maxY, advance;
     if (TTF_GlyphMetrics(font, (Uint16) character, &minX, &maxX, &minY, &maxY, &advance) == -1) {
-        fprintf(stderr, "Failed to determine metrics for character '%u': %s\n", character, TTF_GetError());
+        LOG("Failed to determine metrics for character '%u': %s\n", character, TTF_GetError());
         return False;
     }
     charStruct->width = (short) advance;
@@ -511,7 +511,7 @@ char* decodeString(const char* string, int count) {
                     text[counter] = '\f';
                     break;
                 default:
-                    fprintf(stderr, "Warn: Got unknown control character in %s: '\\%c'\n", __func__, string[i]);
+                    LOG("Warn: Got unknown control character in %s: '\\%c'\n", __func__, string[i]);
                     text[counter] = '\\';
                     text[++counter] = string[i];
             }
@@ -527,7 +527,8 @@ char* decodeString(const char* string, int count) {
 int getTextWidth(XFontStruct* font_struct, const char* string) {
     int width, height;
     if (TTF_SizeUTF8(GET_FONT(font_struct->fid), string, &width, &height) != 0) {
-        fprintf(stderr, "Failed to calculate the text with in XTextWidth[16]: %s! Returning max width of font.\n", TTF_GetError());
+        LOG("Failed to calculate the text with in XTextWidth[16]: %s! "
+                    "Returning max width of font.\n", TTF_GetError());
         return (int) (font_struct->max_bounds.rbearing * strlen(string));
     }
     return width;
@@ -554,7 +555,8 @@ int XTextWidth16(XFontStruct* font_struct, _Xconst XChar2b* string, int count) {
     size_t length;
     char* text = decodeMbString((const wchar_t *) string, &length);
     if (text == NULL) {
-        fprintf(stderr, "Out of memory: Failed to allocate memory in %s! Returning max width of font.\n", __func__);
+        LOG("Out of memory: Failed to allocate memory in %s! "
+                    "Returning max width of font.\n", __func__);
         return font_struct->max_bounds.rbearing * count;
     }
     int width = getTextWidth(font_struct, text);
@@ -567,7 +569,8 @@ int XTextWidth(XFontStruct* font_struct, _Xconst char* string, int count) {
     // https://tronche.com/gui/x/xlib/graphics/font-metrics/XTextWidth.html
     char* text = decodeString(string, count);
     if (text == NULL) {
-        fprintf(stderr, "Out of memory: Failed to allocate memory in XTextWidth! Returning max width of font.\n");
+        LOG("Out of memory: Failed to allocate memory in XTextWidth! "
+                    "Returning max width of font.\n");
         return font_struct->max_bounds.rbearing * count;
     }
     int width = getTextWidth(font_struct, text);
@@ -576,7 +579,7 @@ int XTextWidth(XFontStruct* font_struct, _Xconst char* string, int count) {
 }
 
 Bool renderText(GPU_Target* renderTarget, GC gc, int x, int y, const char* string) {
-    fprintf(stderr, "Rendering text: '%s'\n", string);
+    LOG("Rendering text: '%s'\n", string);
     if (string == NULL || string[0] == '\0') { return True; }
     GraphicContext* gContext = GET_GC(gc);
     SDL_Color color = {
@@ -604,7 +607,7 @@ Bool renderText(GPU_Target* renderTarget, GC gc, int x, int y, const char* strin
 int XDrawString16(Display* display, Drawable drawable, GC gc, int x, int y, _Xconst XChar2b* string, int length) {
     // https://tronche.com/gui/x/xlib/graphics/drawing-text/XDrawString16.html
     SET_X_SERVER_REQUEST(display, X_PolyText16);
-    fprintf(stderr, "%s: Drawing on %lu\n", __func__, drawable);
+    LOG("%s: Drawing on %lu\n", __func__, drawable);
     TYPE_CHECK(drawable, DRAWABLE, display, 0);
     if (gc == NULL) {
         handleError(0, display, None, 0, BadGC, 0);
@@ -614,20 +617,20 @@ int XDrawString16(Display* display, Drawable drawable, GC gc, int x, int y, _Xco
     GPU_Target* renderTarget;
     GET_RENDER_TARGET(drawable, renderTarget);
     if (renderTarget == NULL) {
-        fprintf(stderr, "Failed to get the render target in %s\n", __func__);
+        LOG("Failed to get the render target in %s\n", __func__);
         handleError(0, display, None, 0, BadDrawable, 0);
         return 0;
     }
     size_t size;
     char * text = decodeMbString((const wchar_t *) string, &size);
     if (text == NULL) {
-        fprintf(stderr, "Out of memory: Failed to allocate memory in XDrawString16, raising BadMatch error.\n");
+        LOG("Out of memory: Failed to allocate memory in XDrawString16, raising BadMatch error.\n");
         handleError(0, display, drawable, 0, BadMatch, 0);
         return 0;
     }
     int res = 1;
     if (!renderText(renderTarget, gc, x, y, text)) {
-        fprintf(stderr, "Rendering the text failed in %s: %s\n", __func__, SDL_GetError());
+        LOG("Rendering the text failed in %s: %s\n", __func__, SDL_GetError());
         handleError(0, display, drawable, 0, BadMatch, 0);
         free(text);
         res = 0;
@@ -639,7 +642,7 @@ int XDrawString16(Display* display, Drawable drawable, GC gc, int x, int y, _Xco
 int XDrawString(Display* display, Drawable drawable, GC gc, int x, int y, _Xconst char* string, int length) {
     // https://tronche.com/gui/x/xlib/graphics/drawing-text/XDrawString.html
     SET_X_SERVER_REQUEST(display, X_PolyText8);
-    fprintf(stderr, "%s: Drawing on %lu\n", __func__, drawable);
+    LOG("%s: Drawing on %lu\n", __func__, drawable);
     TYPE_CHECK(drawable, DRAWABLE, display, 0);
     if (gc == NULL) {
         handleError(0, display, None, 0, BadGC, 0);
@@ -649,19 +652,20 @@ int XDrawString(Display* display, Drawable drawable, GC gc, int x, int y, _Xcons
     GPU_Target* renderTarget;
     GET_RENDER_TARGET(drawable, renderTarget);
     if (renderTarget == NULL) {
-        fprintf(stderr, "Failed to get the render target in %s\n", __func__);
+        LOG("Failed to get the render target in %s\n", __func__);
         handleError(0, display, None, 0, BadDrawable, 0);
         return 0;
     }
     char* text = decodeString(string, length);
     if (text == NULL) {
-        fprintf(stderr, "Out of memory: Failed to allocate decoded string in XDrawString, raising BadMatch error.\n");
+        LOG("Out of memory: Failed to allocate decoded string in XDrawString, "
+                    "raising BadMatch error.\n");
         handleError(0, display, None, 0, BadMatch, 0);
         return 0;
     }
     int res = 1;
     if (!renderText(renderTarget, gc, x, y, text)) {
-        fprintf(stderr, "Rendering the text failed in %s: %s\n", __func__, SDL_GetError());
+        LOG("Rendering the text failed in %s: %s\n", __func__, SDL_GetError());
         handleError(0, display, drawable, 0, BadMatch, 0);
         res = 0;
     }

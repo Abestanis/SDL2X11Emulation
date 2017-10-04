@@ -88,7 +88,7 @@ Bool getEventQueueLength(int* qlen) {
     SDL_Event tmp[25];
     *qlen = SDL_PeepEvents((SDL_Event*) &tmp, 25, SDL_PEEKEVENT, SDL_FIRSTEVENT, SDL_LASTEVENT);
     if (*qlen < 0) {
-        fprintf(stderr, "Failed to get the length of the input queue: %s\n", SDL_GetError());
+        LOG("Failed to get the length of the input queue: %s\n", SDL_GetError());
         return False;
     }
     return True;
@@ -98,24 +98,24 @@ int initEventPipe(Display* display) {
     lastEventSerial = 1;
     int flags;
     if (pipe(eventFds) == -1) {
-        fprintf(stderr, "Could not create the event pipe: %s", strerror(errno));
+        LOG("Could not create the event pipe: %s", strerror(errno));
         return -1;
     }
     flags = fcntl(READ_EVENT_FD, F_GETFL);
     fcntl(READ_EVENT_FD, F_SETFD, flags | O_NONBLOCK);
     FILE* event_write = fdopen(WRITE_EVENT_FD, "w");
     if (event_write == NULL) {
-        fprintf(stderr, "Could not create the write input of the event pipe: %s", strerror(errno));
+        LOG("Could not create the write input of the event pipe: %s", strerror(errno));
         return -1;
     }
     FILE* event_read = fdopen(READ_EVENT_FD, "r");
     if (event_read == NULL) {
-        fprintf(stderr, "Could not create the read output of the event pipe: %s", strerror(errno));
+        LOG("Could not create the read output of the event pipe: %s", strerror(errno));
         return -1;
     }
     int qlen;
     getEventQueueLength(&qlen);
-    fprintf(stderr, "Events in queue = %d at initialisation\n", qlen);
+    LOG("Events in queue = %d at initialisation\n", qlen);
     for (; qlen > 0; qlen--) {
         ENQUEUE_EVENT_IN_PIPE(display);
     }
@@ -152,10 +152,10 @@ int convertEvent(Display* display, SDL_Event* sdlEvent, XEvent* xEvent) {
     switch (sdlEvent->type) {
         case SDL_KEYDOWN:
             type = KeyPress;
-            fprintf(stderr, "SDL_KEYDOWN\n");
+            LOG("SDL_KEYDOWN\n");
         case SDL_KEYUP:
             if (sdlEvent->type == SDL_KEYUP) {
-                fprintf(stderr, "SDL_KEYUP\n");
+                LOG("SDL_KEYUP\n");
                 type = KeyRelease;
             }
             FILL_STANDARD_VALUES(xkey);
@@ -173,7 +173,7 @@ int convertEvent(Display* display, SDL_Event* sdlEvent, XEvent* xEvent) {
             xEvent->xkey.same_screen = True;
             break;
         case SDL_MOUSEBUTTONDOWN:
-            fprintf(stderr, "SDL_MOUSEBUTTONDOWN\n");
+            LOG("SDL_MOUSEBUTTONDOWN\n");
             type = ButtonPress;
             if (!tmpVar) { // TODO: propper implementation
                 ENQUEUE_EVENT_IN_PIPE(display);
@@ -208,7 +208,7 @@ int convertEvent(Display* display, SDL_Event* sdlEvent, XEvent* xEvent) {
             }
         case SDL_MOUSEBUTTONUP:
             if (sdlEvent->type == SDL_MOUSEBUTTONUP) {
-                fprintf(stderr, "SDL_MOUSEBUTTONUP\n");
+                LOG("SDL_MOUSEBUTTONUP\n");
                 type = ButtonRelease;
             }
             FILL_STANDARD_VALUES(xbutton);
@@ -242,7 +242,7 @@ int convertEvent(Display* display, SDL_Event* sdlEvent, XEvent* xEvent) {
             xEvent->xbutton.same_screen = True;
             break;
         case SDL_MOUSEMOTION:
-            fprintf(stderr, "SDL_MOUSEMOTION\n");
+            LOG("SDL_MOUSEMOTION\n");
             type = MotionNotify;
             FILL_STANDARD_VALUES(xmotion);
             xEvent->xmotion.root = getWindowFromId(sdlEvent->motion.windowID);
@@ -268,7 +268,7 @@ int convertEvent(Display* display, SDL_Event* sdlEvent, XEvent* xEvent) {
             eventWindow = getWindowFromId(sdlEvent->window.windowID);
             switch (sdlEvent->window.event) {
                 case SDL_WINDOWEVENT_SHOWN:
-                    fprintf(stderr, "Window %d shown\n", sdlEvent->window.windowID);
+                    LOG("Window %d shown\n", sdlEvent->window.windowID);
                     type = MapNotify;
                     FILL_STANDARD_VALUES(xmap);
                     xEvent->xmap.window = eventWindow;
@@ -276,7 +276,7 @@ int convertEvent(Display* display, SDL_Event* sdlEvent, XEvent* xEvent) {
                     xEvent->xmap.override_redirect = False;
                     break;
                 case SDL_WINDOWEVENT_HIDDEN:
-                    fprintf(stderr, "Window %d hidden\n", sdlEvent->window.windowID);
+                    LOG("Window %d hidden\n", sdlEvent->window.windowID);
                     type = UnmapNotify;
                     FILL_STANDARD_VALUES(xunmap);
                     xEvent->xunmap.window = eventWindow;
@@ -284,24 +284,21 @@ int convertEvent(Display* display, SDL_Event* sdlEvent, XEvent* xEvent) {
                     xEvent->xunmap.from_configure = False;
                     break;
                 case SDL_WINDOWEVENT_EXPOSED:
-                    fprintf(stderr, "Window %d exposed\n", sdlEvent->window.windowID);
+                    LOG("Window %d exposed\n", sdlEvent->window.windowID);
                     return -1;
                     break;
                 case SDL_WINDOWEVENT_MOVED:
-                    fprintf(stderr, "Window %d moved to %d,%d\n",
-                            sdlEvent->window.windowID, sdlEvent->window.data1,
-                            sdlEvent->window.data2);
+                    LOG("Window %d moved to %d,%d\n",
+                        sdlEvent->window.windowID, sdlEvent->window.data1, sdlEvent->window.data2);
                 case SDL_WINDOWEVENT_RESIZED:
                     if (sdlEvent->window.event == SDL_WINDOWEVENT_RESIZED) {
-                        fprintf(stderr, "Window %d resized to %dx%d\n",
-                                sdlEvent->window.windowID, sdlEvent->window.data1,
-                                sdlEvent->window.data2);
+                        LOG("Window %d resized to %dx%d\n", sdlEvent->window.windowID,
+                            sdlEvent->window.data1, sdlEvent->window.data2);
                     }
                 case SDL_WINDOWEVENT_SIZE_CHANGED:
                     if (sdlEvent->window.event == SDL_WINDOWEVENT_SIZE_CHANGED) {
-                        fprintf(stderr, "Window %d size changed to %dx%d\n",
-                                sdlEvent->window.windowID, sdlEvent->window.data1,
-                                sdlEvent->window.data2);
+                        LOG("Window %d size changed to %dx%d\n", sdlEvent->window.windowID,
+                            sdlEvent->window.data1, sdlEvent->window.data2);
                     }
                     type = ConfigureNotify;
                     FILL_STANDARD_VALUES(xconfigure);
@@ -334,27 +331,26 @@ int convertEvent(Display* display, SDL_Event* sdlEvent, XEvent* xEvent) {
                     xEvent->xconfigure.override_redirect = GET_WINDOW_STRUCT(eventWindow)->overrideRedirect;
                     break;
                 case SDL_WINDOWEVENT_MINIMIZED:
-                    fprintf(stderr, "Window %d minimized\n", sdlEvent->window.windowID);
+                    LOG("Window %d minimized\n", sdlEvent->window.windowID);
                     return -1;
                     break;
                 case SDL_WINDOWEVENT_MAXIMIZED:
-                    fprintf(stderr, "Window %d maximized\n", sdlEvent->window.windowID);
+                    LOG("Window %d maximized\n", sdlEvent->window.windowID);
                     return -1;
                     break;
                 case SDL_WINDOWEVENT_RESTORED:
-                    fprintf(stderr, "Window %d restored\n", sdlEvent->window.windowID);
+                    LOG("Window %d restored\n", sdlEvent->window.windowID);
                     SDL_Rect windowArea = {0, 0, 0, 0};
                     GET_WINDOW_DIMS(eventWindow, windowArea.w, windowArea.h);
                     postExposeEvent(display, eventWindow, &windowArea, 1);
                     return -1;
                     break;
                 case SDL_WINDOWEVENT_ENTER:
-                    fprintf(stderr, "Mouse entered window %d\n",
-                            sdlEvent->window.windowID);
+                    LOG("Mouse entered window %d\n", sdlEvent->window.windowID);
                     type = EnterNotify;
                 case SDL_WINDOWEVENT_LEAVE:
                     if (sdlEvent->window.event == SDL_WINDOWEVENT_LEAVE) {
-                        fprintf(stderr, "Mouse left window %d\n", sdlEvent->window.windowID);
+                        LOG("Mouse left window %d\n", sdlEvent->window.windowID);
                         type = LeaveNotify;
                     }
                     FILL_STANDARD_VALUES(xcrossing);
@@ -379,13 +375,11 @@ int convertEvent(Display* display, SDL_Event* sdlEvent, XEvent* xEvent) {
                     xEvent->xcrossing.state = convertModifierState(SDL_GetModState());
                     break;
                 case SDL_WINDOWEVENT_FOCUS_GAINED:
-                    fprintf(stderr, "Window %d gained keyboard focus\n",
-                            sdlEvent->window.windowID);
+                    LOG("Window %d gained keyboard focus\n", sdlEvent->window.windowID);
                     type = FocusIn;
                 case SDL_WINDOWEVENT_FOCUS_LOST:
                     if (sdlEvent->window.event == SDL_WINDOWEVENT_FOCUS_LOST) {
-                        fprintf(stderr, "Window %d lost keyboard focus\n",
-                                sdlEvent->window.windowID);
+                        LOG("Window %d lost keyboard focus\n", sdlEvent->window.windowID);
                         type = FocusOut;
                     }
                     FILL_STANDARD_VALUES(xfocus);
@@ -394,7 +388,7 @@ int convertEvent(Display* display, SDL_Event* sdlEvent, XEvent* xEvent) {
                     xEvent->xfocus.detail = NotifyAncestor;
                     break;
                 case SDL_WINDOWEVENT_CLOSE:
-                    fprintf(stderr, "Window %d closed\n", sdlEvent->window.windowID);
+                    LOG("Window %d closed\n", sdlEvent->window.windowID);
                     static Atom WM_PROTOCOLS = None;
                     static Atom WM_DELETE_WINDOW = None;
                     if (WM_PROTOCOLS == None) {
@@ -416,58 +410,58 @@ int convertEvent(Display* display, SDL_Event* sdlEvent, XEvent* xEvent) {
                     return -1;
                     break;
                 default:
-                    fprintf(stderr, "Window %d got unknown event %d\n",
-                            sdlEvent->window.windowID, sdlEvent->window.event);
+                    LOG("Window %d got unknown event %d\n",
+                        sdlEvent->window.windowID, sdlEvent->window.event);
                     return -1;
             }
             break;
         case SDL_QUIT:/**< User-requested quit */
-            fprintf(stderr, "SDL_QUIT\n");
+            LOG("SDL_QUIT\n");
             return -1;
         case SDL_APP_TERMINATING: /**< The application is being terminated by the OS
                                      Called on iOS in applicationWillTerminate()
                                      Called on Android in onDestroy()
                                 */
-            fprintf(stderr, "SDL_APP_TERMINATING\n");
+            LOG("SDL_APP_TERMINATING\n");
             return -1;
         case SDL_APP_LOWMEMORY: /**< The application is low on memory, free memory if possible.
                                      Called on iOS in applicationDidReceiveMemoryWarning()
                                      Called on Android in onLowMemory()
                                 */
-            fprintf(stderr, "SDL_APP_LOWMEMORY\n");
+            LOG("SDL_APP_LOWMEMORY\n");
             return -1;
         case SDL_APP_WILLENTERBACKGROUND: /**< The application is about to enter the background
                                      Called on iOS in applicationWillResignActive()
                                      Called on Android in onPause()
                                 */
-            fprintf(stderr, "SDL_APP_WILLENTERBACKGROUND\n");
+            LOG("SDL_APP_WILLENTERBACKGROUND\n");
             return -1;
         case SDL_APP_DIDENTERBACKGROUND: /**< The application did enter the background and may not get CPU for some time
                                      Called on iOS in applicationDidEnterBackground()
                                      Called on Android in onPause()
                                 */
-            fprintf(stderr, "SDL_APP_DIDENTERBACKGROUND\n");
+            LOG("SDL_APP_DIDENTERBACKGROUND\n");
             return -1;
         case SDL_APP_WILLENTERFOREGROUND: /**< The application is about to enter the foreground
                                      Called on iOS in applicationWillEnterForeground()
                                      Called on Android in onResume()
                                 */
-            fprintf(stderr, "SDL_APP_WILLENTERFOREGROUND\n");
+            LOG("SDL_APP_WILLENTERFOREGROUND\n");
             return -1;
         case SDL_APP_DIDENTERFOREGROUND: /**< The application is now interactive
                                      Called on iOS in applicationDidBecomeActive()
                                      Called on Android in onResume()
                                 */
-            fprintf(stderr, "SDL_APP_DIDENTERFOREGROUND\n");
+            LOG("SDL_APP_DIDENTERFOREGROUND\n");
             return -1;
         case SDL_SYSWMEVENT: /**< System specific event */
-            fprintf(stderr, "SDL_SYSWMEVENT\n");
+            LOG("SDL_SYSWMEVENT\n");
             return -1;
         case SDL_TEXTEDITING:            /**< Keyboard text editing (composition) */
-            fprintf(stderr, "SDL_TEXTEDITING\n");
+            LOG("SDL_TEXTEDITING\n");
             return -1;
         case SDL_TEXTINPUT:              /**< Keyboard text input */
-            fprintf(stderr, "SDL_TEXTINPUT\n");
+            LOG("SDL_TEXTINPUT\n");
             inputMethodSetCurrentText(sdlEvent->text.text);
             // Send synthetic key down and up events with keycode = 0
             type = KeyPress;
@@ -492,57 +486,59 @@ int convertEvent(Display* display, SDL_Event* sdlEvent, XEvent* xEvent) {
             waitingEvent.key.keysym.mod = SDL_GetModState();
             // Because Xutf8LookupString is not called for KeyUp events, we need to fill in the keycode here.
             // TODO: This will not work for UTF-8 characters bigger than one byte 
-            fprintf(stderr, "Enqueuing keyup for char %d = '%c'\n", sdlEvent->text.text[strlen(sdlEvent->text.text) - 1], sdlEvent->text.text[strlen(sdlEvent->text.text) - 1]);
+            LOG("Enqueuing keyup for char %d = '%c'\n",
+                sdlEvent->text.text[strlen(sdlEvent->text.text) - 1],
+                sdlEvent->text.text[strlen(sdlEvent->text.text) - 1]);
             waitingEvent.key.keysym.sym = sdlEvent->text.text[strlen(sdlEvent->text.text) - 1];
             break;
         case SDL_MOUSEWHEEL:             /**< Mouse wheel motion */
-            fprintf(stderr, "SDL_MOUSEWHEEL\n");
+            LOG("SDL_MOUSEWHEEL\n");
             return -1;
         case SDL_JOYAXISMOTION: /**< Joystick axis motion */
-            fprintf(stderr, "SDL_JOYAXISMOTION\n");
+            LOG("SDL_JOYAXISMOTION\n");
             return -1;
         case SDL_JOYBALLMOTION:          /**< Joystick trackball motion */
-            fprintf(stderr, "SDL_JOYBALLMOTION\n");
+            LOG("SDL_JOYBALLMOTION\n");
             return -1;
         case SDL_JOYHATMOTION:           /**< Joystick hat position change */
-            fprintf(stderr, "SDL_JOYHATMOTION\n");
+            LOG("SDL_JOYHATMOTION\n");
             return -1;
         case SDL_JOYBUTTONDOWN:          /**< Joystick button pressed */
-            fprintf(stderr, "SDL_JOYBUTTONDOWN\n");
+            LOG("SDL_JOYBUTTONDOWN\n");
             return -1;
         case SDL_JOYBUTTONUP:            /**< Joystick button released */
-            fprintf(stderr, "SDL_JOYBUTTONUP\n");
+            LOG("SDL_JOYBUTTONUP\n");
             return -1;
         case SDL_JOYDEVICEADDED:         /**< A new joystick has been inserted into the system */
-            fprintf(stderr, "SDL_JOYDEVICEADDED\n");
+            LOG("SDL_JOYDEVICEADDED\n");
             return -1;
         case SDL_JOYDEVICEREMOVED:       /**< An opened joystick has been removed */
-            fprintf(stderr, "SDL_JOYDEVICEREMOVED\n");
+            LOG("SDL_JOYDEVICEREMOVED\n");
             return -1;
         case SDL_CONTROLLERAXISMOTION: /**< Game controller axis motion */
-            fprintf(stderr, "SDL_CONTROLLERAXISMOTION\n");
+            LOG("SDL_CONTROLLERAXISMOTION\n");
             return -1;
         case SDL_CONTROLLERBUTTONDOWN:          /**< Game controller button pressed */
-            fprintf(stderr, "SDL_CONTROLLERBUTTONDOWN\n");
+            LOG("SDL_CONTROLLERBUTTONDOWN\n");
             return -1;
         case SDL_CONTROLLERBUTTONUP:            /**< Game controller button released */
-            fprintf(stderr, "SDL_CONTROLLERBUTTONUP\n");
+            LOG("SDL_CONTROLLERBUTTONUP\n");
             return -1;
         case SDL_CONTROLLERDEVICEADDED:         /**< A new Game controller has been inserted into the system */
-            fprintf(stderr, "SDL_CONTROLLERDEVICEADDED\n");
+            LOG("SDL_CONTROLLERDEVICEADDED\n");
             return -1;
         case SDL_CONTROLLERDEVICEREMOVED:       /**< An opened Game controller has been removed */
-            fprintf(stderr, "SDL_CONTROLLERDEVICEREMOVED\n");
+            LOG("SDL_CONTROLLERDEVICEREMOVED\n");
             return -1;
         case SDL_CONTROLLERDEVICEREMAPPED:      /**< The controller mapping was updated */
-            fprintf(stderr, "SDL_CONTROLLERDEVICEREMAPPED\n");
+            LOG("SDL_CONTROLLERDEVICEREMAPPED\n");
             return -1;
         case SDL_FINGERDOWN: // Should not happen
-            fprintf(stderr, "FINGER BUTTONDOWN\n");
+            LOG("FINGER BUTTONDOWN\n");
             return -1;
             type = ButtonPress;
         case SDL_FINGERUP: // Should not happen
-            fprintf(stderr, "SDL_FINGERUP\n");
+            LOG("SDL_FINGERUP\n");
             return -1;
             if (sdlEvent->type == SDL_FINGERUP) {
                 type = ButtonRelease;
@@ -562,7 +558,7 @@ int convertEvent(Display* display, SDL_Event* sdlEvent, XEvent* xEvent) {
             xEvent->xbutton.same_screen = True;
             break;
         case SDL_FINGERMOTION: // Should not happen
-            fprintf(stderr, "SDL_FINGERMOTION\n");
+            LOG("SDL_FINGERMOTION\n");
             return -1;
             type = MotionNotify;
             FILL_STANDARD_VALUES(xmotion);
@@ -580,22 +576,22 @@ int convertEvent(Display* display, SDL_Event* sdlEvent, XEvent* xEvent) {
             xEvent->xmotion.same_screen = True;
             break;
         case SDL_DOLLARGESTURE:
-            fprintf(stderr, "SDL_DOLLARGESTURE\n");
+            LOG("SDL_DOLLARGESTURE\n");
             return -1;
         case SDL_DOLLARRECORD:
-            fprintf(stderr, "SDL_DOLLARRECORD\n");
+            LOG("SDL_DOLLARRECORD\n");
             return -1;
         case SDL_MULTIGESTURE:
-            fprintf(stderr, "SDL_MULTIGESTURE\n");
+            LOG("SDL_MULTIGESTURE\n");
             return -1;
         case SDL_CLIPBOARDUPDATE: /**< The clipboard changed */
-            fprintf(stderr, "SDL_CLIPBOARDUPDATE\n");
+            LOG("SDL_CLIPBOARDUPDATE\n");
             return -1;
         case SDL_DROPFILE: /**< The system requests a file open */
-            fprintf(stderr, "SDL_DROPFILE\n");
+            LOG("SDL_DROPFILE\n");
             return -1;
         case SDL_RENDER_TARGETS_RESET:
-            fprintf(stderr, "SDL_RENDER_TARGETS_RESET\n");
+            LOG("SDL_RENDER_TARGETS_RESET\n");
             updateWindowRenderTargets(display);
             type = Expose;
             eventWindow = *GET_CHILDREN(SCREEN_WINDOW);
@@ -606,7 +602,7 @@ int convertEvent(Display* display, SDL_Event* sdlEvent, XEvent* xEvent) {
             xEvent->xexpose.count = 0;
             break;
         case SDL_RENDER_DEVICE_RESET: // TODO: This is WIP
-            fprintf(stderr, "SDL_RENDER_DEVICE_RESET\n");
+            LOG("SDL_RENDER_DEVICE_RESET\n");
             updateWindowRenderTargets(display);
             type = Expose;
             eventWindow = *GET_CHILDREN(SCREEN_WINDOW);
@@ -708,12 +704,12 @@ int convertEvent(Display* display, SDL_Event* sdlEvent, XEvent* xEvent) {
 
 void updateWindowRenderTargets(Display* display) {
     size_t i;
-    fprintf(stderr, "Resetting window render targets\n");
+    LOG("Resetting window render targets\n");
     Window* children = GET_CHILDREN(SCREEN_WINDOW);
     for (i = 0; i < GET_WINDOW_STRUCT(SCREEN_WINDOW)->children.length; i++) {
         if (GET_WINDOW_STRUCT(children[i])->sdlWindow != NULL) {
             WindowStruct* windowStruct = GET_WINDOW_STRUCT(children[i]);
-            fprintf(stderr, "Resetting render target of window %lu\n", children[i]);
+            LOG("Resetting render target of window %lu\n", children[i]);
             GPU_FreeTarget(windowStruct->renderTarget);
             windowStruct->renderTarget = GPU_CreateTargetFromWindow(SDL_GetWindowID(windowStruct->sdlWindow));
             SDL_Rect exposeRect;
@@ -772,8 +768,8 @@ void printEventInfo(XEvent* event) {
             eventType = "Unknown";
     }
 #undef CASE_TYPE
-    fprintf(stderr, "Got %s event\n", eventType);
-    fprintf(stderr, "%s\n", msg);
+    LOG("Got %s event\n", eventType);
+    LOG("%s\n", msg);
 }
 
 int XNextEvent(Display* display, XEvent* event_return) {
@@ -783,10 +779,10 @@ int XNextEvent(Display* display, XEvent* event_return) {
     while (!done) {
         int qlen;
         getEventQueueLength(&qlen);
-        fprintf(stderr, "Events in queue = %d, qlen = %d\n", qlen, GET_DISPLAY(display)->qlen);
+        LOG("Events in queue = %d, qlen = %d\n", qlen, GET_DISPLAY(display)->qlen);
         if (qlen == 0 && GET_DISPLAY(display)->qlen > 0 && !eventWaiting) {
             READ_EVENT_IN_PIPE(display);
-            fprintf(stderr, "PREVENTING HANGING!!!\n");
+            LOG("PREVENTING HANGING!!!\n");
             event_return->type = Expose;
             event_return->xany.serial = lastEventSerial;
             event_return->xany.display = display;
@@ -821,7 +817,7 @@ int XNextEvent(Display* display, XEvent* event_return) {
 //                #ifdef DEBUG_WINDOWS
 //                printWindowsHierarchy();
 //                #endif
-                fprintf(stderr, "Got unknown SDL event %d!\n", event.type);
+                LOG("Got unknown SDL event %d!\n", event.type);
                 event_return->type = Expose;
                 event_return->xany.serial = lastEventSerial;
                 event_return->xany.display = display;
@@ -843,11 +839,11 @@ int XNextEvent(Display* display, XEvent* event_return) {
             lastEventSerial++;
             tmpVar = False;
         } else {
-            fprintf(stderr, "SDL_WaitEvent failed: %s, retrying...\n", SDL_GetError());
+            LOG("SDL_WaitEvent failed: %s, retrying...\n", SDL_GetError());
         }
         fflush(stderr);
     }
-    fprintf(stderr, "Leaving XNextEvent\n");
+    LOG("Leaving XNextEvent\n");
     return 0;
 }
 
@@ -863,11 +859,11 @@ Bool enqueueEvent(Display* display, Window eventWindow, void* event) {
         sdlEvent.user.code = INTERNAL_EVENT_CODE;
         sdlEvent.user.data1 = event;
         sdlEvent.user.data2 = (void *) eventWindow;
-        fprintf(stderr, "Enqueuing event\n");
+        LOG("Enqueuing event\n");
         SDL_PushEvent(&sdlEvent);
         return True;
     }
-    fprintf(stderr, "Failed to send event: SDL_RegisterEvents failed!");
+    LOG("Failed to send event: SDL_RegisterEvents failed!");
     return False;
 }
 
@@ -896,7 +892,7 @@ Status XSendEvent(Display* display, Window window, Bool propagate, long event_ma
         sdlEvent.type = sendEventType;
         sdlEvent.user.code = SEND_EVENT_CODE;
         sdlEvent.user.data1 = copy;
-        fprintf(stderr, "SEND event\n");
+        LOG("SEND event\n");
         SDL_PushEvent(&sdlEvent);
         return 1;
     }

@@ -35,7 +35,7 @@ int XWarpPointer(Display* display, Window src_window, Window dest_window, int sr
     }
     #if SDL_VERSION_ATLEAST(2, 0, 4)
     if (SDL_WarpMouseGlobal(curr_x + dest_x, curr_y + dest_y) != 0) {
-        fprintf(stderr, "Warning: SDL_WarpMouseGlobal failed: %s", SDL_GetError());
+        LOG("Warning: SDL_WarpMouseGlobal failed: %s", SDL_GetError());
     }
     #else
     SDL_WarpMouseInWindow(SDL_GetMouseFocus(), curr_x + dest_x, curr_y + dest_y);
@@ -61,7 +61,7 @@ int XGrabPointer(Display* display, Window grab_window, Bool owner_events, unsign
     // https://tronche.com/gui/x/xlib/input/XGrabPointer.html
     SET_X_SERVER_REQUEST(display, X_GrabPointer);
     if (SDL_SetRelativeMouseMode(SDL_TRUE) != 0) {
-        fprintf(stderr, "SDL_SetRelativeMouseMode failed in XGrabPointer: %s", SDL_GetError());
+        LOG("SDL_SetRelativeMouseMode failed in XGrabPointer: %s", SDL_GetError());
         return GrabNotViewable;
     }
     if (owner_events) {
@@ -93,7 +93,7 @@ int XUngrabPointer(Display* display, Time time) {
     SET_X_SERVER_REQUEST(display, X_UngrabPointer);
     if (SDL_GetRelativeMouseMode() == SDL_TRUE) {
         if (SDL_SetRelativeMouseMode(SDL_FALSE) != 0) {
-            fprintf(stderr, "SDL_SetRelativeMouseMode failed in XUngrabPointer: %s", SDL_GetError());
+            LOG("SDL_SetRelativeMouseMode failed in XUngrabPointer: %s", SDL_GetError());
             return 0;
         }
         // TODO: Generate EnterNotify and LeaveNotify events

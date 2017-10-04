@@ -16,7 +16,7 @@ XImage* XCreateImage(Display* display, Visual* visual, unsigned int depth, int f
         handleOutOfMemory(0, display, 0, 0);
         return NULL;
     }
-    fprintf(stderr, "%s: w = %d, h = %d\n", __func__, (int) width, (int) height);
+    LOG("%s: w = %d, h = %d\n", __func__, (int) width, (int) height);
     image->width = width;
     image->height = height;
     image->format = format;
@@ -54,9 +54,10 @@ char* getImageDataPointer(XImage* image, unsigned int x, unsigned int y) {
 
 int putPixel(XImage* image, int x, int y, unsigned long pixel) {
     // https://tronche.com/gui/x/xlib/utilities/XPutPixel.html
-    fprintf(stderr, "%s on %p: %lu (%ld, %ld, %ld)\n", __func__, image, pixel, (pixel >> 24) & 0xFF, (pixel >> 16) & 0xFF, (pixel >> 8) & 0xFF);
+    LOG("%s on %p: %lu (%ld, %ld, %ld)\n", __func__, image, pixel,
+        (pixel >> 24) & 0xFF, (pixel >> 16) & 0xFF, (pixel >> 8) & 0xFF);
     if (image->data == NULL) {
-        fprintf(stderr, "Invalid argument: Got image with NULL data in XPutPixel\n");
+        LOG("Invalid argument: Got image with NULL data in XPutPixel\n");
         return 0;
     }
     char* pointer;
@@ -69,10 +70,10 @@ int putPixel(XImage* image, int x, int y, unsigned long pixel) {
             }
             break;
         case XYPixmap:
-            fprintf(stderr, "Warn: Got unimplemented format XYPixmap\n");
+            LOG("Warn: Got unimplemented format XYPixmap\n");
             break;
         default:
-            fprintf(stderr, "Warn: Got invalid format %d\n", image->format);
+            LOG("Warn: Got invalid format %d\n", image->format);
             return 0;
     }
     return 1;
@@ -80,9 +81,9 @@ int putPixel(XImage* image, int x, int y, unsigned long pixel) {
 
 unsigned long getPixel(XImage* image, int x, int y) {
     // https://tronche.com/gui/x/xlib/utilities/XGetPixel.html
-    fprintf(stderr, "%s from %p: x = %d, y = %d\n", __func__, image, x, y);
+    LOG("%s from %p: x = %d, y = %d\n", __func__, image, x, y);
     if (image->data == NULL) {
-        fprintf(stderr, "Invalid argument: Got image with NULL data in XGetPixel\n");
+        LOG("Invalid argument: Got image with NULL data in XGetPixel\n");
         return 0; // TODO: throw error
     }
     char* pointer;
@@ -90,7 +91,7 @@ unsigned long getPixel(XImage* image, int x, int y) {
         case ZPixmap:
         case XYBitmap:
             pointer = getImageDataPointer(image, x, y);
-//            fprintf(stderr, "%s: bits_per_pixel = %d, value = %x (%d)\n", __func__, image->bits_per_pixel, *pointer & 0xFF, (int) *pointer & 0xFF);
+//            LOG("%s: bits_per_pixel = %d, value = %x (%d)\n", __func__, image->bits_per_pixel, *pointer & 0xFF, (int) *pointer & 0xFF);
             if (image->bits_per_pixel == 32) {
                 return *((unsigned long*) pointer);
             } else if (image->bits_per_pixel == 1) {
@@ -98,10 +99,10 @@ unsigned long getPixel(XImage* image, int x, int y) {
             }
             break;
         case XYPixmap:
-            fprintf(stderr, "Warn: Got unimplemented format XYPixmap\n");
+            LOG("Warn: Got unimplemented format XYPixmap\n");
             break;
         default:
-            fprintf(stderr, "Warn: Got invalid format %d\n", image->format);
+            LOG("Warn: Got invalid format %d\n", image->format);
     }
     return 0;
 }
@@ -120,7 +121,7 @@ int XPutImage(Display* display, Drawable drawable, GC gc, XImage* image, int src
     // https://tronche.com/gui/x/xlib/graphics/XPutImage.html
     SET_X_SERVER_REQUEST(display, X_PutImage);
     TYPE_CHECK(drawable, DRAWABLE, display, 0);
-    fprintf(stderr, "%s: Drawing %p on %lu\n", __func__, image, drawable);
+    LOG("%s: Drawing %p on %lu\n", __func__, image, drawable);
     // TODO: Implement this: Create Uint32* data, Create Texture from data, rendercopy
 //    LOCK_SURFACE(surface);
 //    unsigned int x, y;
@@ -138,7 +139,7 @@ int XPutImage(Display* display, Drawable drawable, GC gc, XImage* image, int src
 //        for (x = 0; x < width; x++) {
 //            for (y = 0; y < height; y++) {
 //                unsigned long color = XGetPixel(image, src_x + x, src_y + y);
-////                fprintf(stderr, "%s: %lu (%ld, %ld, %ld)\n", __func__, color, (color >> 24) & 0xFF, (color >> 16) & 0xFF, (color >> 8) & 0xFF);
+////                LOG("%s: %lu (%ld, %ld, %ld)\n", __func__, color, (color >> 24) & 0xFF, (color >> 16) & 0xFF, (color >> 8) & 0xFF);
 //                putPixel(surface, dest_x + x, dest_y + y, XGetPixel(image, src_x + x, src_y + y));
 //            }
 //        }
@@ -151,9 +152,9 @@ XImage* XGetImage(Display* display, Drawable drawable, int x, int y, unsigned in
                   unsigned int height, unsigned long plane_mask, int format) {
     // https://tronche.com/gui/x/xlib/graphics/XGetImage.html
     SET_X_SERVER_REQUEST(display, X_GetImage);
-    fprintf(stderr, "%s: From %lu\n", __func__, drawable);
+    LOG("%s: From %lu\n", __func__, drawable);
     if (IS_TYPE(drawable, WINDOW) && drawable == SCREEN_WINDOW) {
-        fprintf(stderr, "XGetImage called with SCREEN_WINDOW as argument!\n");
+        LOG("XGetImage called with SCREEN_WINDOW as argument!\n");
         // TODO: Handle error and check INPUTONLY
         return NULL;
     }

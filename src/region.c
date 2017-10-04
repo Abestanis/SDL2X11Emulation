@@ -21,7 +21,7 @@ Region XCreateRegion() {
     // https://tronche.com/gui/x/xlib/utilities/regions/XCreateRegion.html
     pRegion region = malloc(sizeof(struct pixman_region16));
     if (region == NULL) {
-        fprintf(stderr, "Out of memory: Could not allocate Region structure in XCreateRegion!\n");
+        LOG("Out of memory: Could not allocate Region structure in XCreateRegion!\n");
         return NULL;
     }
     pixman_region_init(region);

@@ -62,7 +62,7 @@ void drawChildDebugBorder(Window window) {
     unsigned int w, h;
     unsigned long windowColor;
     WindowStruct* windowStruct = GET_WINDOW_STRUCT(window);
-    fprintf(stderr, "getWindowRenderTarget of window %lu in %s.\n", window, __func__);
+    LOG("getWindowRenderTarget of window %lu in %s.\n", window, __func__);
     GPU_Target* renderTarget = getWindowRenderTarget(window);
     if (renderTarget != NULL) {
         GET_WINDOW_DIMS(window, w, h);
@@ -87,7 +87,7 @@ void drawWindowsDebugBorder() {
     for (i = 0; i < GET_WINDOW_STRUCT(SCREEN_WINDOW)->children.length; i++) {
         if (GET_WINDOW_STRUCT(children[i])->mapState == Mapped) {
             drawChildDebugBorder(children[i]);
-            fprintf(stderr, "getWindowRenderTarget of window %lu in %s.\n", children[i], __func__);
+            LOG("getWindowRenderTarget of window %lu in %s.\n", children[i], __func__);
             GPU_Flip(getWindowRenderTarget(children[i]));
         }
     }
@@ -97,7 +97,7 @@ void drawChildDebugSurfacePlane(Window window) {
     size_t i;
     long windowColor;
     WindowStruct* windowStruct = GET_WINDOW_STRUCT(window);
-    fprintf(stderr, "getWindowRenderTarget of window %lu in %s.\n", window, __func__);
+    LOG("getWindowRenderTarget of window %lu in %s.\n", window, __func__);
     GPU_Target* renderTarget = getWindowRenderTarget(window);
     if (renderTarget != NULL) {
         windowColor = windowStruct->debugId;
@@ -112,7 +112,7 @@ void drawChildDebugSurfacePlane(Window window) {
         GET_WINDOW_DIMS(window, w, h);
         GPU_RectangleFilled(renderTarget, x, y, w, h, color);
     } else {
-        fprintf(stderr, "Failed to get renderer target for window %lu in %s\n", window, __func__);
+        LOG("Failed to get renderer target for window %lu in %s\n", window, __func__);
     }
     Window* children = GET_CHILDREN(window);
     for (i = 0; i < windowStruct->children.length; i++) {

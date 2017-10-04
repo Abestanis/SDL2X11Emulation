@@ -9,14 +9,14 @@ Window keyboardFocus = None;
 int revertTo = RevertToParent;
         
 Window getKeyboardFocus() {
-    fprintf(stderr, "keyboard focus is %lu\n", keyboardFocus);
+    LOG("keyboard focus is %lu\n", keyboardFocus);
     return keyboardFocus;
 }
 
 int XSelectInput(Display* display, Window window, long event_mask) {
     // https://tronche.com/gui/x/xlib/event-handling/XSelectInput.html
-    fprintf(stderr, "Hit unimplemented function %s.\n", __func__);
-    fprintf(stderr, "%s: %ld, %ld\n", __func__, event_mask & KeyPressMask, event_mask & KeyReleaseMask);
+    WARN_UNIMPLEMENTED;
+    LOG("%s: %ld, %ld\n", __func__, event_mask & KeyPressMask, event_mask & KeyReleaseMask);
     if (event_mask & KeyPressMask || event_mask & KeyReleaseMask) {
         // TODO: Implement real system here
         if (!SDL_IsTextInputActive()) {
@@ -30,12 +30,12 @@ int XSelectInput(Display* display, Window window, long event_mask) {
 KeyCode XKeysymToKeycode(Display *display, KeySym keysym) {
     // https://tronche.com/gui/x/xlib/utilities/keyboard/XKeysymToKeycode.html
 //    SET_X_SERVER_REQUEST(display, XCB_);
-    fprintf(stderr, "Hit unimplemented function %s.\n", __func__);
+    WARN_UNIMPLEMENTED;
 }
 
 KeySym XLookupKeysym(XKeyEvent *key_event, int index) {
     // https://tronche.com/gui/x/xlib/utilities/keyboard/XLookupKeysym.html
-    fprintf(stderr, "Hit unimplemented function %s.\n", __func__);
+    WARN_UNIMPLEMENTED;
 }
 
 KeySym XStringToKeysym(_Xconst char* string) {
@@ -84,7 +84,7 @@ KeySym XKeycodeToKeysym(Display *display, KeyCode keycode, int index) {
             return SDLKeycodeToKeySym[i].keysym;
         }
     }
-    fprintf(stderr, "%s: Got unimplemented keycode %c\n", __func__, keycode);
+    LOG("%s: Got unimplemented keycode %c\n", __func__, keycode);
     return NoSymbol;
 }
 
@@ -140,7 +140,7 @@ int XGetInputFocus(Display *display, Window *focus_return, int *revert_to_return
 int XSetInputFocus(Display *display, Window focus, int revert_to, Time time) {
     // https://tronche.com/gui/x/xlib/input/XSetInputFocus.html
     SET_X_SERVER_REQUEST(display, X_SetInputFocus);
-    fprintf(stderr, "Hit unimplemented function %s.\n", __func__);
+    WARN_UNIMPLEMENTED;
     revertTo = revert_to;
     return 1;
 }
@@ -148,19 +148,19 @@ int XSetInputFocus(Display *display, Window focus, int revert_to, Time time) {
 int XGrabKeyboard(Display *display, Window grab_window, Bool owner_events, int pointer_mode, int keyboard_mode, Time time) {
     // https://tronche.com/gui/x/xlib/input/XGrabKeyboard.html
     SET_X_SERVER_REQUEST(display, X_GrabKeyboard);
-    fprintf(stderr, "Hit unimplemented function %s.\n", __func__);
+    WARN_UNIMPLEMENTED;
     return 1;
 }
 
 int XUngrabKeyboard(Display *display, Time time) {
     // https://tronche.com/gui/x/xlib/input/XUngrabKeyboard.html
     SET_X_SERVER_REQUEST(display, X_UngrabKeyboard);
-    fprintf(stderr, "Hit unimplemented function %s.\n", __func__);
+    WARN_UNIMPLEMENTED;
     return 1;
 }
 
 int XRefreshKeyboardMapping(XMappingEvent *event_map) {
     // https://tronche.com/gui/x/xlib/utilities/keyboard/XRefreshKeyboardMapping.html
-    fprintf(stderr, "Hit unimplemented function %s.\n", __func__);
+    WARN_UNIMPLEMENTED;
     return 1;
 }

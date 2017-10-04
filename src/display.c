@@ -59,13 +59,13 @@ Display* XOpenDisplay(_Xconst char* display_name) {
     // https://tronche.com/gui/x/xlib/display/opening.html
     Display* display = malloc(sizeof(Display));
     if (display == NULL) {
-        fprintf(stderr, "Out of memory: Failed to allocate memory for Display struct in XOpenDisplay!");
+        LOG("Out of memory: Failed to allocate memory for Display struct in XOpenDisplay!");
         return NULL;
     }
     if (!SDL_WasInit(SDL_INIT_VIDEO)) {
         SDL_SetMainReady();
         if (SDL_Init(SDL_INIT_VIDEO) == -1) {
-            fprintf(stderr, "Failed to initialize SDL: %s\n", SDL_GetError());
+            LOG("Failed to initialize SDL: %s\n", SDL_GetError());
             free(display);
             return NULL;
         }
@@ -73,7 +73,7 @@ Display* XOpenDisplay(_Xconst char* display_name) {
     }
     if (!TTF_WasInit()) {
         if (TTF_Init() == -1) {
-            fprintf(stderr, "Failed to initialize SDL_TTF: %s\n", TTF_GetError());
+            LOG("Failed to initialize SDL_TTF: %s\n", TTF_GetError());
             free(display);
             return NULL;
         }
@@ -105,13 +105,13 @@ Display* XOpenDisplay(_Xconst char* display_name) {
     display->default_screen = 0; // TODO: Investigate here, see SDL_GetCurrentVideoDisplay();
     display->nscreens = SDL_GetNumVideoDisplays();
     if (display->nscreens < 0) {
-        fprintf(stderr, "Failed to get the number of screens: %s\n", SDL_GetError());
+        LOG("Failed to get the number of screens: %s\n", SDL_GetError());
         XCloseDisplay(display);
         return NULL;
     }
     display->screens = malloc(sizeof(Screen) * display->nscreens);
     if (display->screens == NULL) {
-        fprintf(stderr, "Failed to get the number of screens: %s\n", SDL_GetError());
+        LOG("Failed to get the number of screens: %s\n", SDL_GetError());
         XCloseDisplay(display);
         return NULL;
     }
@@ -121,7 +121,7 @@ Display* XOpenDisplay(_Xconst char* display_name) {
         SDL_DisplayMode displayMode;
         if (SDL_GetDesktopDisplayMode(screenIndex, &displayMode) != 0) {
             XCloseDisplay(display);
-            fprintf(stderr, "Failed to get the display mode in XOpenDisplay: %s\n", SDL_GetError());
+            LOG("Failed to get the display mode in XOpenDisplay: %s\n", SDL_GetError());
             return NULL;
         }
         screen->display = display;
@@ -131,7 +131,7 @@ Display* XOpenDisplay(_Xconst char* display_name) {
         // Calculate the values in millimeters
         float h_dpi, v_dpi;
         if (SDL_GetDisplayDPI(screenIndex, NULL, &h_dpi, &v_dpi) != 0) {
-            fprintf(stderr, "Warning: SDL_GetDisplayDPI failed, "
+            LOG("Warning: SDL_GetDisplayDPI failed, "
                             "using pixel values for mm values: %s\n", SDL_GetError());
             screen->mwidth  = displayMode.w;
             screen->mheight = displayMode.h;
@@ -153,7 +153,7 @@ Display* XOpenDisplay(_Xconst char* display_name) {
     }
     if (SCREEN_WINDOW == None) {
         if (initScreenWindow(display) != True) {
-            fprintf(stderr, "XOpenDisplay: Initializing the screen window failed!\n");
+            LOG("XOpenDisplay: Initializing the screen window failed!\n");
             XCloseDisplay(display);
             return NULL;
         }
@@ -163,14 +163,14 @@ Display* XOpenDisplay(_Xconst char* display_name) {
     }
     GET_WINDOW_STRUCT(SCREEN_WINDOW)->sdlWindow = SDL_CreateWindow(NULL, 0, 0, 10, 10, SDL_WINDOW_HIDDEN | SDL_WINDOW_OPENGL);
     if (GET_WINDOW_STRUCT(SCREEN_WINDOW)->sdlWindow == NULL) {
-        fprintf(stderr, "XOpenDisplay: Initializing the SDL screen window failed: %s!\n", SDL_GetError());
+        LOG("XOpenDisplay: Initializing the SDL screen window failed: %s!\n", SDL_GetError());
         XCloseDisplay(display);
         return NULL;
     }
     GPU_SetInitWindow(SDL_GetWindowID(GET_WINDOW_STRUCT(SCREEN_WINDOW)->sdlWindow));
     GET_WINDOW_STRUCT(SCREEN_WINDOW)->renderTarget = GPU_Init(0, 0, 0);
     if (GET_WINDOW_STRUCT(SCREEN_WINDOW)->renderTarget == NULL) {
-        fprintf(stderr, "XOpenDisplay: Initializing SDL_gpu failed!\n");
+        LOG("XOpenDisplay: Initializing SDL_gpu failed!\n");
         XCloseDisplay(display);
         return NULL;
     }
@@ -196,7 +196,7 @@ int XBell(Display* display, int percent) {
 
 int XSync(Display *display, Bool discard) {
     // https://tronche.com/gui/x/xlib/event-handling/XSync.html
-    fprintf(stderr, "Hit unimplemented function %s.\n", __func__);
+    WARN_UNIMPLEMENTED;
     flipScreen();
     return 1;
 }
@@ -206,41 +206,40 @@ int XConvertSelection(Display* display, Atom selection, Atom target, Atom proper
     // https://tronche.com/gui/x/xlib/window-information/XConvertSelection.html
     // http://www.man-online.org/page/3-XConvertSelection/
     SET_X_SERVER_REQUEST(display, X_ConvertSelection);
-    fprintf(stderr, "Hit unimplemented function %s.\n", __func__);
+    WARN_UNIMPLEMENTED;
     return 1;
 }
 
 int XSetSelectionOwner(Display *display, Atom selection, Window owner, Time time) {
     // https://tronche.com/gui/x/xlib/window-information/XSetSelectionOwner.html
     SET_X_SERVER_REQUEST(display, X_SetSelectionOwner);
-    fprintf(stderr, "Hit unimplemented function %s.\n", __func__);
+    WARN_UNIMPLEMENTED;
     return 1;
 }
 
 int (*XSynchronize(Display *display, Bool onoff))(Display* dsp) {
     // https://tronche.com/gui/x/xlib/event-handling/protocol-errors/XSynchronize.html
-    fprintf(stderr, "Hit unimplemented function %s.\n", __func__);
+    WARN_UNIMPLEMENTED;
     return NULL;
 }
 
 int XNoOp(Display *display) {
     // https://tronche.com/gui/x/xlib/display/XNoOp.html
     SET_X_SERVER_REQUEST(display, X_NoOperation);
-//    fprintf(stderr, "Hit unimplemented function %s.\n", __func__);
     return 1;
 }
 
 int XGrabServer(Display *display) {
     // https://tronche.com/gui/x/xlib/window-and-session-manager/XGrabServer.html
     SET_X_SERVER_REQUEST(display, X_GrabServer);
-    fprintf(stderr, "Hit unimplemented function %s.\n", __func__);
+    WARN_UNIMPLEMENTED;
     return 1;
 }
 
 int XUngrabServer(Display *display) {
     // https://tronche.com/gui/x/xlib/window-and-session-manager/XUngrabServer.html
     SET_X_SERVER_REQUEST(display, X_UngrabServer);
-    fprintf(stderr, "Hit unimplemented function %s.\n", __func__);
+    WARN_UNIMPLEMENTED;
     return 1;
 } 
 
@@ -264,24 +263,24 @@ XHostAddress* XListHosts(Display *display, int *nhosts_return, Bool *state_retur
 
 int XSetWMHints(Display *display, Window w, XWMHints *wmhints) {
     // https://tronche.com/gui/x/xlib/ICC/client-to-window-manager/XSetWMHints.html
-    fprintf(stderr, "Hit unimplemented function %s.\n", __func__);
+    WARN_UNIMPLEMENTED;
     return 1;
 }
 
 int XSetCommand(Display *display, Window w, char **argv, int argc) {
     // https://tronche.com/gui/x/xlib/ICC/client-to-session-manager/XSetCommand.html
-    fprintf(stderr, "Hit unimplemented function %s.\n", __func__);
+    WARN_UNIMPLEMENTED;
     return 1;
 }
 
 void XSetWMNormalHints(Display *display, Window w, XSizeHints *hints) {
     // https://tronche.com/gui/x/xlib/ICC/client-to-window-manager/XSetWMNormalHints.html
-    fprintf(stderr, "Hit unimplemented function %s.\n", __func__);
+    WARN_UNIMPLEMENTED;
 }
 
 int XSetClassHint(Display *display, Window w, XClassHint *class_hints) {
     // https://tronche.com/gui/x/xlib/ICC/client-to-window-manager/XSetClassHint.html
-    fprintf(stderr, "Hit unimplemented function %s.\n", __func__);
+    WARN_UNIMPLEMENTED;
     return 1;
 }
 
@@ -308,5 +307,5 @@ Status XStringListToTextProperty(char **list, int count, XTextProperty *text_pro
 
 void XSetWMClientMachine(Display *display, Window w, XTextProperty *text_prop) {
     // https://tronche.com/gui/x/xlib/ICC/client-to-session-manager/XSetWMClientMachine.html
-    fprintf(stderr, "Hit unimplemented function %s.\n", __func__);
+    WARN_UNIMPLEMENTED;
 }

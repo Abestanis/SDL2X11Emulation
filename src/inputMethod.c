@@ -69,7 +69,7 @@ KeySym getKeySymForChar(char c) {
             return charMapping[i].keySym;
         }
     }
-    fprintf(stderr, "Did not Found mapping for char '%c' (%d)\n", c, c); 
+    LOG("Did not Found mapping for char '%c' (%d)\n", c, c); 
     return NoSymbol;
 }
 
@@ -308,7 +308,7 @@ XIC XCreateIC(XIM inputMethod, ...) {
     char* key;
     if ((key = setICValues(inputConnection, argumentList, True)) != NULL) {
         // TODO
-        fprintf(stderr, "setICValues failed in %s because of key %s!\n", __func__, key);
+        LOG("setICValues failed in %s because of key %s!\n", __func__, key);
         free(inputConnection);
         va_end(argumentList);
         return NULL;
@@ -408,12 +408,12 @@ char* XGetIMValues(XIM inputMethod, ...) {
 void XFreeFontSet(Display *display, XFontSet font_set) {
     // http://www.x.org/archive/X11R7.6/doc/man/man3/XCreateFontSet.3.xhtml
 //    SET_X_SERVER_REQUEST(display, XCB_);
-    fprintf(stderr, "Hit unimplemented function %s.\n", __func__);
+    WARN_UNIMPLEMENTED;
 }
 
 void XFreeStringList(char **list) {
     // http://www.x.org/archive/X11R7.6/doc/man/man3/XFreeStringList.3.xhtml
-    fprintf(stderr, "Hit unimplemented function %s.\n", __func__);
+    WARN_UNIMPLEMENTED;
 }
 
 XFontSet XCreateFontSet(Display *display, _Xconst char *base_font_name_list,
@@ -421,14 +421,14 @@ XFontSet XCreateFontSet(Display *display, _Xconst char *base_font_name_list,
                         char **def_string_return) {
     // http://www.x.org/archive/X11R7.6/doc/man/man3/XCreateFontSet.3.xhtml
 //    SET_X_SERVER_REQUEST(display, XCB_);
-    fprintf(stderr, "Hit unimplemented function %s.\n", __func__);
+    WARN_UNIMPLEMENTED;
 }
 
 int Xutf8LookupString(XIC inputConnection, XKeyPressedEvent* event, char* buffer_return,
                       int bytes_buffer, KeySym* keysym_return, Status* status_return) {
     // http://www.x.org/archive/X11R7.6/doc/man/man3/Xutf8LookupString.3.xhtml
     if (event->keycode == 0) {
-        fprintf(stderr, "InputMethod Event! text = '%s'.\n", pendingText);
+        LOG("InputMethod Event! text = '%s'.\n", pendingText);
         if (pendingText == NULL) {
             *status_return = XLookupNone;
             return 0;
@@ -448,7 +448,7 @@ int Xutf8LookupString(XIC inputConnection, XKeyPressedEvent* event, char* buffer
         pendingText = NULL;
         return textLen;
     } else {
-        fprintf(stderr, "Normal Event, Keycode = %d, '%c'\n", event->keycode, event->keycode);
+        LOG("Normal Event, Keycode = %d, '%c'\n", event->keycode, event->keycode);
         if (event->keycode <= 127) {
             *status_return = XLookupBoth;
             *buffer_return = event->keycode;

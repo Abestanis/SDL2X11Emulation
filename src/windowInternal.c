@@ -46,7 +46,7 @@ Bool initScreenWindow(Display* display) {
     if (SCREEN_WINDOW == None) {
         SCREEN_WINDOW = ALLOC_XID();
         if (SCREEN_WINDOW == None) {
-            fprintf(stderr, "Out of memory: Failed to allocate SCREEN_WINDOW in initScreenWindow!\n");
+            LOG("Out of memory: Failed to allocate SCREEN_WINDOW in initScreenWindow!\n");
             return False;
         }
         SET_XID_TYPE(SCREEN_WINDOW, WINDOW);
@@ -54,7 +54,7 @@ Bool initScreenWindow(Display* display) {
         if (window == NULL) {
             FREE_XID(SCREEN_WINDOW);
             SCREEN_WINDOW = None;
-            fprintf(stderr, "Out of memory: Failed to allocate SCREEN_WINDOW in initScreenWindow!\n");
+            LOG("Out of memory: Failed to allocate SCREEN_WINDOW in initScreenWindow!\n");
             return False;
         }
         initWindowStruct(window, 0, 0, GET_DISPLAY(display)->screens[0].width, GET_DISPLAY(display)->screens[0].height,
@@ -117,7 +117,7 @@ void registerWindowMapping(Window window, Uint32 sdlWindowId) {
     if (mapper == NULL) {
         mapper = malloc(sizeof(WindowSdlIdMapper));
         if (mapper == NULL) {
-            fprintf(stderr, "Failed to allocate mapping object to map xWindow to SDL window ID!\n");
+            LOG("Failed to allocate mapping object to map xWindow to SDL window ID!\n");
             return;
         }
         mapper->next = mappingListStart;
@@ -129,7 +129,7 @@ void registerWindowMapping(Window window, Uint32 sdlWindowId) {
 
 Window getWindowFromId(Uint32 sdlWindowId) {
     WindowSdlIdMapper* mapper = getWindowSdlIdMapperStructFromId(sdlWindowId);
-    fprintf(stderr, "Got window %lu for id %u\n", mapper == NULL ? None : mapper->window, sdlWindowId);
+    LOG("Got window %lu for id %u\n", mapper == NULL ? None : mapper->window, sdlWindowId);
     return mapper == NULL ? None : mapper->window;
 }
 
@@ -237,18 +237,19 @@ Bool resizeWindowSurface(Window window) {
     if (oldContent != NULL) {
         GPU_Image* newContent = GPU_CreateImage((Uint16) windowStruct->w, (Uint16) windowStruct->h, oldContent->format);
         if (newContent == NULL) {
-            fprintf(stderr, "Failed to resize the window surface: Failed to create new window surface!\n");
+            LOG("Failed to resize the window surface: Failed to create new window surface!\n");
             return false;
         }
         GPU_Target* newTarget = GPU_LoadTarget(newContent);
         if (newTarget == NULL) {
             GPU_FreeImage(newContent);
-            fprintf(stderr, "Failed to resize the window surface: Failed to create render target from new window surface!\n");
+            LOG("Failed to resize the window surface: "
+                        "Failed to create render target from new window surface!\n");
             return false;
         }
         if (windowStruct->renderTarget != NULL) GPU_Flip(windowStruct->renderTarget);
-        fprintf(stderr, "Resizing surface of window %lu\n", window);
-        fprintf(stderr, "BLITTING in %s\n", __func__);
+        LOG("Resizing surface of window %lu\n", window);
+        LOG("BLITTING in %s\n", __func__);
         GPU_Blit(oldContent, NULL, newTarget, oldContent->w / 2, oldContent->h / 2);
         if (windowStruct->renderTarget != NULL) GPU_FreeTarget(windowStruct->renderTarget);
         GPU_FreeImage(oldContent);
@@ -261,13 +262,13 @@ Bool resizeWindowSurface(Window window) {
 Bool mergeWindowDrawables(Window parent, Window child) {
     WindowStruct* childWindowStruct = GET_WINDOW_STRUCT(child);
     if (childWindowStruct->unmappedContent == NULL) { return True; }
-    fprintf(stderr, "getWindowRenderTarget of window %lu in %s.\n", parent, __func__);
+    LOG("getWindowRenderTarget of window %lu in %s.\n", parent, __func__);
     GPU_Target* parentTarget = getWindowRenderTarget(parent);
     if (parentTarget == NULL) return false;
     if (childWindowStruct->renderTarget != NULL) {
         GPU_Flip(childWindowStruct->renderTarget);
     }
-    fprintf(stderr, "BLITTING in %s\b", __func__);
+    LOG("BLITTING in %s\b", __func__);
     GPU_Blit(childWindowStruct->unmappedContent, NULL, parentTarget,
              childWindowStruct->x + childWindowStruct->w / 2, childWindowStruct->y + childWindowStruct->h / 2);
     if (childWindowStruct->renderTarget != NULL) {
@@ -285,7 +286,7 @@ void mapRequestedChildren(Display* display, Window window) {
     for (i = 0; i < GET_WINDOW_STRUCT(window)->children.length; i++) {
         if (children[i] != None && GET_WINDOW_STRUCT(children[i])->mapState == MapRequested) {
             if (!mergeWindowDrawables(window, children[i])) {
-                fprintf(stderr, "Failed to merge the window drawables in %s\n", __func__);
+                LOG("Failed to merge the window drawables in %s\n", __func__);
                 return;
             }
             GET_WINDOW_STRUCT(children[i])->mapState = Mapped;
@@ -342,7 +343,7 @@ Bool configureWindow(Display* display, Window window, unsigned long value_mask, 
             }
         }
         printWindowsHierarchy();
-        fprintf(stderr, "Resizing window %lu to (%ux%u)\n", window, width, height);
+        LOG("Resizing window %lu to (%ux%u)\n", window, width, height);
         if (isMappedTopLevelWindow) {
             SDL_SetWindowSize(windowStruct->sdlWindow, width, height);
             int wOut, hOut;

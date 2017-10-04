@@ -131,14 +131,14 @@ Bool matchWildcard(const char* wildcard, const char* string) {
 
 int XFree(void *data) {
     // https://tronche.com/gui/x/xlib/display/XFree.html
-    fprintf(stderr, "Hit unimplemented function %s.\n", __func__);
+    WARN_UNIMPLEMENTED;
     return 1;
 }
 
 Status XGetGeometry(Display *display, Drawable d, Window *root_return, int *x_return, int* y_return, unsigned int *width_return, unsigned int *height_return, unsigned int *border_width_return, unsigned int *depth_return) {
     // https://tronche.com/gui/x/xlib/window-information/XGetGeometry.html
     SET_X_SERVER_REQUEST(display, X_GetGeometry);
-    fprintf(stderr, "Hit unimplemented function %s.\n", __func__);
+    WARN_UNIMPLEMENTED;
     return 0;
 }
 

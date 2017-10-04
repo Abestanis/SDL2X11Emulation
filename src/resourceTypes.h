@@ -36,8 +36,8 @@ typedef struct {
 #define TYPE_CHECK(resource, typeID, display, returnCode...) \
 if (!IS_TYPE(resource, typeID)) {\
     unsigned char errorCode = resourceTypeToErrorCode(typeID);\
-    fprintf(stderr, "Type error: Expected '%s' to be a %s, but was %d!\n", #resource, #typeID,\
-    resource != None ? GET_XID_TYPE(resource) : -1);\
+    LOG("Type error: Expected '%s' to be a %s, but was %d!\n", #resource, #typeID,\
+        resource != None ? GET_XID_TYPE(resource) : -1);\
     handleError(0, display, resource, 0, errorCode, 0);\
     return returnCode;\
 }

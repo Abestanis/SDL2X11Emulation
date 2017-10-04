@@ -25,19 +25,19 @@ Window XCreateWindow(Display* display, Window parent, int x, int y, unsigned int
     TYPE_CHECK(parent, WINDOW, display, None);
     Bool inputOnly = (clazz == InputOnly || (clazz == CopyFromParent && IS_INPUT_ONLY(parent)));
     if (inputOnly && border_width != 0) {
-        fprintf(stderr, "Bad argument: Given class is InputOnly but border_with is not 0 in XCreateWindow!\n");
+        LOG("Bad argument: Given class is InputOnly but border_with is not 0 in XCreateWindow!\n");
         handleError(0, display, None, 0, BadMatch, 0);
         return None;
     }
     Window windowID = ALLOC_XID();
     if (windowID == None) {
-        fprintf(stderr, "Out of memory: Could not allocate the window id in XCreateWindow!\n");
+        LOG("Out of memory: Could not allocate the window id in XCreateWindow!\n");
         handleOutOfMemory(0, display, 0, 0);
         return None;
     }
     WindowStruct* windowStruct = malloc(sizeof(WindowStruct));
     if (windowStruct == NULL) {
-        fprintf(stderr, "Out of memory: Could not allocate the window struct in XCreateWindow!\n");
+        LOG("Out of memory: Could not allocate the window struct in XCreateWindow!\n");
         handleOutOfMemory(0, display, 0, 0);
         FREE_XID(windowID);
         return None;
@@ -48,7 +48,7 @@ Window XCreateWindow(Display* display, Window parent, int x, int y, unsigned int
     windowStruct->depth = depth;
     windowStruct->borderWidth = border_width;
     if (!addChildToWindow(parent, windowID)) {
-        fprintf(stderr, "Out of memory: Could not increase size of parent's child list in XCreateWindow!\n");
+        LOG("Out of memory: Could not increase size of parent's child list in XCreateWindow!\n");
         handleOutOfMemory(0, display, 0, 0);
         free(windowStruct);
         FREE_XID(windowID);
@@ -62,7 +62,7 @@ Window XCreateWindow(Display* display, Window parent, int x, int y, unsigned int
                                                          AllocAll : AllocNone);
     SET_X_SERVER_REQUEST(display, X_CreateWindow);
     if (windowStruct->colormap == None) {
-        fprintf(stderr, "Out of memory: Could not allocate the window colormap in XCreateWindow!\n");
+        LOG("Out of memory: Could not allocate the window colormap in XCreateWindow!\n");
         handleOutOfMemory(0, display, 0, 0);
         free(windowStruct);
         FREE_XID(windowID);
@@ -141,7 +141,7 @@ int XMapWindow(Display* display, Window window) {
     }
     if (IS_TOP_LEVEL(window)) {
         if (IS_MAPPED_TOP_LEVEL_WINDOW(window)) { return 1; }
-        fprintf(stderr, "Mapping Window %lu\n", window);
+        LOG("Mapping Window %lu\n", window);
         WindowStruct* windowStruct = GET_WINDOW_STRUCT(window);
         Uint32 flags = SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN;
         if (windowStruct->borderWidth == 0) {
@@ -151,14 +151,15 @@ int XMapWindow(Display* display, Window window) {
                                                  windowStruct->x, windowStruct->y,
                                                  windowStruct->w, windowStruct->h, flags);
         if (sdlWindow == NULL) {
-            fprintf(stderr, "SDL_CreateWindow failed in XMapWindow: %s\n", SDL_GetError());
+            LOG("SDL_CreateWindow failed in XMapWindow: %s\n", SDL_GetError());
             handleError(0, display, None, 0, BadMatch, 0);
             return 0;
         }
         registerWindowMapping(window, SDL_GetWindowID(sdlWindow));
         GPU_Target* renderTarget = GPU_CreateTargetFromWindow(SDL_GetWindowID(sdlWindow));
         if (renderTarget == NULL) {
-            fprintf(stderr, "GPU_CreateTargetFromWindow failed in XMapWindow: %s\n", GPU_PopErrorCode().details);
+            LOG("GPU_CreateTargetFromWindow failed in XMapWindow: %s\n",
+                GPU_PopErrorCode().details);
             handleError(0, display, None, 0, BadMatch, 0);
             return 0;
         }
@@ -166,7 +167,7 @@ int XMapWindow(Display* display, Window window) {
             if (windowStruct->renderTarget != NULL) {
                 GPU_Flip(windowStruct->renderTarget);
             }
-            fprintf(stderr, "BLITTING in %s\n", __func__);
+            LOG("BLITTING in %s\n", __func__);
             int x, y;
             GET_WINDOW_POS(window, x, y);
             GPU_Blit(windowStruct->unmappedContent, NULL, renderTarget,
@@ -193,7 +194,7 @@ int XMapWindow(Display* display, Window window) {
         Window parent = GET_PARENT(window);
         if (GET_WINDOW_STRUCT(parent)->mapState == Mapped) {
             if (!mergeWindowDrawables(parent, window)) {
-                fprintf(stderr, "Failed to merge the window drawables in %s\n", __func__);
+                LOG("Failed to merge the window drawables in %s\n", __func__);
                 return 0;
             }
             GET_WINDOW_STRUCT(window)->mapState = Mapped;
@@ -297,15 +298,16 @@ int XReparentWindow(Display* display, Window window, Window parent, int x, int y
     TYPE_CHECK(window, WINDOW, display, 0);
     TYPE_CHECK(parent, WINDOW, display, 0);
     if (window == parent) {
-        fprintf(stderr, "Invalid parameter: Can not add window to itself in XReparentWindow!\n");
+        LOG("Invalid parameter: Can not add window to itself in XReparentWindow!\n");
         handleError(0, display, window, 0, BadMatch, 0);
         return 0;
     } else if (IS_INPUT_ONLY(parent) && !IS_INPUT_ONLY(window)) {
-        fprintf(stderr, "Invalid parameter: Can not add InputOutput window to InputOnly window in XReparentWindow!\n");
+        LOG("Invalid parameter: Can not add InputOutput window "
+                    "to InputOnly window in XReparentWindow!\n");
         handleError(0, display, window, 0, BadMatch, 0);
         return 0;
     } else if (isParent(window, parent)) {
-        fprintf(stderr, "Invalid parameter: Can not add window to one of it's childs in XReparentWindow!\n");
+        LOG("Invalid parameter: Can not add window to one of it's childs in XReparentWindow!\n");
         handleError(0, display, window, 0, BadMatch, 0);
         return 0;
     }
@@ -314,7 +316,7 @@ int XReparentWindow(Display* display, Window window, Window parent, int x, int y
     Window oldParent = GET_PARENT(window);
     removeChildFromParent(window);
     if (!addChildToWindow(parent, window)) {
-        fprintf(stderr, "Out of memory: Failed to reattach window in XReparentWindow!\n");
+        LOG("Out of memory: Failed to reattach window in XReparentWindow!\n");
         return 0;
     }
     XMoveWindow(display, window, x, y); // TODO: Do this without generating events
@@ -365,8 +367,8 @@ Bool XTranslateCoordinates(Display* display, Window sourceWindow, Window destina
             }
             nextParent = GET_PARENT(nextParent);
             if (numDestParents > 255) {
-                fprintf(stderr, "Error: Unable to calculate common parent."\
-                                "Number of parents exeeds 255 in XTranslateCoordinates!\n");
+                LOG("Error: Unable to calculate common parent. "
+                            "Number of parents exceeds 255 in XTranslateCoordinates!\n");
                 return False;
             }
         }
@@ -427,7 +429,7 @@ int XChangeProperty(Display* display, Window window, Atom property, Atom type, i
         handleError(0, display, None, 0, BadValue, 0);
         return 0;
     }
-    fprintf(stderr, "Changing window property %lu (%s).\n", property, getAtomName(property));
+    LOG("Changing window property %lu (%s).\n", property, getAtomName(property));
     if (!isValidAtom(property)) {
         handleError(0, display, property, 0, BadAtom, 0);
         return 0;
@@ -480,8 +482,8 @@ int XChangeProperty(Display* display, Window window, Atom property, Atom type, i
                     removeArray(&windowStruct->properties, windowStruct->properties.length - 1, False);
                     free(windowProperty);
                 }
-                fprintf(stderr, "Out of memory: Failed to allocate space for combined data "
-                                "in XChangeProperty!\n");
+                LOG("Out of memory: Failed to allocate space for combined data "
+                            "in XChangeProperty!\n");
                 handleOutOfMemory(0, display, 0, 0);
                 return 0;
             }
@@ -506,8 +508,7 @@ int XChangeProperty(Display* display, Window window, Atom property, Atom type, i
                     removeArray(&windowStruct->properties, windowStruct->properties.length - 1, False);
                     free(windowProperty);
                 }
-                fprintf(stderr, "Out of memory: Failed to allocate space for data "
-                        "in XChangeProperty!\n");
+                LOG("Out of memory: Failed to allocate space for data in XChangeProperty!\n");
                 handleOutOfMemory(0, display, 0, 0);
                 return 0;
             }
@@ -522,7 +523,7 @@ int XChangeProperty(Display* display, Window window, Atom property, Atom type, i
                 removeArray(&windowStruct->properties, windowStruct->properties.length - 1, False);
                 free(windowProperty);
             }
-            fprintf(stderr, "Bad parameter: Got unknown mode %d in XChangeProperty!\n", mode);
+            LOG("Bad parameter: Got unknown mode %d in XChangeProperty!\n", mode);
             handleError(0, display, None, 0, BadMatch, 0);
             return 0;
     }
@@ -618,8 +619,8 @@ int XGetWindowProperty(Display* display, Window window, Atom property, long long
             size_t dataReturnSize = MIN(windowProperty->dataLength * dataTypeSize - 4 * long_offset, 4 * (size_t) long_length);
             *prop_return = malloc(sizeof(char) * (dataReturnSize + 1));
             if (*prop_return == NULL) {
-                fprintf(stderr, "Out of memory: Failed to allocate space for the return value "\
-                        "in XGetWindowProperty!\n");
+                LOG("Out of memory: Failed to allocate space for "
+                            "the return value in XGetWindowProperty!\n");
                 handleOutOfMemory(0, display, 0, 0);
                 return BadAlloc;
             }
@@ -698,7 +699,7 @@ int XSetWindowBackground(Display* display, Window window, unsigned long backgrou
     SET_X_SERVER_REQUEST(display, X_ChangeWindowAttributes);
     if (window != SCREEN_WINDOW) {
         if (IS_INPUT_ONLY(window)) {
-            fprintf(stderr, "Invalid parameter: Can not change the background of an InputOnly "
+            LOG("Invalid parameter: Can not change the background of an InputOnly "
                     "window in XChangeWindowAttributes!\n");
             handleError(0, display, window, 0, BadMatch, 0);
             return 0;
@@ -714,7 +715,7 @@ int XSetWindowBackgroundPixmap(Display* display, Window window, Pixmap backgroun
     if (window != SCREEN_WINDOW) {
         WindowStruct* windowStruct = GET_WINDOW_STRUCT(window);
         if (IS_INPUT_ONLY(window)) {
-            fprintf(stderr, "Invalid parameter: Can not change the background Pixmap of an "
+            LOG("Invalid parameter: Can not change the background Pixmap of an "
                     "InputOnly window in XChangeWindowAttributes!\n");
             handleError(0, display, window, 0, BadMatch, 0);
             return 0;
@@ -751,6 +752,7 @@ int XSetWindowBorderPixmap(Display* display, Window window, Pixmap border_pixmap
 int XSetWindowColormap(Display* display, Window window, Colormap colormap) {
     // https://tronche.com/gui/x/xlib/window/XSetWindowColormap.html
     SET_X_SERVER_REQUEST(display, X_ChangeWindowAttributes);
+    TYPE_CHECK(colormap, COLORMAP, display, 0);
     if (window != SCREEN_WINDOW) {
         GET_WINDOW_STRUCT(window)->colormap = colormap;
     }
@@ -776,7 +778,8 @@ int XChangeWindowAttributes(Display* display, Window window, unsigned long value
             XSetWindowColormap(display, window, attributes->colormap);
         }
         if (HAS_VALUE(valueMask, CWEventMask)) {
-            fprintf(stderr, "Change window attributes event: %ld\n", attributes->event_mask & SubstructureRedirectMask);
+            LOG("Change window attributes event: %ld\n",
+                attributes->event_mask & SubstructureRedirectMask);
             GET_WINDOW_STRUCT(window)->eventMask = attributes->event_mask;
             if (attributes->event_mask & KeyPressMask || attributes->event_mask & KeyReleaseMask) {
                 // TODO: Implement real system here

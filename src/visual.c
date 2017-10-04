@@ -13,13 +13,13 @@ Bool initVisuals() {
     // TODO: Check with sdl for real screen values
     // https://wiki.libsdl.org/SDL_PixelFormatEnum
     if (VISUAL_LIST != NULL) {
-        fprintf(stderr, "Warn: Visual memory already allocated!\n");
+        LOG("Warn: Visual memory already allocated!\n");
         return True;
     }
     NUM_VISUALS = 1;
     VISUAL_LIST = malloc(sizeof(Visual) * NUM_VISUALS);
     if (VISUAL_LIST == NULL) {
-        fprintf(stderr, "Out of memory: Failed to allocate memory for the visuals!\n");
+        LOG("Out of memory: Failed to allocate memory for the visuals!\n");
         return False;
     }
     VISUAL_LIST->ext_data = NULL;
@@ -129,7 +129,7 @@ Status XMatchVisualInfo(Display* display, int screen, int depth, int clazz,
     // https://tronche.com/gui/x/xlib/utilities/XMatchVisualInfo.html
     (void) display;
     if (VISUAL_LIST == NULL) {
-        fprintf(stderr, "Visuals memory is not initialized in %s!\n", __func__);
+        LOG("Visuals memory is not initialized in %s!\n", __func__);
         return 0;
     }
     unsigned int i;

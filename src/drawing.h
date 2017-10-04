@@ -11,12 +11,13 @@
 #define GET_PIXMAP_IMAGE(pixmap) (IS_TYPE(pixmap, PIXMAP) ? ((GPU_Image*) GET_XID_VALUE(pixmap)) : NULL)
 #define GET_RENDER_TARGET(drawable, renderer) \
 if (IS_TYPE(drawable, WINDOW)) {\
-    fprintf(stderr, "getWindowRenderTarget of window %lu in %s.\n", drawable, __func__);\
+    LOG("getWindowRenderTarget of window %lu in %s.\n", drawable, __func__);\
     renderer = getWindowRenderTarget(drawable);\
 } else if (IS_TYPE(drawable, PIXMAP)) {\
     renderer = GET_PIXMAP_IMAGE(drawable)->target;\
 } else {\
-    fprintf(stderr, "Got unknown drawable type while trying to get renderer in %s, %s, %d\n", __FILE__, __func__, __LINE__);\
+    LOG("Got unknown drawable type while trying to get renderer in %s, %s, %d\n",\
+        __FILE__, __func__, __LINE__);\
     renderer = NULL;\
 }
 

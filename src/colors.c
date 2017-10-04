@@ -40,7 +40,7 @@ Colormap XCreateColormap(Display* display, Window window, Visual* visual, int al
     visualClass = visual->CLASS_ATTRIBUTE;
 //    SDL_Palette* colormap = SDL_AllocPalette(allocate ? visual->map_entries : 0);
 //    if (colormap == NULL) {
-//        fprintf(stderr, "SDL_AllocPalette failed in XCreateColormap: %s\n", SDL_GetError());
+//        LOG("SDL_AllocPalette failed in XCreateColormap: %s\n", SDL_GetError());
 //        handleOutOfMemory(0, display, 0, 0);
 //        return NULL;
 //    }
@@ -83,8 +83,7 @@ Colormap XCreateColormap(Display* display, Window window, Visual* visual, int al
             colormap = REAL_COLOR_COLORMAP;
             break;
         default:
-            fprintf(stderr, "Bad parameter: got an unknown visual class in XCreateColormap: %d\n",
-                    visualClass);
+            LOG("Bad parameter: got an unknown visual class in XCreateColormap: %d\n", visualClass);
             handleError(0, display, None, 0, BadMatch, 0);
             return None;
     }

@@ -752,7 +752,6 @@ int XSetWindowBorderPixmap(Display* display, Window window, Pixmap border_pixmap
 int XSetWindowColormap(Display* display, Window window, Colormap colormap) {
     // https://tronche.com/gui/x/xlib/window/XSetWindowColormap.html
     SET_X_SERVER_REQUEST(display, X_ChangeWindowAttributes);
-    TYPE_CHECK(colormap, COLORMAP, display, 0);
     if (window != SCREEN_WINDOW) {
         GET_WINDOW_STRUCT(window)->colormap = colormap;
     }

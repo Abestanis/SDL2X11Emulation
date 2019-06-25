@@ -69,4 +69,4 @@ target_include_directories(sdl2X11Emulation
 
 target_link_libraries(
         sdl2X11Emulation
-        SDL2 SDL_gpu_shared SDLTTF pixman)
+        SDL2 SDL_gpu_shared SDL2_ttf pixman)

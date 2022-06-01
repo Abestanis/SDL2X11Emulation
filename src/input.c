@@ -31,11 +31,13 @@ KeyCode XKeysymToKeycode(Display *display, KeySym keysym) {
     // https://tronche.com/gui/x/xlib/utilities/keyboard/XKeysymToKeycode.html
 //    SET_X_SERVER_REQUEST(display, XCB_);
     WARN_UNIMPLEMENTED;
+    return None;
 }
 
 KeySym XLookupKeysym(XKeyEvent *key_event, int index) {
     // https://tronche.com/gui/x/xlib/utilities/keyboard/XLookupKeysym.html
     WARN_UNIMPLEMENTED;
+    return None;
 }
 
 KeySym XStringToKeysym(_Xconst char* string) {

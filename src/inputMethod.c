@@ -405,6 +405,12 @@ char* XGetIMValues(XIM inputMethod, ...) {
     return key;
 }
 
+char* XSetIMValues(XIM inputMethod, ...) {
+    // https://www.x.org/archive/X11R7.6/doc/man/man3/XSetIMValues.3.xhtml
+    WARN_UNIMPLEMENTED;
+    return NULL;
+}
+
 void XFreeFontSet(Display *display, XFontSet font_set) {
     // http://www.x.org/archive/X11R7.6/doc/man/man3/XCreateFontSet.3.xhtml
 //    SET_X_SERVER_REQUEST(display, XCB_);

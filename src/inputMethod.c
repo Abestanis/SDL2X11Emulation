@@ -473,3 +473,10 @@ Bool XRegisterIMInstantiateCallback(Display* display, struct _XrmHashBucketRec* 
     WARN_UNIMPLEMENTED;
     return False;
 }
+
+Bool XUnregisterIMInstantiateCallback(Display* display, struct _XrmHashBucketRec* rdb,
+        char* resName, char* resClass, XIDProc	callback, XPointer callbackData) {
+    // https://linux.die.net/man/3/xunregisteriminstantiatecallback
+    WARN_UNIMPLEMENTED;
+    return False;
+}

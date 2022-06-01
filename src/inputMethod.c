@@ -466,3 +466,10 @@ int Xutf8LookupString(XIC inputConnection, XKeyPressedEvent* event, char* buffer
         return 1;
     }
 }
+
+Bool XRegisterIMInstantiateCallback(Display* display, struct _XrmHashBucketRec* rdb, char* resName,
+        char* resClass, XIDProc	callback, XPointer callbackData) {
+    // https://linux.die.net/man/3/xregisteriminstantiatecallback
+    WARN_UNIMPLEMENTED;
+    return False;
+}

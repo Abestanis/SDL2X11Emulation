@@ -167,6 +167,12 @@ int XCopyPlane(Display *display, Drawable src, Drawable dest, GC gc, int src_x, 
     return 1;
 }
 
+extern int XDrawPoint(Display* display, Drawable d, GC gc, int x, int y) {
+    // https://linux.die.net/man/3/xdrawpoint
+    WARN_UNIMPLEMENTED;
+    return 1;
+}
+
 int XDrawLine(Display* display, Drawable d, GC gc, int x1, int y1, int x2, int y2) {
     // https://tronche.com/gui/x/xlib/graphics/drawing/XDrawLine.html
     WARN_UNIMPLEMENTED;

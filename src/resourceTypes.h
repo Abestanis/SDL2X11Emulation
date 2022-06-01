@@ -14,7 +14,7 @@ typedef struct {
 #include "window.h"
 
 #define ALLOC_XID() ((XID) malloc(sizeof(XID_Struct)))
-#define FREE_XID(id) free((XID_Struct*) id)
+#define FREE_XID(id) free((XID_Struct*) (id))
 #define SET_XID_TYPE(id, typeId) ((XID_Struct*) (id))->type = typeId
 #define SET_XID_VALUE(id, value) ((XID_Struct*) (id))->dataPointer = value
 #define GET_XID_TYPE(id) (((XID_Struct*) (id))->type)
@@ -22,9 +22,9 @@ typedef struct {
 
 #define GET_WINDOW_STRUCT(window) ((WindowStruct*) GET_XID_VALUE(window))
 
-#define IS_TYPE(resource, typeID) (resource != None && (\
-    GET_XID_TYPE(resource) == typeID || (\
-        typeID == DRAWABLE && (\
+#define IS_TYPE(resource, typeID) ((resource) != None && (\
+    GET_XID_TYPE(resource) == (typeID) || (\
+        (typeID) == DRAWABLE && (\
             GET_XID_TYPE(resource) == PIXMAP || (\
                 GET_XID_TYPE(resource) == WINDOW && !IS_INPUT_ONLY(resource)\
             )\

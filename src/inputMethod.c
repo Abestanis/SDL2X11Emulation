@@ -428,6 +428,7 @@ XFontSet XCreateFontSet(Display *display, _Xconst char *base_font_name_list,
     // http://www.x.org/archive/X11R7.6/doc/man/man3/XCreateFontSet.3.xhtml
 //    SET_X_SERVER_REQUEST(display, XCB_);
     WARN_UNIMPLEMENTED;
+    return NULL;
 }
 
 int Xutf8LookupString(XIC inputConnection, XKeyPressedEvent* event, char* buffer_return,

@@ -166,3 +166,10 @@ int XRefreshKeyboardMapping(XMappingEvent *event_map) {
     WARN_UNIMPLEMENTED;
     return 1;
 }
+
+
+int XDisplayKeycodes(Display* display, int*	minKeyCodesReturn, int*	maxKeyCodesReturn) {
+    // https://linux.die.net/man/3/xdisplaykeycodes
+    WARN_UNIMPLEMENTED;
+    return 1;
+}

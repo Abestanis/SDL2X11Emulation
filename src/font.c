@@ -218,14 +218,14 @@ void freeFontStorage() {
     if (fontCache != NULL) {
         // Clear the array and free the data
         while (fontCache->length > 0) {
-            FontCacheEntry* entry = removeArray(fontSearchPaths, 0, False);
+            FontCacheEntry* entry = removeArray(fontCache, 0, False);
             free(entry->filePath);
             free(entry->XLFName);
             free(entry);
         }
         freeArray(fontCache);
         free(fontCache);
-        fontSearchPaths = NULL;
+        fontCache = NULL;
     }
 }
 

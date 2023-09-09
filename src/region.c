@@ -2,7 +2,7 @@
 #include "X11/Xutil.h"
 #include <inttypes.h>
 #include <X11/Xregion.h>
-#include "pixman.h"
+#include <pixman.h>
 #include "drawing.h"
 #include "resourceTypes.h"
 

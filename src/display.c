@@ -13,18 +13,21 @@
 #include "atoms.h"
 #include "visual.h"
 #include "font.h"
-#include <jni.h>
+#ifdef HAVE_JNI
+#  include <jni.h>
+#endif /* HAVE_JNI */
 #include <SDL_gpu.h>
 #include <X11/X.h>
 #include <X11/Xutil.h>
 
-
+#ifdef HAVE_JNI
 jint JNI_OnLoad(JavaVM* vm, void* reserved) {
     setenv("DISPLAY", ":0", 0);
     return JNI_VERSION_1_4;
 }
+#endif /* HAVE_JNI */
 
-void __attribute__((constructor)) _init() {
+void __attribute__((constructor)) init() {
     setenv("DISPLAY", ":0", 0);
 }
 

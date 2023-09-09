@@ -1,7 +1,17 @@
-cmake_minimum_required(VERSION 3.4.1)
+cmake_minimum_required(VERSION 3.14)
 project(SDL2X11Emulation C)
 
-set(CMAKE_C_FLAGS_DEBUG -DDEBUG_SDL2X11_EMULATION)
+list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
+
+find_package(SDL2 REQUIRED)
+find_package(SDL2_ttf REQUIRED)
+find_package(SDL_gpu REQUIRED)
+find_package(Pixman REQUIRED)
+
+option(SDL2X11EMULATION_DEBUGGING "Enables debugging of the SDL2X11 emulation layer")
+if(SDL2X11EMULATION_DEBUGGING)
+    set(CMAKE_C_FLAGS_DEBUG -DDEBUG_SDL2X11_EMULATION)
+endif()
 
 add_library(sdl2X11Emulation SHARED
         include/X11/DECkeysym.h include/X11/HPkeysym.h include/X11/ImUtil.h
@@ -69,4 +79,11 @@ target_include_directories(sdl2X11Emulation
 
 target_link_libraries(
         sdl2X11Emulation
-        SDL2 SDL_gpu_shared SDL2_ttf pixman)
+        SDL2::SDL2 SDL2::TTF SDL_gpu Pixman
+)
+
+include(CheckIncludeFile)
+check_include_file("jni.h" HAVE_JNI)
+if(HAVE_JNI)
+    target_compile_options(sdl2X11Emulation PRIVATE -DHAVE_JNI)
+endif()

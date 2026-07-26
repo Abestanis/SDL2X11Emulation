@@ -1,9 +1,13 @@
 # SDL2X11Emulation
-This library was designed in order to allow programs that depend on [X11](https://en.wikipedia.org/wiki/X_Window_System)
-to be run on platforms that don't run a XServer.
-It implements all the Xlib API functions with [SDL2](https://www.libsdl.org/) and [SDL_gpu](http://dinomage.com/reference/SDL_gpu/).
+This library was designed to allow programs that depend on [X11](https://en.wikipedia.org/wiki/X_Window_System)
+to be run on platforms that don't have an XServer.
+It implements all the Xlib API functions with [SDL2](https://www.libsdl.org/) and [SDL_gpu](https://grimfang4.github.io/sdl-gpu/).
 
 Note: SDL_gpu requires OpenGl, OpenGL ES or some graphics API to be avaliable on the target system. If your target system does not support that, you could try to revert the changes made in [this patch](https://github.com/Abestanis/SDL2X11Emulation/commit/cb26a90e22837256a31dbd89abf477377000f9bb) and see if you can get away with just SDL.
+
+> [!NOTE]
+> This library is currently not actively maintained, but [`libx11-compat`](https://github.com/sysprog21/libx11-compat) is an actively
+> maintained fork which is more feature complete and tested.
 
 ## License
 Copied from [X.h](https://github.com/Abestanis/SDL2X11Emulation/blob/master/include/X11/X.h#L11):
@@ -37,7 +41,8 @@ This was a goal I wanted to achieve for my [APython project](https://github.com/
 ## Progress and Contribution
 This library is not finished and it will probably never have the performance of the real X-System.
 I never heard of X11 before I started this project and the documentation is not really easy to understand.
-Also, I never used SDL before. Consequently, every and all help is appreciated, and if you look over the code
-and see something that is wrong or that could be improved, please tell me so I can fix it!
+Also, I never used SDL before.
+I consider [`libx11-compat`](https://github.com/sysprog21/libx11-compat) to be the successor of this project,
+so for everyone interested in contributing or using it I would suggest to check them out.
 
 Thank you!
